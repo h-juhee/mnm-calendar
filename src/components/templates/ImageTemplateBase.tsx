@@ -61,17 +61,25 @@ export default function ImageTemplateBase({
             </span>
           </div>
           <div className={styles.heroHospitalTag}>
-            <span className={styles.heroHospitalName} style={{ color: textColor }}>
-              {hospital.name}
-            </span>
+            {hospital.logoUrl ? (
+              <img className={styles.heroLogo} src={hospital.logoUrl} alt={`${hospital.name} 로고`} />
+            ) : (
+              <span className={styles.heroHospitalName} style={{ color: textColor }}>
+                {hospital.name}
+              </span>
+            )}
           </div>
         </div>
       ) : (
         <>
           <div className={styles.hospitalRow}>
-            <span className={styles.hospitalName} style={{ color: textColor }}>
-              {hospital.name}
-            </span>
+            {hospital.logoUrl ? (
+              <img className={styles.logo} src={hospital.logoUrl} alt={`${hospital.name} 로고`} />
+            ) : (
+              <span className={styles.hospitalName} style={{ color: textColor }}>
+                {hospital.name}
+              </span>
+            )}
           </div>
 
           <div className={styles.titleBlock}>
@@ -94,11 +102,6 @@ export default function ImageTemplateBase({
       />
 
       {notice && <p className={styles.noticeBox}>{notice}</p>}
-
-      <div className={styles.footer}>
-        {hospital.phone && <span>📞 {hospital.phone}</span>}
-        {hospital.address && <span>{hospital.address}</span>}
-      </div>
     </div>
   );
 }

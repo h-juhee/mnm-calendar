@@ -39,7 +39,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 2px;
   padding: 6px 3px;
   font-size: 17px;
   color: var(--color-text);
@@ -114,12 +114,30 @@
 .typeShortened {
   background: var(--color-success-bg);
   border-color: var(--color-success);
+  position: relative;
+  z-index: 1;
+  overflow: visible;
 }
 .typeShortened .badge {
-  background: var(--color-success);
-  color: #fff;
-  width: 100%;
+  width: auto;
+  max-width: none;
+  padding: 0;
+  gap: 4px;
   font-size: clamp(9px, 2vw, 12px);
+}
+.typeShortened .badge > span {
+  display: block;
+  padding: 2px 6px;
+  background: var(--color-success);
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.typeShortened .badge > .badgeTimePlain {
+  background: transparent;
+  color: var(--color-success);
 }
 
 .typeNight {

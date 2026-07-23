@@ -17,9 +17,11 @@ const BADGE_CLASS: Record<string, string> = {
   closed: styles.badgeClosed,
   morningClosed: styles.badgeHalf,
   afternoonClosed: styles.badgeHalf,
+  seminarClosed: styles.badgeClosed,
   shortened: styles.badgeShortened,
   night: styles.badgeNight,
   saturday: styles.badgeSaturday,
+  custom: styles.badgeHalf,
 };
 
 export default function PreviewCalendar({ calendarMatrix, resolvedByDate, accentColor, onDateClick, labelStyle = 'korean' }: PreviewCalendarProps) {
@@ -42,9 +44,12 @@ export default function PreviewCalendar({ calendarMatrix, resolvedByDate, accent
             const schedule = resolvedByDate.get(cell.date);
             const closedLike = schedule ? scheduleTypeIsClosedLike(schedule.type) : false;
             const meta = schedule && schedule.type !== 'open' ? SCHEDULE_TYPE_META[schedule.type] : null;
-            const shortenedTime = schedule?.type === 'shortened' && schedule.endTime
-              ? `${schedule.startTime ?? '09:00'}~${schedule.endTime}`
+            const displayLabel = schedule?.label ?? meta?.shortLabel;
+            const shortenedStart = schedule?.startTime ?? '09:00';
+            const shortenedTime = schedule?.type === 'shortened' && schedule.endTime && shortenedStart < schedule.endTime
+              ? `${shortenedStart}~${schedule.endTime}`
               : '';
+            const timeBadgeClass = schedule?.showTimeBadge === false ? styles.badgeTimePlain : undefined;
             const weekday = idx % 7;
             const dayClassName = [
               styles.day,
@@ -61,11 +66,11 @@ export default function PreviewCalendar({ calendarMatrix, resolvedByDate, accent
                   <span className={`${styles.badge} ${BADGE_CLASS[schedule!.type] ?? ''}`}>
                     {schedule?.type === 'shortened' ? (
                       <>
-                        <span>{meta.shortLabel}</span>
-                        {shortenedTime && <span>{shortenedTime}</span>}
+                        <span>{displayLabel}</span>
+                        {shortenedTime && <span className={timeBadgeClass}>{shortenedTime}</span>}
                       </>
                     ) : (
-                      meta.shortLabel
+                      displayLabel
                     )}
                   </span>
                 )}

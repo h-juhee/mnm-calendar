@@ -4,9 +4,11 @@ export type ScheduleType =
   | 'closed'
   | 'morningClosed'
   | 'afternoonClosed'
+  | 'seminarClosed'
   | 'shortened'
   | 'night'
   | 'saturday'
+  | 'custom'
   | 'open';
 
 export type CalendarLabelStyle = 'korean' | 'english' | 'hanja' | 'japanese';
@@ -16,6 +18,7 @@ export interface DateSchedule {
   type: ScheduleType;
   startTime?: string; // HH:mm, shortened schedule start time
   endTime?: string; // HH:mm, shortened 유형일 때만 사용
+  showTimeBadge?: boolean; // 단축 진료 시간 배지 배경 표시 여부
   label?: string;
 }
 
@@ -25,8 +28,6 @@ export interface HospitalInfo {
   directorName?: string;
   logoUrl?: string;
   primaryColor: string;
-  phone?: string;
-  address?: string;
 }
 
 export interface ScheduleFormData {
@@ -101,11 +102,13 @@ export const SCHEDULE_TYPE_META: Record<
   { label: string; shortLabel: string; icon: string }
 > = {
   closed: { label: '휴진', shortLabel: '휴진', icon: '✕' },
-  morningClosed: { label: '오전 휴진', shortLabel: '오전휴진', icon: '◐' },
-  afternoonClosed: { label: '오후 휴진', shortLabel: '오후휴진', icon: '◑' },
+  morningClosed: { label: '오전 진료', shortLabel: '오전진료', icon: '◐' },
+  afternoonClosed: { label: '오후 진료', shortLabel: '오후진료', icon: '◑' },
+  seminarClosed: { label: '세미나 휴진', shortLabel: '세미나휴진', icon: '' },
   shortened: { label: '단축 진료', shortLabel: '단축진료', icon: '◷' },
   night: { label: '야간 진료', shortLabel: '야간진료', icon: '☾' },
   saturday: { label: '토요일 진료', shortLabel: '토요일진료', icon: '●' },
+  custom: { label: '직접 입력', shortLabel: '직접입력', icon: '' },
   open: { label: '정상 진료', shortLabel: '정상진료', icon: '○' },
 };
 

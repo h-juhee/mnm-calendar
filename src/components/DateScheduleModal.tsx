@@ -4,7 +4,7 @@ import { SCHEDULE_TYPE_META } from '../types/schedule';
 import Modal from './Modal';
 import styles from './DateScheduleModal.module.css';
 
-const TYPE_ORDER: ScheduleType[] = ['closed', 'morningClosed', 'afternoonClosed', 'shortened', 'night', 'saturday', 'open'];
+const TYPE_ORDER: ScheduleType[] = ['closed', 'morningClosed', 'afternoonClosed', 'seminarClosed', 'shortened', 'night', 'saturday', 'open', 'custom'];
 
 interface DateScheduleModalProps {
   dateKey: string;
@@ -26,16 +26,23 @@ export default function DateScheduleModal({
   const [type, setType] = useState<ScheduleType>(currentSchedule.type);
   const [startTime, setStartTime] = useState(currentSchedule.startTime ?? '09:00');
   const [endTime, setEndTime] = useState(currentSchedule.endTime ?? '');
+  const [showTimeBadge, setShowTimeBadge] = useState(currentSchedule.showTimeBadge !== false);
+  const [label, setLabel] = useState(currentSchedule.label ?? '');
 
   const [year, month, day] = dateKey.split('-');
   const dateLabel = `${year}년 ${Number(month)}월 ${Number(day)}일`;
 
+  const invalidTime = type === 'shortened' && Boolean(startTime) && Boolean(endTime) && startTime >= endTime;
+
   const handleSave = () => {
+    if (invalidTime) return;
     onSave({
       date: dateKey,
       type,
       startTime: type === 'shortened' ? startTime || undefined : undefined,
       endTime: type === 'shortened' ? endTime || undefined : undefined,
+      showTimeBadge: type === 'shortened' ? showTimeBadge : undefined,
+      label: type === 'custom' ? label.trim() || undefined : undefined,
     });
     onClose();
   };
@@ -56,7 +63,11 @@ export default function DateScheduleModal({
           return (
             <label
               key={t}
-              className={selected ? `${styles.typeOption} ${styles.typeOptionSelected}` : styles.typeOption}
+              className={[
+                styles.typeOption,
+                selected ? styles.typeOptionSelected : '',
+                t === 'custom' ? styles.typeOptionWide : '',
+              ].filter(Boolean).join(' ')}
             >
               <input
                 type="radio"
@@ -93,6 +104,32 @@ export default function DateScheduleModal({
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
           />
+          <label className={styles.toggleOption}>
+            <input
+              type="checkbox"
+              checked={showTimeBadge}
+              onChange={(e) => setShowTimeBadge(e.target.checked)}
+            />
+            시간 배지 색상 표시
+          </label>
+          {invalidTime && <p className={styles.error}>종료 시간은 시작 시간 이후여야 합니다.</p>}
+        </div>
+      )}
+
+      {type === 'custom' && (
+        <div className={styles.endTimeField}>
+          <label className={styles.label} htmlFor="custom-schedule-label">
+            달력에 표시할 문구
+          </label>
+          <input
+            id="custom-schedule-label"
+            type="text"
+            className={styles.input}
+            value={label}
+            maxLength={16}
+            placeholder="예: 원장님 외부 일정"
+            onChange={(e) => setLabel(e.target.value)}
+          />
         </div>
       )}
 
@@ -109,7 +146,12 @@ export default function DateScheduleModal({
             기본 일정으로 되돌리기
           </button>
         )}
-        <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} onClick={handleSave}>
+        <button
+          type="button"
+          className={`${styles.button} ${styles.buttonPrimary}`}
+          onClick={handleSave}
+          disabled={invalidTime}
+        >
           저장
         </button>
       </div>

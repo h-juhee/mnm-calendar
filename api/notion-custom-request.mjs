@@ -60,6 +60,8 @@ function blocksFor(request) {
   const entries = [
     ['성함', request.directorName], ['일정 요약', request.scheduleSummary],
     ['수정 항목', request.editItems?.join(', ')], ['요청 내용', request.requestDetails],
+    ['색상 변경 요청', request.colorRequest], ['문구 수정 요청', request.textRequest],
+    ['이미지 교체 파일', request.replacementImageFilename],
     ['다음달 이벤트', request.nextMonthEvent], ['출력 사이즈', request.outputSize],
     ['캘린더 필수 포함', request.calendarMustInclude], ['특이사항', request.specialNotes],
   ].filter(([, value]) => value);
@@ -80,6 +82,21 @@ function calendarImageFromRequest(request) {
   const bytes = Buffer.from(match[2], 'base64');
   if (!bytes.length || bytes.length > MAX_CALENDAR_IMAGE_BYTES) {
     throw new Error('달력 이미지 크기는 20MB 이하여야 합니다.');
+  }
+  return { bytes, contentType: match[1] };
+}
+
+function replacementImageFromRequest(request) {
+  const image = request.replacementImage;
+  if (!image) return null;
+  if (typeof image !== 'string') throw new Error('교체 이미지 형식이 올바르지 않습니다.');
+
+  const match = /^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(image);
+  if (!match) throw new Error('교체 이미지는 PNG, JPG, WEBP, GIF 형식이어야 합니다.');
+
+  const bytes = Buffer.from(match[2], 'base64');
+  if (!bytes.length || bytes.length > MAX_CALENDAR_IMAGE_BYTES) {
+    throw new Error('교체 이미지는 20MB 이하여야 합니다.');
   }
   return { bytes, contentType: match[1] };
 }
@@ -160,8 +177,12 @@ export default async function handler(req, res) {
 
   try {
     const calendarImage = calendarImageFromRequest(request);
+    const replacementImage = replacementImageFromRequest(request);
     const calendarImageUploadId = calendarImage
       ? await uploadCalendarImage(calendarImage, request.calendarImageFilename || 'calendar.png')
+      : null;
+    const replacementImageUploadId = replacementImage
+      ? await uploadCalendarImage(replacementImage, request.replacementImageFilename || 'replacement-image')
       : null;
     const dataSource = await getDataSource();
     const properties = {};
@@ -194,6 +215,17 @@ export default async function handler(req, res) {
                   type: 'file_upload',
                   file_upload: { id: calendarImageUploadId },
                   caption: richText('병원장이 작성한 달력 시안'),
+                },
+              }]
+            : []),
+          ...(replacementImageUploadId
+            ? [{
+                object: 'block',
+                type: 'image',
+                image: {
+                  type: 'file_upload',
+                  file_upload: { id: replacementImageUploadId },
+                  caption: richText('교체 요청 이미지'),
                 },
               }]
             : []),

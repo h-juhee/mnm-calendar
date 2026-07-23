@@ -94,14 +94,17 @@
 
 .heroHospitalTag {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  justify-content: center;
+  width: 220px;
+  height: 150px;
   flex-shrink: 0;
 }
 
 .heroLogo {
-  width: 28px;
-  height: 28px;
+  width: 100%;
+  height: 100%;
+  max-width: none;
   object-fit: contain;
 }
 
@@ -124,15 +127,3 @@
   overflow-wrap: break-word;
 }
 
-.footer {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  font-size: 14px;
-  color: #4b5563;
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
-  width: fit-content;
-  margin: 0 auto;
-}

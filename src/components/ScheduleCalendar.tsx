@@ -14,9 +14,11 @@ const TYPE_CLASS: Record<string, string> = {
   closed: styles.typeClosed,
   morningClosed: styles.typeMorningClosed,
   afternoonClosed: styles.typeAfternoonClosed,
+  seminarClosed: styles.typeClosed,
   shortened: styles.typeShortened,
   night: styles.typeNight,
   saturday: styles.typeSaturday,
+  custom: styles.typeMorningClosed,
 };
 
 export default function ScheduleCalendar({ calendarMatrix, resolvedByDate, onDateClick }: ScheduleCalendarProps) {
@@ -39,10 +41,12 @@ export default function ScheduleCalendar({ calendarMatrix, resolvedByDate, onDat
           }
           const schedule = resolvedByDate.get(cell.date);
           const meta = schedule && schedule.type !== 'open' ? SCHEDULE_TYPE_META[schedule.type] : null;
+          const displayLabel = schedule?.label ?? meta?.shortLabel;
           const typeClass = schedule ? TYPE_CLASS[schedule.type] : undefined;
           const shortenedTime = schedule?.type === 'shortened' && schedule.endTime
             ? `${schedule.startTime ?? '09:00'}~${schedule.endTime}`
             : '';
+          const timeBadgeClass = schedule?.showTimeBadge === false ? styles.badgeTimePlain : undefined;
           const endTimeSuffix = shortenedTime ? ` ${shortenedTime}` : '';
 
           return (
@@ -58,11 +62,11 @@ export default function ScheduleCalendar({ calendarMatrix, resolvedByDate, onDat
                 <span className={styles.badge}>
                   {schedule?.type === 'shortened' ? (
                     <>
-                      <span>{meta.shortLabel}</span>
-                      {shortenedTime && <span>{shortenedTime}</span>}
+                      <span>{displayLabel}</span>
+                      {shortenedTime && <span className={timeBadgeClass}>{shortenedTime}</span>}
                     </>
                   ) : (
-                    <>{meta.icon} {meta.shortLabel}</>
+                    <>{meta.icon ? `${meta.icon} ` : ''}{displayLabel}</>
                   )}
                 </span>
               )}

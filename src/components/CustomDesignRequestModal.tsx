@@ -41,6 +41,9 @@ export default function CustomDesignRequestModal({
 }: CustomDesignRequestModalProps) {
   const [requestDetails, setRequestDetails] = useState('');
   const [editItems, setEditItems] = useState<string[]>([]);
+  const [colorRequest, setColorRequest] = useState('');
+  const [textRequest, setTextRequest] = useState('');
+  const [replacementImage, setReplacementImage] = useState<File | null>(null);
   const [specialNotes, setSpecialNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,11 +56,38 @@ export default function CustomDesignRequestModal({
 
   const toggleEditItem = (id: string) => {
     setEditItems((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+    setError(null);
   };
+
+  const handleReplacementImageChange = (file: File | null) => {
+    if (file && !file.type.startsWith('image/')) {
+      setReplacementImage(null);
+      setError('이미지 파일만 첨부할 수 있습니다.');
+      return;
+    }
+    if (file && file.size > 10 * 1024 * 1024) {
+      setReplacementImage(null);
+      setError('교체 이미지는 10MB 이하로 첨부해 주세요.');
+      return;
+    }
+    setReplacementImage(file);
+    setError(null);
+  };
+
+  const fileToDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('첨부 이미지를 읽지 못했습니다. 다시 시도해 주세요.'));
+    reader.readAsDataURL(file);
+  });
 
   const handleSubmit = async () => {
     if (isSubmitting || isSubmitted) return;
     setError(null);
+    if (editItems.length === 0) {
+      setError('수정 요청 항목을 최소 1개 이상 선택해 주세요.');
+      return;
+    }
     setIsSubmitting(true);
 
     const record: CustomDesignRequestRecord = {
@@ -72,6 +102,9 @@ export default function CustomDesignRequestModal({
       scheduleSummary: `${formatMonthTitle(formData.year, formData.month)} · 템플릿 ${templateName} · 변동 진료일 ${changedDaysCount}일 · 휴가 ${vacationText}`,
       requestDetails: requestDetails.trim(),
       editItems,
+      colorRequest: colorRequest.trim(),
+      textRequest: textRequest.trim(),
+      replacementImageName: replacementImage?.name ?? '',
       nextMonthEvent: (formData.nextMonthEvent ?? '').trim(),
       outputSize: formData.outputSize ?? [],
       calendarMustInclude: (formData.calendarMustInclude ?? '').trim(),
@@ -82,6 +115,7 @@ export default function CustomDesignRequestModal({
       if (!previewNodeRef.current) throw new Error('달력 미리보기를 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.');
       await ensureFontLoaded(formData.fontId as FontId | undefined);
       const calendarImage = await renderNodeAsPng(previewNodeRef.current);
+      const replacementImageData = replacementImage ? await fileToDataUrl(replacementImage) : undefined;
       const response = await fetch('/api/notion-custom-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -89,6 +123,8 @@ export default function CustomDesignRequestModal({
           ...record,
           calendarImage,
           calendarImageFilename: buildExportFilename(hospital.name, formData.year, formData.month),
+          replacementImage: replacementImageData,
+          replacementImageFilename: replacementImage?.name,
         }),
       });
       const result = (await response.json().catch(() => null)) as { message?: string } | null;
@@ -146,6 +182,28 @@ export default function CustomDesignRequestModal({
           </label>
         ))}
       </fieldset>
+
+      {editItems.includes('color') && (
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="req-color">원하는 색상 (선택)</label>
+          <input id="req-color" className={styles.input} value={colorRequest} onChange={(e) => setColorRequest(e.target.value)} placeholder="예: 메인 컬러를 #1E88E5 블루로 변경" />
+        </div>
+      )}
+
+      {editItems.includes('text') && (
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="req-text">수정할 문구와 변경 내용</label>
+          <textarea id="req-text" className={styles.textarea} value={textRequest} onChange={(e) => setTextRequest(e.target.value)} placeholder="예: '점심시간 13:00~14:00'을 '점심시간 12:30~13:30'으로 변경" />
+        </div>
+      )}
+
+      {editItems.includes('image') && (
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="req-replacement-image">교체할 이미지 첨부 (선택)</label>
+          <input id="req-replacement-image" className={styles.fileInput} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(e) => handleReplacementImageChange(e.target.files?.[0] ?? null)} />
+          <span className={styles.helpText}>{replacementImage ? `${replacementImage.name} (${Math.ceil(replacementImage.size / 1024)}KB)` : 'PNG, JPG, WEBP, GIF 파일 · 최대 10MB'}</span>
+        </div>
+      )}
 
       <AdditionalInfoFields
         nextMonthEvent={formData.nextMonthEvent ?? ''}

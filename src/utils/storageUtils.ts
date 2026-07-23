@@ -117,6 +117,9 @@ export interface CustomDesignRequestRecord {
   scheduleSummary: string;
   requestDetails: string;
   editItems: string[];
+  colorRequest: string;
+  textRequest: string;
+  replacementImageName: string;
   nextMonthEvent: string;
   outputSize: string[];
   calendarMustInclude: string;

@@ -101,11 +101,15 @@ export function buildCalendarMatrix(year: number, month: number): CalendarCell[]
   return weeks;
 }
 
-/** 날짜 문자열(YYYY-MM-DD)이 [start, end] 범위(포함)에 속하는지 확인합니다. */
+/**
+ * 날짜 문자열(YYYY-MM-DD)이 [start, end] 범위(포함)에 속하는지 확인합니다.
+ * end가 start보다 빠른 경우는 UI에서 입력 오류로 안내하는 상태이므로,
+ * 여기서 순서를 바꿔 적용하면 사용자가 보는 오류 메시지와 실제 동작이 어긋난다.
+ * 따라서 그런 범위는 무효로 보고 어떤 날짜에도 적용하지 않는다.
+ */
 function isWithinRange(date: string, start?: string, end?: string): boolean {
-  if (!start || !end) return false;
-  const [lo, hi] = start <= end ? [start, end] : [end, start];
-  return date >= lo && date <= hi;
+  if (!start || !end || start > end) return false;
+  return date >= start && date <= end;
 }
 
 /**
@@ -167,7 +171,7 @@ export function formatMonthTitle(year: number, month: number): string {
 }
 
 export function scheduleTypeIsClosedLike(type: ScheduleType): boolean {
-  return type === 'closed' || type === 'morningClosed' || type === 'afternoonClosed';
+  return type === 'closed' || type === 'seminarClosed';
 }
 
 /** 이전 달(연도 경계 포함)의 연/월을 계산합니다. */
