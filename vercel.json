@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/notion-custom-request.mjs": {
+      "maxDuration": 10
+    }
+  }
+}

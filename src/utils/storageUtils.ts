@@ -1,8 +1,9 @@
-import type { ScheduleFormData } from '../types/schedule';
+import type { HospitalInfo, ScheduleFormData } from '../types/schedule';
 import { getPreviousMonth } from './scheduleUtils';
 
 const PREFIX = 'mnn';
 const CUSTOM_REQUESTS_KEY = `${PREFIX}:customRequests`;
+const HOSPITAL_INFO_KEY = `${PREFIX}:hospitalInfo`;
 
 function safeParse<T>(raw: string | null, fallback: T): T {
   if (!raw) return fallback;
@@ -30,6 +31,25 @@ function safeSet(key: string, value: unknown): boolean {
   }
 }
 
+/** 병원 기본 정보는 최초 한 번만 받고 이후 월별 일정 작업에 재사용합니다. */
+export function saveHospitalInfo(hospital: HospitalInfo): boolean {
+  return safeSet(HOSPITAL_INFO_KEY, hospital);
+}
+
+export function loadHospitalInfo(): HospitalInfo | null {
+  const value = safeGet<unknown>(HOSPITAL_INFO_KEY, null);
+  if (!value || typeof value !== 'object') return null;
+  const hospital = value as Record<string, unknown>;
+  if (
+    typeof hospital.id !== 'string' ||
+    typeof hospital.name !== 'string' ||
+    typeof hospital.primaryColor !== 'string'
+  ) {
+    return null;
+  }
+  return hospital as unknown as HospitalInfo;
+}
+
 /** 손상되었거나 형태가 다른 값이 저장돼 있어도 앱이 죽지 않도록 최소 형태를 검증합니다. */
 function isValidScheduleFormData(value: unknown): value is ScheduleFormData {
   if (!value || typeof value !== 'object') return false;
@@ -41,7 +61,7 @@ function isValidScheduleFormData(value: unknown): value is ScheduleFormData {
     Array.isArray(v.recurringClosedDays) &&
     Array.isArray(v.dateSchedules) &&
     typeof v.notice === 'string' &&
-    typeof v.templateId === 'string'
+    (typeof v.templateId === 'string' || v.templateId === null)
   );
 }
 
@@ -90,15 +110,17 @@ export interface CustomDesignRequestRecord {
   createdAt: string;
   hospitalId: string;
   hospitalName: string;
+  directorName: string;
   year: number;
   month: number;
-  templateId: string;
+  templateId: string | null;
   scheduleSummary: string;
-  contactName: string;
-  contactPhone: string;
   requestDetails: string;
   editItems: string[];
-  consentGiven: boolean;
+  nextMonthEvent: string;
+  outputSize: string[];
+  calendarMustInclude: string;
+  specialNotes: string;
 }
 
 export function saveCustomDesignRequest(record: CustomDesignRequestRecord): boolean {

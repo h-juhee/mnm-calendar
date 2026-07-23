@@ -23,3 +23,11 @@
   background: var(--color-danger);
   border-color: var(--color-danger);
 }
+
+.buttonWaiting {
+  cursor: not-allowed;
+}
+
+.buttonWaiting:disabled {
+  cursor: not-allowed;
+}

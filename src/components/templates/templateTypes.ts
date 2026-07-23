@@ -1,5 +1,5 @@
 import type { CalendarCell } from '../../utils/scheduleUtils';
-import type { DateSchedule, HospitalInfo } from '../../types/schedule';
+import type { CalendarLabelStyle, DateSchedule, HospitalInfo } from '../../types/schedule';
 
 export interface TemplateProps {
   hospital: HospitalInfo;
@@ -7,5 +7,9 @@ export interface TemplateProps {
   month: number;
   calendarMatrix: CalendarCell[][];
   resolvedByDate: Map<string, DateSchedule>;
+  onDateClick?: (dateKey: string) => void;
   notice: string;
+  /** 진료일정 이미지에 적용할 CSS font-family 값(폴백 체인 포함). */
+  fontFamily: string;
+  calendarLabelStyle?: CalendarLabelStyle;
 }

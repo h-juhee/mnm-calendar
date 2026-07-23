@@ -5,34 +5,41 @@ interface ModalProps {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  closable?: boolean;
+  panelClassName?: string;
 }
 
-export default function Modal({ title, onClose, children }: ModalProps) {
+export default function Modal({ title, onClose, children, closable = true, panelClassName }: ModalProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+
+  // Parents commonly pass an inline close callback. Keep the latest callback
+  // without re-running the initial-focus effect whenever form state changes.
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     closeButtonRef.current?.focus();
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (closable && e.key === 'Escape') onCloseRef.current();
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [closable]);
 
   return (
     <div
       className={styles.backdrop}
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (closable && e.target === e.currentTarget) onClose();
       }}
     >
-      <div className={styles.panel} role="dialog" aria-modal="true" aria-label={title}>
+      <div className={`${styles.panel}${panelClassName ? ` ${panelClassName}` : ''}`} role="dialog" aria-modal="true" aria-label={title}>
         <div className={styles.header}>
           <h2 className={styles.title}>{title}</h2>
           <button
             ref={closeButtonRef}
             type="button"
-            className={styles.closeButton}
+            className={closable ? styles.closeButton : styles.closeButtonHidden}
             onClick={onClose}
             aria-label="닫기"
           >

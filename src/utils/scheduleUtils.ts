@@ -1,6 +1,39 @@
-import type { DateSchedule, ScheduleFormData, ScheduleType } from '../types/schedule';
+import type { CalendarLabelStyle, DateSchedule, ScheduleFormData, ScheduleType } from '../types/schedule';
 
 export const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'] as const;
+
+/** 진료일정 결과 이미지 등 정식 문서에는 요일을 완전한 이름으로 표시합니다. */
+export const WEEKDAY_FULL_LABELS = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'] as const;
+export const WEEKDAY_ENGLISH_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+export const WEEKDAY_HANJA_LABELS = ['日', '月', '火', '水', '木', '金', '土'] as const;
+export const WEEKDAY_JAPANESE_LABELS = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'] as const;
+
+export function getWeekdayLabels(style: CalendarLabelStyle = 'korean') {
+  if (style === 'english') return WEEKDAY_ENGLISH_LABELS;
+  if (style === 'hanja') return WEEKDAY_HANJA_LABELS;
+  if (style === 'japanese') return WEEKDAY_JAPANESE_LABELS;
+  return WEEKDAY_FULL_LABELS;
+}
+
+const ENGLISH_MONTH_NAMES = [
+  'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+  'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER',
+] as const;
+const HANJA_MONTH_NAMES = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'] as const;
+
+export function getCalendarTitle(month: number, style: CalendarLabelStyle = 'korean'): string {
+  if (style === 'english') return `${ENGLISH_MONTH_NAMES[month - 1]} CLINIC SCHEDULE`;
+  if (style === 'hanja') return `${HANJA_MONTH_NAMES[month - 1]} 診療日程`;
+  if (style === 'japanese') return `${month}月 診療スケジュール`;
+  return `${String(month).padStart(2, '0')}월 진료일정`;
+}
+
+export function getCalendarSubtitle(style: CalendarLabelStyle = 'korean'): string {
+  if (style === 'english') return 'Please refer to the clinic schedule before your visit.';
+  if (style === 'hanja') return '來院 前，請 參考 診療日程，敬請 留意。';
+  if (style === 'japanese') return 'ご来院の前に診療スケジュールをご確認ください。';
+  return '내원 시 진료일정을 참고하시어 착오 없으시길 바랍니다.';
+}
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
@@ -140,4 +173,22 @@ export function scheduleTypeIsClosedLike(type: ScheduleType): boolean {
 /** 이전 달(연도 경계 포함)의 연/월을 계산합니다. */
 export function getPreviousMonth(year: number, month: number): { year: number; month: number } {
   return month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
+}
+
+/** 원장이 실제로 진료일정 내용을 입력하기 시작했는지 판단합니다. 이 전에는 미리보기에 시안 목업만 보여줍니다. */
+export function hasScheduleContent(
+  formData: Pick<
+    ScheduleFormData,
+    'recurringClosedDays' | 'dateSchedules' | 'vacationStart' | 'vacationEnd' | 'notice' | 'nextMonthEvent' | 'calendarMustInclude'
+  >,
+): boolean {
+  return (
+    formData.recurringClosedDays.length > 0 ||
+    formData.dateSchedules.length > 0 ||
+    Boolean(formData.vacationStart) ||
+    Boolean(formData.vacationEnd) ||
+    formData.notice.trim().length > 0 ||
+    Boolean(formData.nextMonthEvent?.trim()) ||
+    Boolean(formData.calendarMustInclude?.trim())
+  );
 }

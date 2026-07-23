@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react';
 import type { HospitalInfo } from '../types/schedule';
 import styles from './HospitalHeader.module.css';
 
@@ -21,14 +20,6 @@ export default function HospitalHeader({ hospital }: HospitalHeaderProps) {
       <div className={styles.info}>
         <span className={styles.eyebrow}>이 병원의 진료일정을 만들고 있어요</span>
         <span className={styles.name}>{hospital.name}</span>
-        <span className={styles.meta}>
-          <span
-            className={styles.colorDot}
-            style={{ background: hospital.primaryColor } as CSSProperties}
-            aria-hidden="true"
-          />
-          대표 색상 · {hospital.primaryColor}
-        </span>
       </div>
     </div>
   );

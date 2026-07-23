@@ -15,6 +15,8 @@ const TYPE_CLASS: Record<string, string> = {
   morningClosed: styles.typeMorningClosed,
   afternoonClosed: styles.typeAfternoonClosed,
   shortened: styles.typeShortened,
+  night: styles.typeNight,
+  saturday: styles.typeSaturday,
 };
 
 export default function ScheduleCalendar({ calendarMatrix, resolvedByDate, onDateClick }: ScheduleCalendarProps) {
@@ -38,7 +40,10 @@ export default function ScheduleCalendar({ calendarMatrix, resolvedByDate, onDat
           const schedule = resolvedByDate.get(cell.date);
           const meta = schedule && schedule.type !== 'open' ? SCHEDULE_TYPE_META[schedule.type] : null;
           const typeClass = schedule ? TYPE_CLASS[schedule.type] : undefined;
-          const endTimeSuffix = schedule?.type === 'shortened' && schedule.endTime ? ` ${schedule.endTime}` : '';
+          const shortenedTime = schedule?.type === 'shortened' && schedule.endTime
+            ? `${schedule.startTime ?? '09:00'}~${schedule.endTime}`
+            : '';
+          const endTimeSuffix = shortenedTime ? ` ${shortenedTime}` : '';
 
           return (
             <button
@@ -51,8 +56,14 @@ export default function ScheduleCalendar({ calendarMatrix, resolvedByDate, onDat
               <span className={styles.day}>{cell.day}</span>
               {meta && (
                 <span className={styles.badge}>
-                  {meta.icon} {meta.shortLabel}
-                  {endTimeSuffix}
+                  {schedule?.type === 'shortened' ? (
+                    <>
+                      <span>{meta.shortLabel}</span>
+                      {shortenedTime && <span>{shortenedTime}</span>}
+                    </>
+                  ) : (
+                    <>{meta.icon} {meta.shortLabel}</>
+                  )}
                 </span>
               )}
             </button>

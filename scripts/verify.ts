@@ -259,15 +259,17 @@ test('맞춤 디자인 요청은 배열에 누적 저장된다', () => {
     createdAt: new Date().toISOString(),
     hospitalId: 'sample-dental-01',
     hospitalName: '서울다온치과',
+    directorName: '홍길동',
     year: 2026,
     month: 8,
     templateId: 'basic',
     scheduleSummary: '요약',
-    contactName: '홍길동',
-    contactPhone: '010-0000-0000',
     requestDetails: '색상 변경 요청',
     editItems: ['color'],
-    consentGiven: true,
+    nextMonthEvent: '',
+    outputSize: [],
+    calendarMustInclude: '',
+    specialNotes: '',
   });
   assert.equal(listCustomDesignRequests().length, before + 1);
 });

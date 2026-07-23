@@ -52,3 +52,14 @@
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
+
+.closeButtonHidden {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .backdrop {
+    padding: 0;
+    background: var(--color-surface);
+  }
+}

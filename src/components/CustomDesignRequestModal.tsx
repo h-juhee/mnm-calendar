@@ -1,15 +1,24 @@
-import { useState } from 'react';
+import { useState, type RefObject } from 'react';
 import type { DateSchedule, HospitalInfo, ScheduleFormData } from '../types/schedule';
 import { TEMPLATES } from '../types/schedule';
 import { formatMonthTitle } from '../utils/scheduleUtils';
 import { saveCustomDesignRequest, type CustomDesignRequestRecord } from '../utils/storageUtils';
+import { buildExportFilename, renderNodeAsPng } from '../utils/exportUtils';
+import { ensureFontLoaded } from '../utils/fontLoader';
+import type { FontId } from '../types/font';
 import Modal from './Modal';
+import AdditionalInfoFields from './AdditionalInfoFields';
+import OutputSizeSelector from './OutputSizeSelector';
 import styles from './CustomDesignRequestModal.module.css';
 
 interface CustomDesignRequestModalProps {
   hospital: HospitalInfo;
   formData: ScheduleFormData;
   resolvedSchedule: DateSchedule[];
+  onNextMonthEventChange: (value: string) => void;
+  onCalendarMustIncludeChange: (value: string) => void;
+  onOutputSizeChange: (value: string[]) => void;
+  previewNodeRef: RefObject<HTMLDivElement | null>;
   onClose: () => void;
 }
 
@@ -24,13 +33,15 @@ export default function CustomDesignRequestModal({
   hospital,
   formData,
   resolvedSchedule,
+  onNextMonthEventChange,
+  onCalendarMustIncludeChange,
+  onOutputSizeChange,
+  previewNodeRef,
   onClose,
 }: CustomDesignRequestModalProps) {
-  const [contactName, setContactName] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
   const [requestDetails, setRequestDetails] = useState('');
   const [editItems, setEditItems] = useState<string[]>([]);
-  const [consent, setConsent] = useState(false);
+  const [specialNotes, setSpecialNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -44,16 +55,8 @@ export default function CustomDesignRequestModal({
     setEditItems((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (isSubmitting || isSubmitted) return;
-    if (!contactName.trim() || !contactPhone.trim()) {
-      setError('담당자 이름과 연락처를 입력해 주세요.');
-      return;
-    }
-    if (!consent) {
-      setError('개인정보 수집 및 이용에 동의해야 제출할 수 있습니다.');
-      return;
-    }
     setError(null);
     setIsSubmitting(true);
 
@@ -62,28 +65,51 @@ export default function CustomDesignRequestModal({
       createdAt: new Date().toISOString(),
       hospitalId: hospital.id,
       hospitalName: hospital.name,
+      directorName: hospital.directorName ?? '',
       year: formData.year,
       month: formData.month,
       templateId: formData.templateId,
       scheduleSummary: `${formatMonthTitle(formData.year, formData.month)} · 템플릿 ${templateName} · 변동 진료일 ${changedDaysCount}일 · 휴가 ${vacationText}`,
-      contactName: contactName.trim(),
-      contactPhone: contactPhone.trim(),
       requestDetails: requestDetails.trim(),
       editItems,
-      consentGiven: consent,
+      nextMonthEvent: (formData.nextMonthEvent ?? '').trim(),
+      outputSize: formData.outputSize ?? [],
+      calendarMustInclude: (formData.calendarMustInclude ?? '').trim(),
+      specialNotes: specialNotes.trim(),
     };
 
-    saveCustomDesignRequest(record);
-    setIsSubmitting(false);
-    setIsSubmitted(true);
+    try {
+      if (!previewNodeRef.current) throw new Error('달력 미리보기를 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+      await ensureFontLoaded(formData.fontId as FontId | undefined);
+      const calendarImage = await renderNodeAsPng(previewNodeRef.current);
+      const response = await fetch('/api/notion-custom-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...record,
+          calendarImage,
+          calendarImageFilename: buildExportFilename(hospital.name, formData.year, formData.month),
+        }),
+      });
+      const result = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) throw new Error(result?.message ?? '요청을 저장하지 못했습니다.');
+
+      // Keep a local copy for this browser as well, after Notion accepts the request.
+      saveCustomDesignRequest(record);
+      setIsSubmitted(true);
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : '요청 저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitted) {
     return (
-      <Modal title="10,000원 맞춤 디자인 요청" onClose={onClose}>
+      <Modal title="맞춤 디자인 요청" onClose={onClose}>
         <div className={styles.successWrap}>
           <span className={styles.successIcon} aria-hidden="true">✓</span>
-          <p className={styles.successText}>요청이 접수되었습니다. 입력하신 연락처로 안내드리겠습니다.</p>
+          <p className={styles.successText}>요청이 접수되었습니다.</p>
           <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} onClick={onClose}>
             닫기
           </button>
@@ -93,7 +119,7 @@ export default function CustomDesignRequestModal({
   }
 
   return (
-    <Modal title="10,000원 맞춤 디자인 요청" onClose={onClose}>
+    <Modal title="맞춤 디자인 요청" onClose={onClose}>
       <p className={styles.intro}>
         기본 템플릿에서 색상, 문구, 이미지 또는 간단한 배치를 조정하는 서비스입니다.
         <br />
@@ -105,33 +131,6 @@ export default function CustomDesignRequestModal({
         {hospital.name} · {formatMonthTitle(formData.year, formData.month)} · 템플릿: {templateName}
         <br />
         변동 진료일 {changedDaysCount}일 · 휴가 기간: {vacationText}
-      </div>
-
-      <div className={styles.field}>
-        <label className={styles.label} htmlFor="req-name">
-          담당자 이름
-        </label>
-        <input
-          id="req-name"
-          type="text"
-          className={styles.input}
-          value={contactName}
-          onChange={(e) => setContactName(e.target.value)}
-        />
-      </div>
-
-      <div className={styles.field}>
-        <label className={styles.label} htmlFor="req-phone">
-          연락처
-        </label>
-        <input
-          id="req-phone"
-          type="tel"
-          className={styles.input}
-          placeholder="010-0000-0000"
-          value={contactPhone}
-          onChange={(e) => setContactPhone(e.target.value)}
-        />
       </div>
 
       <fieldset className={styles.checkGroup}>
@@ -148,23 +147,40 @@ export default function CustomDesignRequestModal({
         ))}
       </fieldset>
 
+      <AdditionalInfoFields
+        nextMonthEvent={formData.nextMonthEvent ?? ''}
+        onNextMonthEventChange={onNextMonthEventChange}
+        calendarMustInclude={formData.calendarMustInclude ?? ''}
+        onCalendarMustIncludeChange={onCalendarMustIncludeChange}
+      />
+
+      <OutputSizeSelector value={formData.outputSize ?? []} onChange={onOutputSizeChange} />
+
       <div className={styles.field}>
         <label className={styles.label} htmlFor="req-details">
-          요청사항
+          기타 요청사항이 있으시다면 알려 주세요
         </label>
         <textarea
           id="req-details"
           className={styles.textarea}
           value={requestDetails}
           onChange={(e) => setRequestDetails(e.target.value)}
-          placeholder="예: 로고를 조금 더 크게 넣어주세요."
+          placeholder="그 외 전달하실 내용이 있으시면 자유롭게 적어 주세요"
         />
       </div>
 
-      <label className={styles.consentRow}>
-        <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-        요청 처리를 위한 개인정보(이름, 연락처, 요청 내용) 수집 및 이용에 동의합니다. (필수)
-      </label>
+      <div className={styles.field}>
+        <label className={styles.label} htmlFor="req-special-notes">
+          특이사항 / 병원 요청사항
+        </label>
+        <textarea
+          id="req-special-notes"
+          className={styles.textarea}
+          value={specialNotes}
+          onChange={(e) => setSpecialNotes(e.target.value)}
+          placeholder="예: 기본적으로 휴진 있는 주의 목요일은 근무"
+        />
+      </div>
 
       {error && <p className={styles.error}>{error}</p>}
 

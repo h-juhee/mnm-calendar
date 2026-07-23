@@ -1,5 +1,9 @@
 # React + TypeScript + Vite
 
+## Notion 요청 접수 연동
+
+맞춤 디자인 요청을 복제한 Notion DB에 저장하려면 [Notion 설정 안내](docs/notion-setup.md)를 따라 환경변수만 등록하세요.
+
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
 Currently, two official plugins are available:

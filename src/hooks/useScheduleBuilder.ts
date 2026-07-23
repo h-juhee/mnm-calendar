@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { DateSchedule, ScheduleFormData, TemplateId } from '../types/schedule';
+import type { CalendarLabelStyle, DateSchedule, ScheduleFormData, TemplateId } from '../types/schedule';
 import { NOTICE_MAX_LENGTH } from '../types/schedule';
+import { DEFAULT_FONT_ID, type FontId } from '../types/font';
 import {
   buildCalendarMatrix,
   removeDateSchedule,
@@ -20,6 +21,11 @@ const today = new Date();
 const DEFAULT_YEAR = today.getFullYear();
 const DEFAULT_MONTH = today.getMonth() + 1;
 
+function normalizeOutputSizes(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((size): size is string => typeof size === 'string');
+  return typeof value === 'string' ? [value] : [];
+}
+
 function createEmptyFormData(
   hospitalId: string,
   year: number,
@@ -35,7 +41,12 @@ function createEmptyFormData(
     vacationStart: undefined,
     vacationEnd: undefined,
     notice: keep?.notice ?? '',
-    templateId: keep?.templateId ?? 'basic',
+    templateId: keep?.templateId ?? null,
+    fontId: keep?.fontId ?? DEFAULT_FONT_ID,
+    calendarLabelStyle: keep?.calendarLabelStyle ?? 'korean',
+    nextMonthEvent: '',
+    outputSize: normalizeOutputSizes(keep?.outputSize),
+    calendarMustInclude: keep?.calendarMustInclude ?? '',
   };
 }
 
@@ -45,7 +56,7 @@ export function useScheduleBuilder(hospitalId: string) {
     const year = lastActive?.year ?? DEFAULT_YEAR;
     const month = lastActive?.month ?? DEFAULT_MONTH;
     const loaded = loadScheduleDraft(hospitalId, year, month);
-    return loaded ?? createEmptyFormData(hospitalId, year, month);
+    return loaded ? { ...loaded, outputSize: normalizeOutputSizes(loaded.outputSize) } : createEmptyFormData(hospitalId, year, month);
   });
 
   useEffect(() => {
@@ -58,7 +69,15 @@ export function useScheduleBuilder(hospitalId: string) {
       setFormData((prev) => {
         if (prev.year === year && prev.month === month) return prev;
         const loaded = loadScheduleDraft(hospitalId, year, month);
-        return loaded ?? createEmptyFormData(hospitalId, year, month, prev);
+        return loaded
+          ? {
+              ...loaded,
+              // The selected font is a design preference, so it stays the
+              // same when moving between monthly schedule drafts.
+              fontId: prev.fontId,
+              outputSize: normalizeOutputSizes(loaded.outputSize),
+            }
+          : createEmptyFormData(hospitalId, year, month, prev);
       });
     },
     [hospitalId],
@@ -91,8 +110,33 @@ export function useScheduleBuilder(hospitalId: string) {
     setFormData((prev) => ({ ...prev, templateId }));
   }, []);
 
+  const setFontId = useCallback((fontId: FontId) => {
+    setFormData((prev) => ({ ...prev, fontId }));
+  }, []);
+
+  const setCalendarLabelStyle = useCallback((calendarLabelStyle: CalendarLabelStyle) => {
+    setFormData((prev) => ({ ...prev, calendarLabelStyle }));
+  }, []);
+
+  const setNextMonthEvent = useCallback((nextMonthEvent: string) => {
+    setFormData((prev) => ({ ...prev, nextMonthEvent }));
+  }, []);
+
+  const setOutputSize = useCallback((outputSize: string[]) => {
+    setFormData((prev) => ({ ...prev, outputSize }));
+  }, []);
+
+  const setCalendarMustInclude = useCallback((calendarMustInclude: string) => {
+    setFormData((prev) => ({ ...prev, calendarMustInclude }));
+  }, []);
+
   const reset = useCallback(() => {
-    setFormData((prev) => createEmptyFormData(hospitalId, prev.year, prev.month));
+    setFormData((prev) =>
+      createEmptyFormData(hospitalId, prev.year, prev.month, {
+        templateId: prev.templateId,
+        fontId: prev.fontId,
+      }),
+    );
   }, [hospitalId]);
 
   const loadPreviousMonth = useCallback((): boolean => {
@@ -104,6 +148,9 @@ export function useScheduleBuilder(hospitalId: string) {
       recurringClosedDays: loaded.recurringClosedDays,
       notice: loaded.notice,
       templateId: loaded.templateId,
+      fontId: loaded.fontId ?? DEFAULT_FONT_ID,
+      outputSize: normalizeOutputSizes(loaded.outputSize),
+      calendarMustInclude: loaded.calendarMustInclude ?? '',
     }));
     return true;
   }, [hospitalId, formData.year, formData.month]);
@@ -134,6 +181,11 @@ export function useScheduleBuilder(hospitalId: string) {
       setVacationRange,
       setNotice,
       setTemplateId,
+      setFontId,
+      setCalendarLabelStyle,
+      setNextMonthEvent,
+      setOutputSize,
+      setCalendarMustInclude,
       reset,
       loadPreviousMonth,
     },

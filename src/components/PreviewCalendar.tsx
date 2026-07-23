@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { CalendarCell } from '../utils/scheduleUtils';
-import { WEEKDAY_LABELS, scheduleTypeIsClosedLike } from '../utils/scheduleUtils';
-import type { DateSchedule } from '../types/schedule';
+import { getWeekdayLabels, scheduleTypeIsClosedLike } from '../utils/scheduleUtils';
+import type { CalendarLabelStyle, DateSchedule } from '../types/schedule';
 import { SCHEDULE_TYPE_META } from '../types/schedule';
 import styles from './PreviewCalendar.module.css';
 
@@ -9,6 +9,8 @@ interface PreviewCalendarProps {
   calendarMatrix: CalendarCell[][];
   resolvedByDate: Map<string, DateSchedule>;
   accentColor: string;
+  onDateClick?: (dateKey: string) => void;
+  labelStyle?: CalendarLabelStyle;
 }
 
 const BADGE_CLASS: Record<string, string> = {
@@ -16,44 +18,75 @@ const BADGE_CLASS: Record<string, string> = {
   morningClosed: styles.badgeHalf,
   afternoonClosed: styles.badgeHalf,
   shortened: styles.badgeShortened,
+  night: styles.badgeNight,
+  saturday: styles.badgeSaturday,
 };
 
-export default function PreviewCalendar({ calendarMatrix, resolvedByDate, accentColor }: PreviewCalendarProps) {
+export default function PreviewCalendar({ calendarMatrix, resolvedByDate, accentColor, onDateClick, labelStyle = 'korean' }: PreviewCalendarProps) {
+  const weekdayLabels = getWeekdayLabels(labelStyle);
   return (
     <div className={styles.wrap} style={{ '--accent': accentColor } as CSSProperties}>
-      <div className={styles.weekdays}>
-        {WEEKDAY_LABELS.map((label, i) => (
-          <span key={label} className={i === 0 ? `${styles.weekday} ${styles.sun}` : i === 6 ? `${styles.weekday} ${styles.sat}` : styles.weekday}>
-            {label}
-          </span>
-        ))}
-      </div>
-      <div className={styles.grid}>
-        {calendarMatrix.flat().map((cell, idx) => {
-          if (!cell.inCurrentMonth || !cell.date) {
-            return (
-              <div key={`adjacent-${idx}`} className={`${styles.cell} ${styles.cellAdjacent}`}>
-                {cell.adjacentDay != null && <span className={styles.adjacentDay}>{cell.adjacentDay}</span>}
-              </div>
-            );
-          }
-          const schedule = resolvedByDate.get(cell.date);
-          const closedLike = schedule ? scheduleTypeIsClosedLike(schedule.type) : false;
-          const meta = schedule && schedule.type !== 'open' ? SCHEDULE_TYPE_META[schedule.type] : null;
-          const endTimeSuffix = schedule?.type === 'shortened' && schedule.endTime ? ` ${schedule.endTime}` : '';
+      <div className={styles.frame}>
+        <div className={styles.weekdays}>
+          {weekdayLabels.map((label, i) => (
+            <span key={label} className={i === 0 ? `${styles.weekday} ${styles.sun}` : i === 6 ? `${styles.weekday} ${styles.sat}` : styles.weekday}>
+              {label}
+            </span>
+          ))}
+        </div>
+        <div className={styles.grid}>
+          {calendarMatrix.flat().map((cell, idx) => {
+            if (!cell.inCurrentMonth || !cell.date) {
+              return <div key={`adjacent-${idx}`} className={`${styles.cell} ${styles.cellAdjacent}`} />;
+            }
+            const schedule = resolvedByDate.get(cell.date);
+            const closedLike = schedule ? scheduleTypeIsClosedLike(schedule.type) : false;
+            const meta = schedule && schedule.type !== 'open' ? SCHEDULE_TYPE_META[schedule.type] : null;
+            const shortenedTime = schedule?.type === 'shortened' && schedule.endTime
+              ? `${schedule.startTime ?? '09:00'}~${schedule.endTime}`
+              : '';
+            const weekday = idx % 7;
+            const dayClassName = [
+              styles.day,
+              weekday === 0 || closedLike ? styles.dayClosed : '',
+              weekday === 6 && !closedLike ? styles.daySaturday : '',
+            ]
+              .filter(Boolean)
+              .join(' ');
 
-          return (
-            <div key={cell.date} className={styles.cell}>
-              <span className={closedLike ? `${styles.day} ${styles.dayClosed}` : styles.day}>{cell.day}</span>
-              {meta && (
-                <span className={`${styles.badge} ${BADGE_CLASS[schedule!.type] ?? ''}`}>
-                  {meta.icon} {meta.shortLabel}
-                  {endTimeSuffix}
-                </span>
-              )}
-            </div>
-          );
-        })}
+            const content = (
+              <>
+                <span className={dayClassName}>{cell.day}</span>
+                {meta && (
+                  <span className={`${styles.badge} ${BADGE_CLASS[schedule!.type] ?? ''}`}>
+                    {schedule?.type === 'shortened' ? (
+                      <>
+                        <span>{meta.shortLabel}</span>
+                        {shortenedTime && <span>{shortenedTime}</span>}
+                      </>
+                    ) : (
+                      meta.shortLabel
+                    )}
+                  </span>
+                )}
+              </>
+            );
+
+            return onDateClick ? (
+              <button
+                key={cell.date}
+                type="button"
+                className={`${styles.cell} ${styles.cellInteractive}`}
+                onClick={() => onDateClick(cell.date!)}
+                aria-label={`${cell.day}일 일정 설정`}
+              >
+                {content}
+              </button>
+            ) : (
+              <div key={cell.date} className={styles.cell}>{content}</div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

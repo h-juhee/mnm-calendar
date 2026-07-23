@@ -1,13 +1,20 @@
+import type { FontId } from './font';
+
 export type ScheduleType =
   | 'closed'
   | 'morningClosed'
   | 'afternoonClosed'
   | 'shortened'
+  | 'night'
+  | 'saturday'
   | 'open';
+
+export type CalendarLabelStyle = 'korean' | 'english' | 'hanja' | 'japanese';
 
 export interface DateSchedule {
   date: string; // YYYY-MM-DD
   type: ScheduleType;
+  startTime?: string; // HH:mm, shortened schedule start time
   endTime?: string; // HH:mm, shortened 유형일 때만 사용
   label?: string;
 }
@@ -15,6 +22,7 @@ export interface DateSchedule {
 export interface HospitalInfo {
   id: string;
   name: string;
+  directorName?: string;
   logoUrl?: string;
   primaryColor: string;
   phone?: string;
@@ -30,15 +38,62 @@ export interface ScheduleFormData {
   vacationStart?: string;
   vacationEnd?: string;
   notice: string;
-  templateId: string;
+  templateId: TemplateId | null;
+  /** 진료일정 이미지에 적용할 폰트. 과거에 저장된 데이터에는 없을 수 있어 선택 필드입니다. */
+  fontId?: FontId;
+  calendarLabelStyle?: CalendarLabelStyle;
+  nextMonthEvent?: string;
+  outputSize?: string[];
+  calendarMustInclude?: string;
 }
 
-export type TemplateId = 'basic' | 'seasonal' | 'friendly';
+export interface OutputSizeMeta {
+  id: string;
+  label: string;
+}
 
-export const TEMPLATES: { id: TemplateId; name: string; description: string }[] = [
-  { id: 'basic', name: '깔끔한 기본형', description: '군더더기 없는 화이트 톤 기본 템플릿' },
-  { id: 'seasonal', name: '계절 포인트형', description: '계절 느낌의 포인트 색상과 장식' },
-  { id: 'friendly', name: '친근한 캐릭터형', description: '부드러운 색감과 아이콘 중심 구성' },
+export const OUTPUT_SIZES: OutputSizeMeta[] = [
+  { id: 'popup', label: '팝업' },
+  { id: 'a4', label: 'A4' },
+  { id: 'verticalDid', label: '세로 DID' },
+  { id: 'horizontalDid', label: '가로 DID' },
+];
+
+export type TemplateId = 'scheduleA' | 'scheduleB' | 'scheduleC' | 'scheduleD';
+
+export interface TemplateMeta {
+  id: TemplateId;
+  name: string;
+  description: string;
+  /** 템플릿 선택 카드 썸네일용 이미지. */
+  previewImageUrl: string;
+}
+
+export const TEMPLATES: TemplateMeta[] = [
+  {
+    id: 'scheduleA',
+    name: '진료일정 A형',
+    description: '한지 톤과 태극 포인트의 진료일정 시안',
+    previewImageUrl: '/templates/schedule_A.png?v=3',
+  },
+  {
+    id: 'scheduleB',
+    name: '진료일정 B형',
+    description: '하늘색 배경과 태극기 포인트의 진료일정 시안',
+    previewImageUrl: '/templates/schedule_B.png',
+  },
+  {
+    id: 'scheduleC',
+    name: '진료일정 C형',
+    description: '붓터치 질감의 진료일정 시안',
+    previewImageUrl: '/templates/schedule_C.png',
+  },
+  {
+    id: 'scheduleD',
+    name: '진료일정 D형',
+    description: '시원한 여름 바다 포인트의 진료일정 시안',
+    previewImageUrl: '/templates/schedule_D.png',
+  },
 ];
 
 export const SCHEDULE_TYPE_META: Record<
@@ -49,6 +104,8 @@ export const SCHEDULE_TYPE_META: Record<
   morningClosed: { label: '오전 휴진', shortLabel: '오전휴진', icon: '◐' },
   afternoonClosed: { label: '오후 휴진', shortLabel: '오후휴진', icon: '◑' },
   shortened: { label: '단축 진료', shortLabel: '단축진료', icon: '◷' },
+  night: { label: '야간 진료', shortLabel: '야간진료', icon: '☾' },
+  saturday: { label: '토요일 진료', shortLabel: '토요일진료', icon: '●' },
   open: { label: '정상 진료', shortLabel: '정상진료', icon: '○' },
 };
 

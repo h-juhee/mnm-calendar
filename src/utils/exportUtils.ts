@@ -27,11 +27,11 @@ async function waitForImagesLoaded(node: HTMLElement): Promise<void> {
 }
 
 /** 지정된 노드를 정확히 1080x1080 크기의 PNG로 캡처합니다. */
-export async function exportNodeAsPng(node: HTMLElement, filename: string): Promise<void> {
+export async function renderNodeAsPng(node: HTMLElement): Promise<string> {
   await waitForFontsReady();
   await waitForImagesLoaded(node);
 
-  const dataUrl = await toPng(node, {
+  return toPng(node, {
     width: EXPORT_SIZE,
     height: EXPORT_SIZE,
     pixelRatio: 1,
@@ -44,6 +44,10 @@ export async function exportNodeAsPng(node: HTMLElement, filename: string): Prom
     },
   });
 
+}
+
+export async function exportNodeAsPng(node: HTMLElement, filename: string): Promise<void> {
+  const dataUrl = await renderNodeAsPng(node);
   const link = document.createElement('a');
   link.href = dataUrl;
   link.download = filename;

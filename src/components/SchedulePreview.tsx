@@ -1,9 +1,12 @@
 import { forwardRef, useEffect, useRef, useState } from 'react';
 import type { CalendarCell } from '../utils/scheduleUtils';
 import type { DateSchedule, HospitalInfo, ScheduleFormData, TemplateId } from '../types/schedule';
-import BasicTemplate from './templates/BasicTemplate';
-import SeasonalTemplate from './templates/SeasonalTemplate';
-import FriendlyTemplate from './templates/FriendlyTemplate';
+import { getFontOption } from '../types/font';
+import { ensureFontLoaded } from '../utils/fontLoader';
+import ScheduleATemplate from './templates/ScheduleATemplate';
+import ScheduleBTemplate from './templates/ScheduleBTemplate';
+import ScheduleCTemplate from './templates/ScheduleCTemplate';
+import ScheduleDTemplate from './templates/ScheduleDTemplate';
 import styles from './SchedulePreview.module.css';
 
 interface SchedulePreviewProps {
@@ -11,16 +14,18 @@ interface SchedulePreviewProps {
   formData: ScheduleFormData;
   calendarMatrix: CalendarCell[][];
   resolvedByDate: Map<string, DateSchedule>;
+  onDateClick?: (dateKey: string) => void;
 }
 
-const TEMPLATE_COMPONENTS: Record<TemplateId, typeof BasicTemplate> = {
-  basic: BasicTemplate,
-  seasonal: SeasonalTemplate,
-  friendly: FriendlyTemplate,
+const TEMPLATE_COMPONENTS: Record<TemplateId, typeof ScheduleATemplate> = {
+  scheduleA: ScheduleATemplate,
+  scheduleB: ScheduleBTemplate,
+  scheduleC: ScheduleCTemplate,
+  scheduleD: ScheduleDTemplate,
 };
 
 const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(function SchedulePreview(
-  { hospital, formData, calendarMatrix, resolvedByDate },
+  { hospital, formData, calendarMatrix, resolvedByDate, onDateClick },
   ref,
 ) {
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -36,7 +41,12 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     return () => ro.disconnect();
   }, []);
 
-  const Template = TEMPLATE_COMPONENTS[formData.templateId as TemplateId] ?? BasicTemplate;
+  const Template = TEMPLATE_COMPONENTS[formData.templateId as TemplateId] ?? ScheduleATemplate;
+  const fontOption = getFontOption(formData.fontId);
+
+  useEffect(() => {
+    void ensureFontLoaded(formData.fontId);
+  }, [formData.fontId]);
 
   return (
     <div className={styles.wrapper} ref={wrapperRef}>
@@ -48,7 +58,10 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
             month={formData.month}
             calendarMatrix={calendarMatrix}
             resolvedByDate={resolvedByDate}
+            onDateClick={onDateClick}
             notice={formData.notice}
+            fontFamily={fontOption.family}
+            calendarLabelStyle={formData.calendarLabelStyle}
           />
         </div>
       </div>

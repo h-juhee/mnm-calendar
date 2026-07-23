@@ -4,7 +4,7 @@ import { SCHEDULE_TYPE_META } from '../types/schedule';
 import Modal from './Modal';
 import styles from './DateScheduleModal.module.css';
 
-const TYPE_ORDER: ScheduleType[] = ['closed', 'morningClosed', 'afternoonClosed', 'shortened', 'open'];
+const TYPE_ORDER: ScheduleType[] = ['closed', 'morningClosed', 'afternoonClosed', 'shortened', 'night', 'saturday', 'open'];
 
 interface DateScheduleModalProps {
   dateKey: string;
@@ -24,6 +24,7 @@ export default function DateScheduleModal({
   onClose,
 }: DateScheduleModalProps) {
   const [type, setType] = useState<ScheduleType>(currentSchedule.type);
+  const [startTime, setStartTime] = useState(currentSchedule.startTime ?? '09:00');
   const [endTime, setEndTime] = useState(currentSchedule.endTime ?? '');
 
   const [year, month, day] = dateKey.split('-');
@@ -33,6 +34,7 @@ export default function DateScheduleModal({
     onSave({
       date: dateKey,
       type,
+      startTime: type === 'shortened' ? startTime || undefined : undefined,
       endTime: type === 'shortened' ? endTime || undefined : undefined,
     });
     onClose();
@@ -63,7 +65,7 @@ export default function DateScheduleModal({
                 checked={selected}
                 onChange={() => setType(t)}
               />
-              {meta.icon} {meta.label}
+              {meta.label}
             </label>
           );
         })}
@@ -71,6 +73,16 @@ export default function DateScheduleModal({
 
       {type === 'shortened' && (
         <div className={styles.endTimeField}>
+          <label className={styles.label} htmlFor="shortened-start-time">
+            진료 시작 시간
+          </label>
+          <input
+            id="shortened-start-time"
+            type="time"
+            className={styles.input}
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+          />
           <label className={styles.label} htmlFor="shortened-end-time">
             단축 진료 종료 시간
           </label>
@@ -88,14 +100,15 @@ export default function DateScheduleModal({
         <button type="button" className={styles.button} onClick={onClose}>
           취소
         </button>
-        <button
-          type="button"
-          className={`${styles.button} ${styles.buttonDanger}`}
-          onClick={handleClear}
-          disabled={!hasOverride}
-        >
-          개별 설정 해제
-        </button>
+        {hasOverride && (
+          <button
+            type="button"
+            className={`${styles.button} ${styles.buttonDanger}`}
+            onClick={handleClear}
+          >
+            기본 일정으로 되돌리기
+          </button>
+        )}
         <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} onClick={handleSave}>
           저장
         </button>
