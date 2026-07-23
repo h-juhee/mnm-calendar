@@ -31,7 +31,11 @@ export default function PreviewCalendar({ calendarMatrix, resolvedByDate, accent
       <div className={styles.grid}>
         {calendarMatrix.flat().map((cell, idx) => {
           if (!cell.inCurrentMonth || !cell.date) {
-            return <div key={`empty-${idx}`} className={`${styles.cell} ${styles.cellEmpty}`} />;
+            return (
+              <div key={`adjacent-${idx}`} className={`${styles.cell} ${styles.cellAdjacent}`}>
+                {cell.adjacentDay != null && <span className={styles.adjacentDay}>{cell.adjacentDay}</span>}
+              </div>
+            );
           }
           const schedule = resolvedByDate.get(cell.date);
           const closedLike = schedule ? scheduleTypeIsClosedLike(schedule.type) : false;

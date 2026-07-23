@@ -45,8 +45,14 @@
   background: #f8fafc;
 }
 
-.cellEmpty {
+.cellAdjacent {
   background: transparent;
+}
+
+.adjacentDay {
+  font-size: 24px;
+  font-weight: 500;
+  color: #d1d5db;
 }
 
 .day {

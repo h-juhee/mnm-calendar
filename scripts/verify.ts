@@ -76,6 +76,20 @@ test('2026년 8월 달력 매트릭스의 모든 주는 7칸이고 31일이 정�
   assert.equal(matrix.flat().find((c) => c.date === '2026-08-01')?.weekday, 6);
 });
 
+test('이전/다음 달 자리에는 흐리게 표시할 실제 날짜 숫자(adjacentDay)가 채워진다', () => {
+  const cells = buildCalendarMatrix(2026, 8).flat();
+  const leading = cells.filter((c) => !c.inCurrentMonth).slice(0, 6);
+  assert.deepEqual(leading.map((c) => c.adjacentDay), [26, 27, 28, 29, 30, 31]); // 7월 26~31일
+  leading.forEach((c) => {
+    assert.equal(c.date, null);
+    assert.equal(c.day, null);
+  });
+  const trailing = cells.filter((c) => !c.inCurrentMonth).slice(6);
+  assert.deepEqual(trailing.map((c) => c.adjacentDay), [1, 2, 3, 4, 5]); // 9월 1~5일
+  const currentMonthCells = cells.filter((c) => c.inCurrentMonth);
+  currentMonthCells.forEach((c) => assert.equal(c.adjacentDay, null));
+});
+
 // 2. 2028년 2월 29일이 표시되는지 (윤년)
 test('2028년은 윤년이라 2월이 29일까지 있다', () => {
   assert.equal(getDaysInMonth(2028, 2), 29);
