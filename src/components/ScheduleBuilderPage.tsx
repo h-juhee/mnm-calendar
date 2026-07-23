@@ -107,7 +107,7 @@ function ScheduleBuilderContent({
 
             <section className={styles.card}>
               <h2 className={styles.cardTitle}>병원 로고</h2>
-              <p className={styles.cardHint}>로고 파일을 추가해 두세요. 달력 이미지에는 아직 적용되지 않습니다.</p>
+              <p className={styles.cardHint}>로고 파일이 있다면 추가해 주세요.</p>
               <LogoUploadField
                 logoUrl={hospital.logoUrl}
                 onChange={(logoUrl) => onHospitalChange({ ...hospital, logoUrl })}

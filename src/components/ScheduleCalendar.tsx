@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { CalendarCell } from '../utils/scheduleUtils';
 import { WEEKDAY_LABELS } from '../utils/scheduleUtils';
 import type { DateSchedule } from '../types/schedule';
@@ -47,6 +48,9 @@ export default function ScheduleCalendar({ calendarMatrix, resolvedByDate, onDat
             ? `${schedule.startTime ?? '09:00'}~${schedule.endTime}`
             : '';
           const timeBadgeClass = schedule?.showTimeBadge === false ? styles.badgeTimePlain : undefined;
+          const badgeStyle = schedule?.badgeColor
+            ? ({ '--schedule-badge-color': schedule.badgeColor } as CSSProperties)
+            : undefined;
           const endTimeSuffix = shortenedTime ? ` ${shortenedTime}` : '';
 
           return (
@@ -59,7 +63,7 @@ export default function ScheduleCalendar({ calendarMatrix, resolvedByDate, onDat
             >
               <span className={styles.day}>{cell.day}</span>
               {meta && (
-                <span className={styles.badge}>
+                <span className={styles.badge} style={badgeStyle}>
                   {schedule?.type === 'shortened' ? (
                     <>
                       <span>{displayLabel}</span>

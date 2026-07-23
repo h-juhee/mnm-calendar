@@ -50,6 +50,9 @@ export default function PreviewCalendar({ calendarMatrix, resolvedByDate, accent
               ? `${shortenedStart}~${schedule.endTime}`
               : '';
             const timeBadgeClass = schedule?.showTimeBadge === false ? styles.badgeTimePlain : undefined;
+            const badgeStyle = schedule?.badgeColor
+              ? ({ '--schedule-badge-color': schedule.badgeColor } as CSSProperties)
+              : undefined;
             const weekday = idx % 7;
             const dayClassName = [
               styles.day,
@@ -63,7 +66,7 @@ export default function PreviewCalendar({ calendarMatrix, resolvedByDate, accent
               <>
                 <span className={dayClassName}>{cell.day}</span>
                 {meta && (
-                  <span className={`${styles.badge} ${BADGE_CLASS[schedule!.type] ?? ''}`}>
+                  <span className={`${styles.badge} ${BADGE_CLASS[schedule!.type] ?? ''}`} style={badgeStyle}>
                     {schedule?.type === 'shortened' ? (
                       <>
                         <span>{displayLabel}</span>

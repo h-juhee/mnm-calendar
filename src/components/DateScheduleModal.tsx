@@ -28,6 +28,7 @@ export default function DateScheduleModal({
   const [endTime, setEndTime] = useState(currentSchedule.endTime ?? '');
   const [showTimeBadge, setShowTimeBadge] = useState(currentSchedule.showTimeBadge !== false);
   const [label, setLabel] = useState(currentSchedule.label ?? '');
+  const [badgeColor, setBadgeColor] = useState(currentSchedule.badgeColor ?? '');
 
   const [year, month, day] = dateKey.split('-');
   const dateLabel = `${year}년 ${Number(month)}월 ${Number(day)}일`;
@@ -39,6 +40,7 @@ export default function DateScheduleModal({
     onSave({
       date: dateKey,
       type,
+      badgeColor: type === 'open' ? undefined : badgeColor || undefined,
       startTime: type === 'shortened' ? startTime || undefined : undefined,
       endTime: type === 'shortened' ? endTime || undefined : undefined,
       showTimeBadge: type === 'shortened' ? showTimeBadge : undefined,
@@ -130,6 +132,30 @@ export default function DateScheduleModal({
             placeholder="예: 원장님 외부 일정"
             onChange={(e) => setLabel(e.target.value)}
           />
+        </div>
+      )}
+
+      {type !== 'open' && (
+        <div className={styles.colorField}>
+          <label className={styles.label} htmlFor="schedule-badge-color">
+            일정 라벨 색상
+          </label>
+          <div className={styles.colorControls}>
+            <input
+              id="schedule-badge-color"
+              type="color"
+              className={styles.colorInput}
+              value={badgeColor || '#4779ca'}
+              onChange={(e) => setBadgeColor(e.target.value)}
+              aria-label="일정 라벨 색상 선택"
+            />
+            <span className={styles.colorHint}>선택하지 않으면 기본색이 적용됩니다.</span>
+            {badgeColor && (
+              <button type="button" className={styles.colorReset} onClick={() => setBadgeColor('')}>
+                기본색
+              </button>
+            )}
+          </div>
         </div>
       )}
 

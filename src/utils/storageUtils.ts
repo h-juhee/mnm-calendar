@@ -124,6 +124,10 @@ export interface CustomDesignRequestRecord {
   outputSize: string[];
   calendarMustInclude: string;
   specialNotes: string;
+  /** Notion의 `일정데이터` 속성에 전달할, 사람이 읽을 수 있는 최종 일정입니다. */
+  scheduleData: string;
+  /** Notion의 `휴진일` 속성에 전달할 일반 휴진 날짜 목록입니다. */
+  closedDates: string;
 }
 
 export function saveCustomDesignRequest(record: CustomDesignRequestRecord): boolean {

@@ -96,7 +96,7 @@
   border-color: var(--color-danger);
 }
 .typeClosed .badge {
-  background: var(--color-danger);
+  background: var(--schedule-badge-color, var(--color-danger));
   color: #fff;
 }
 
@@ -107,7 +107,7 @@
 }
 .typeMorningClosed .badge,
 .typeAfternoonClosed .badge {
-  background: var(--color-primary);
+  background: var(--schedule-badge-color, var(--color-primary));
   color: #fff;
 }
 
@@ -128,7 +128,7 @@
 .typeShortened .badge > span {
   display: block;
   padding: 2px 6px;
-  background: var(--color-success);
+  background: var(--schedule-badge-color, var(--color-success));
   border-radius: 999px;
   color: #fff;
   font-weight: 600;
@@ -137,7 +137,7 @@
 
 .typeShortened .badge > .badgeTimePlain {
   background: transparent;
-  color: var(--color-success);
+  color: var(--schedule-badge-color, var(--color-success));
 }
 
 .typeNight {
@@ -145,7 +145,7 @@
   border-color: #4779ca;
 }
 .typeNight .badge {
-  background: #4779ca;
+  background: var(--schedule-badge-color, #4779ca);
   color: #fff;
 }
 
@@ -154,6 +154,6 @@
   border-color: #65b6d8;
 }
 .typeSaturday .badge {
-  background: #65b6d8;
+  background: var(--schedule-badge-color, #65b6d8);
   color: #fff;
 }

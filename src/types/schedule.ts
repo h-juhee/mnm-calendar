@@ -16,6 +16,8 @@ export type CalendarLabelStyle = 'korean' | 'english' | 'hanja' | 'japanese';
 export interface DateSchedule {
   date: string; // YYYY-MM-DD
   type: ScheduleType;
+  /** 일정 라벨에만 적용하는 선택 색상. 비워두면 유형별 기본색을 사용합니다. */
+  badgeColor?: string;
   startTime?: string; // HH:mm, shortened schedule start time
   endTime?: string; // HH:mm, shortened 유형일 때만 사용
   showTimeBadge?: boolean; // 단축 진료 시간 배지 배경 표시 여부

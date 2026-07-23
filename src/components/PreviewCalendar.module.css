@@ -136,11 +136,11 @@
 }
 
 .badgeClosed {
-  background: #dd4b4b;
+  background: var(--schedule-badge-color, #dd4b4b);
 }
 
 .badgeHalf {
-  background: #4779ca;
+  background: var(--schedule-badge-color, #4779ca);
 }
 
 .badgeShortened {
@@ -155,7 +155,7 @@
 .badgeShortened > span {
   display: block;
   padding: 3px 14px;
-  background: #1a9c6b;
+  background: var(--schedule-badge-color, #1a9c6b);
   border-radius: 999px;
   font-weight: 600;
   white-space: nowrap;
@@ -163,13 +163,13 @@
 
 .badgeShortened > .badgeTimePlain {
   background: transparent;
-  color: #1a9c6b;
+  color: var(--schedule-badge-color, #1a9c6b);
 }
 
 .badgeNight {
-  background: #4779ca;
+  background: var(--schedule-badge-color, #4779ca);
 }
 
 .badgeSaturday {
-  background: #65b6d8;
+  background: var(--schedule-badge-color, #65b6d8);
 }

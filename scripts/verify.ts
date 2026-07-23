@@ -270,6 +270,8 @@ test('맞춤 디자인 요청은 배열에 누적 저장된다', () => {
     outputSize: [],
     calendarMustInclude: '',
     specialNotes: '',
+    scheduleData: '',
+    closedDates: '',
   });
   assert.equal(listCustomDesignRequests().length, before + 1);
 });

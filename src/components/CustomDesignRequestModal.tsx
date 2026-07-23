@@ -1,6 +1,6 @@
 import { useState, type RefObject } from 'react';
 import type { DateSchedule, HospitalInfo, ScheduleFormData } from '../types/schedule';
-import { TEMPLATES } from '../types/schedule';
+import { SCHEDULE_TYPE_META, TEMPLATES } from '../types/schedule';
 import { formatMonthTitle } from '../utils/scheduleUtils';
 import { saveCustomDesignRequest, type CustomDesignRequestRecord } from '../utils/storageUtils';
 import { buildExportFilename, renderNodeAsPng } from '../utils/exportUtils';
@@ -28,6 +28,24 @@ const EDIT_ITEMS = [
   { id: 'image', label: '이미지 교체' },
   { id: 'layout', label: '간단한 배치 조정' },
 ];
+
+function formatScheduleData(resolvedSchedule: DateSchedule[]) {
+  return resolvedSchedule
+    .filter((schedule) => schedule.type !== 'open')
+    .map((schedule) => {
+      const day = Number(schedule.date.slice(-2));
+      const dayLabel = schedule.label ? `${day}일(${schedule.label})` : `${day}일`;
+      return `${dayLabel}: ${SCHEDULE_TYPE_META[schedule.type].shortLabel}`;
+    })
+    .join('\n');
+}
+
+function formatClosedDates(resolvedSchedule: DateSchedule[]) {
+  return resolvedSchedule
+    .filter((schedule) => schedule.type === 'closed')
+    .map((schedule) => `${Number(schedule.date.slice(-2))}일`)
+    .join(', ');
+}
 
 export default function CustomDesignRequestModal({
   hospital,
@@ -109,6 +127,8 @@ export default function CustomDesignRequestModal({
       outputSize: formData.outputSize ?? [],
       calendarMustInclude: (formData.calendarMustInclude ?? '').trim(),
       specialNotes: specialNotes.trim(),
+      scheduleData: formatScheduleData(resolvedSchedule),
+      closedDates: formatClosedDates(resolvedSchedule),
     };
 
     try {
