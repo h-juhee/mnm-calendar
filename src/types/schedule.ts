@@ -12,6 +12,7 @@ export type ScheduleType =
   | 'open';
 
 export type CalendarLabelStyle = 'korean' | 'english' | 'hanja' | 'japanese';
+export type TitleTextStyle = 'outline' | 'filled';
 
 export interface DateSchedule {
   date: string; // YYYY-MM-DD
@@ -45,6 +46,7 @@ export interface ScheduleFormData {
   /** 진료일정 이미지에 적용할 폰트. 과거에 저장된 데이터에는 없을 수 있어 선택 필드입니다. */
   fontId?: FontId;
   calendarLabelStyle?: CalendarLabelStyle;
+  titleTextStyle?: TitleTextStyle;
   nextMonthEvent?: string;
   outputSize?: string[];
   calendarMustInclude?: string;

@@ -16,7 +16,7 @@ const OPTIONS: { value: CalendarLabelStyle; label: string }[] = [
 export default function CalendarLabelSelector({ value, onChange }: CalendarLabelSelectorProps) {
   return (
     <div className={styles.field}>
-      <span className={styles.label}>달력 표기</span>
+      <span className={styles.label}>표기 언어</span>
       <div className={styles.options} role="radiogroup" aria-label="달력 표기">
         {OPTIONS.map((option) => (
           <button

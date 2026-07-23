@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CalendarLabelStyle, DateSchedule, ScheduleFormData, TemplateId } from '../types/schedule';
+import type { CalendarLabelStyle, DateSchedule, ScheduleFormData, TemplateId, TitleTextStyle } from '../types/schedule';
 import { NOTICE_MAX_LENGTH } from '../types/schedule';
 import { DEFAULT_FONT_ID, type FontId } from '../types/font';
 import {
@@ -44,6 +44,7 @@ function createEmptyFormData(
     templateId: keep?.templateId ?? null,
     fontId: keep?.fontId ?? DEFAULT_FONT_ID,
     calendarLabelStyle: keep?.calendarLabelStyle ?? 'korean',
+    titleTextStyle: keep?.titleTextStyle ?? 'outline',
     nextMonthEvent: '',
     outputSize: normalizeOutputSizes(keep?.outputSize),
     calendarMustInclude: keep?.calendarMustInclude ?? '',
@@ -75,6 +76,7 @@ export function useScheduleBuilder(hospitalId: string) {
               // The selected font is a design preference, so it stays the
               // same when moving between monthly schedule drafts.
               fontId: prev.fontId,
+              titleTextStyle: prev.titleTextStyle,
               outputSize: normalizeOutputSizes(loaded.outputSize),
             }
           : createEmptyFormData(hospitalId, year, month, prev);
@@ -118,6 +120,10 @@ export function useScheduleBuilder(hospitalId: string) {
     setFormData((prev) => ({ ...prev, calendarLabelStyle }));
   }, []);
 
+  const setTitleTextStyle = useCallback((titleTextStyle: TitleTextStyle) => {
+    setFormData((prev) => ({ ...prev, titleTextStyle }));
+  }, []);
+
   const setNextMonthEvent = useCallback((nextMonthEvent: string) => {
     setFormData((prev) => ({ ...prev, nextMonthEvent }));
   }, []);
@@ -135,6 +141,7 @@ export function useScheduleBuilder(hospitalId: string) {
       createEmptyFormData(hospitalId, prev.year, prev.month, {
         templateId: prev.templateId,
         fontId: prev.fontId,
+        titleTextStyle: prev.titleTextStyle,
       }),
     );
   }, [hospitalId]);
@@ -149,6 +156,7 @@ export function useScheduleBuilder(hospitalId: string) {
       notice: loaded.notice,
       templateId: loaded.templateId,
       fontId: loaded.fontId ?? DEFAULT_FONT_ID,
+      titleTextStyle: loaded.titleTextStyle ?? 'outline',
       outputSize: normalizeOutputSizes(loaded.outputSize),
       calendarMustInclude: loaded.calendarMustInclude ?? '',
     }));
@@ -183,6 +191,7 @@ export function useScheduleBuilder(hospitalId: string) {
       setTemplateId,
       setFontId,
       setCalendarLabelStyle,
+      setTitleTextStyle,
       setNextMonthEvent,
       setOutputSize,
       setCalendarMustInclude,

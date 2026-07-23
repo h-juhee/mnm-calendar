@@ -6,7 +6,7 @@
 /* 서비스형 랜딩 느낌의 상단 히어로 */
 .hero {
   background: linear-gradient(160deg, color-mix(in srgb, var(--hero-accent, #2f6fed) 12%, var(--color-bg)) 0%, var(--color-bg) 70%);
-  padding: 36px 16px 28px;
+  padding: 22px 16px 18px;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -15,29 +15,30 @@
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
 }
 
 .heroBadge {
   display: inline-flex;
   width: fit-content;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-primary);
-  background: var(--color-primary-bg);
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-primary-bg) 55%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, var(--color-primary-bg));
   border-radius: 999px;
 }
 
 .heroTitle {
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 800;
   color: var(--color-text);
   letter-spacing: -0.4px;
 }
 
 .heroSubtitle {
-  font-size: 15px;
+  font-size: 14px;
   color: var(--color-text-muted);
   max-width: 560px;
 }
@@ -45,19 +46,14 @@
 .container {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 24px 16px 64px;
+  padding: 16px 16px 48px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
-.templateChangeRow {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: -12px;
-}
-
-.templateChangeButton {
+.previewDesignButton {
+  flex-shrink: 0;
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 700;
@@ -68,14 +64,14 @@
   cursor: pointer;
 }
 
-.templateChangeButton:hover {
+.previewDesignButton:hover {
   border-color: var(--color-primary);
 }
 
 .grid {
   display: grid;
   grid-template-columns: 1fr minmax(0, 460px);
-  gap: 28px;
+  gap: 20px;
   align-items: start;
 }
 
@@ -91,17 +87,17 @@
   order: 2;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   min-width: 0;
 }
 
 .rightCol {
   order: 1;
   position: sticky;
-  top: 24px;
+  top: 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -122,12 +118,17 @@
   color: var(--color-text-muted);
 }
 
+.previewHeader {
+  position: relative;
+  min-height: 40px;
+}
+
 .previewEditHint {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-top: -6px;
+  margin-top: 0;
   padding: 7px 10px;
   font-size: 13px;
   font-weight: 700;
@@ -136,6 +137,22 @@
   background: var(--color-primary-bg);
   border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
   border-radius: 999px;
+}
+
+.previewTools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+}
+
+.previewActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
 }
 
 .previewMode {
@@ -211,7 +228,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  padding: 26px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -228,7 +245,7 @@
 
 @media (max-width: 767px) {
   .card {
-    padding: 18px;
+    padding: 16px;
   }
 
   .templateSelectModal {
@@ -287,6 +304,19 @@
 .secondaryButton:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
+}
+
+.secondaryButton:disabled {
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.secondaryButton:disabled:hover {
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
 }
 
 .noticeMessage {

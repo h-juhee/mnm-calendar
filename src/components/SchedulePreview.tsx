@@ -62,6 +62,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
             notice={formData.notice}
             fontFamily={fontOption.family}
             calendarLabelStyle={formData.calendarLabelStyle}
+            titleTextStyle={formData.titleTextStyle}
           />
         </div>
       </div>

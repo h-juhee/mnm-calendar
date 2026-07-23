@@ -2,8 +2,10 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 18px 22px;
+  width: 100%;
+  max-width: 600px;
+  gap: 12px;
+  padding: 12px 16px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -20,9 +22,9 @@
 }
 
 .logoTile {
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-md);
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -30,20 +32,20 @@
 }
 
 .logo {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
 }
 
 .info {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 
 .eyebrow {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.2px;
   color: var(--color-text-muted);
@@ -51,10 +53,34 @@
 }
 
 .name {
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.changeButton {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.changeButton:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+@media (max-width: 480px) {
+  .card { padding: 11px 12px; }
+  .changeButton { padding: 7px 8px; }
 }

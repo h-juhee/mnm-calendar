@@ -13,6 +13,7 @@ import DateScheduleModal from './DateScheduleModal';
 import VacationRangeField from './VacationRangeField';
 import TemplateSelector from './TemplateSelector';
 import FontSelector from './FontSelector';
+import TitleTextStyleSelector from './TitleTextStyleSelector';
 import SchedulePreview from './SchedulePreview';
 import ExportImageButton from './ExportImageButton';
 import CustomDesignRequestModal from './CustomDesignRequestModal';
@@ -32,33 +33,28 @@ export default function ScheduleBuilderPage() {
     return <HospitalIntakeForm onSubmit={handleHospitalSubmit} />;
   }
 
-  return <ScheduleBuilderContent hospital={hospital} onHospitalChange={setHospital} />;
+  return <ScheduleBuilderContent hospital={hospital} onHospitalChange={setHospital} onHospitalReset={() => setHospital(null)} />;
 }
 
 function ScheduleBuilderContent({
   hospital,
   onHospitalChange,
+  onHospitalReset,
 }: {
   hospital: HospitalInfo;
   onHospitalChange: (hospital: HospitalInfo) => void;
+  onHospitalReset: () => void;
 }) {
   const { formData, resolvedSchedule, resolvedByDate, calendarMatrix, actions } = useScheduleBuilder(hospital.id);
 
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
-  const [previousMonthMessage, setPreviousMonthMessage] = useState<string | null>(null);
   const [isCustomModalOpen, setCustomModalOpen] = useState(false);
   const [isTemplateModalOpen, setTemplateModalOpen] = useState(() => formData.templateId === null);
   const [previewMode, setPreviewMode] = useState<'sample' | 'schedule'>('schedule');
   const exportNodeRef = useRef<HTMLDivElement>(null);
 
-  const handleLoadPrevious = () => {
-    const loaded = actions.loadPreviousMonth();
-    setPreviousMonthMessage(loaded ? '이전 달 반복 설정을 불러왔습니다.' : '저장된 이전 반복 설정이 없습니다.');
-  };
-
   const handleReset = () => {
     actions.reset();
-    setPreviousMonthMessage(null);
   };
 
   const selectedResolvedSchedule = selectedDateKey ? resolvedByDate.get(selectedDateKey) : undefined;
@@ -72,28 +68,31 @@ function ScheduleBuilderContent({
     <div className={styles.page}>
       <header className={styles.hero} style={{ '--hero-accent': hospital.primaryColor } as CSSProperties}>
         <div className={styles.heroInner}>
-          <span className={styles.heroBadge}>치과 진료일정 자동 생성 서비스</span>
+          <span className={styles.heroBadge}>진료일정 이미지 자동 생성</span>
           <h1 className={styles.heroTitle}>진료일정 만들기</h1>
           <p className={styles.heroSubtitle}>
-            휴진일과 진료 일정을 선택하면, 오른쪽에서 안내 이미지가 실시간으로 완성돼요.
+            휴진일과 진료 일정을 선택하면 안내 이미지가 실시간으로 완성돼요.
           </p>
         </div>
       </header>
 
       <div className={styles.container}>
-        <HospitalHeader hospital={hospital} />
-        <div className={styles.templateChangeRow}>
-          <button type="button" className={styles.templateChangeButton} onClick={() => setTemplateModalOpen(true)}>
-            시안 변경
-          </button>
-        </div>
-
+        <HospitalHeader hospital={hospital} onChangeHospital={onHospitalReset} />
         <div className={styles.grid}>
           <div className={styles.leftCol}>
             <section className={`${styles.card} ${styles.templatePickerCard}`}>
               <h2 className={styles.cardTitle}>디자인 선택</h2>
               <p className={styles.cardHint}>먼저 마음에 드는 시안을 골라주세요. 아래에서 일정을 입력하면 바로 반영돼요.</p>
               <TemplateSelector selectedId={formData.templateId} onSelect={actions.setTemplateId} />
+            </section>
+
+            <section className={styles.card}>
+              <h2 className={styles.cardTitle}>제목 글씨 스타일</h2>
+              <p className={styles.cardHint}>D형 제목을 테두리 표현 또는 진한 단색 채움으로 바꿀 수 있어요.</p>
+              <TitleTextStyleSelector
+                value={formData.titleTextStyle ?? 'outline'}
+                onChange={actions.setTitleTextStyle}
+              />
             </section>
 
             <section className={styles.card}>
@@ -107,7 +106,7 @@ function ScheduleBuilderContent({
 
             <section className={styles.card}>
               <h2 className={styles.cardTitle}>병원 로고</h2>
-              <p className={styles.cardHint}>로고 파일이 있다면 추가해 주세요.</p>
+              <p className={styles.cardHint}>로고를 추가하면 진료일정표에 표시됩니다</p>
               <LogoUploadField
                 logoUrl={hospital.logoUrl}
                 onChange={(logoUrl) => onHospitalChange({ ...hospital, logoUrl })}
@@ -128,7 +127,7 @@ function ScheduleBuilderContent({
             </section>
 
             <section className={styles.card}>
-              <h2 className={styles.cardTitle}>휴진 설정</h2>
+              <h2 className={styles.cardTitle}>정기 휴진 설정</h2>
               <p className={styles.cardHint}>매주 반복해서 쉬는 요일을 선택하세요.</p>
               <RecurringDaySelector selectedDays={formData.recurringClosedDays} onToggle={actions.toggleRecurringDay} />
               <p className={styles.cardHint}></p>
@@ -145,27 +144,32 @@ function ScheduleBuilderContent({
               />
             </section>
 
-            {previousMonthMessage && <p className={styles.noticeMessage}>{previousMonthMessage}</p>}
-
             <div className={styles.utilityRow}>
-              <button type="button" className={styles.secondaryButton} onClick={handleLoadPrevious}>
+              <button type="button" className={styles.secondaryButton} disabled title="준비 중인 기능입니다.">
                 이전 달 반복 설정 불러오기
               </button>
               <button type="button" className={styles.secondaryButton} onClick={handleReset}>
-                초기화
+                전체 설정 초기화
               </button>
             </div>
-            <p className={styles.utilityHint}>날짜별 일정과 휴가 기간은 가져오지 않습니다.</p>
+            <p className={styles.utilityHint}>이전 달 반복 설정 불러오기는 준비 중인 기능입니다.</p>
           </div>
 
           <div className={styles.rightCol}>
-            <p className={styles.previewLabel}>실시간 미리보기</p>
-            {selectedTemplate && (
-              <p className={styles.previewEditHint}>
-                <span aria-hidden="true">☝</span>
-                날짜를 터치해 일정 수정
-              </p>
-            )}
+            <div className={styles.previewTools}>
+              <p className={styles.previewLabel}>실시간 미리보기</p>
+              {selectedTemplate && (
+                <div className={styles.previewActions}>
+                  <p className={styles.previewEditHint}>
+                    <span aria-hidden="true">☝</span>
+                    날짜를 눌러 개별 일정 설정
+                  </p>
+                  <button type="button" className={styles.previewDesignButton} onClick={() => setTemplateModalOpen(true)}>
+                    디자인 변경
+                  </button>
+                </div>
+              )}
+            </div>
 
             {false && (
               <div className={styles.previewMode} aria-label="미리보기 종류">

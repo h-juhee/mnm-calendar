@@ -1,5 +1,5 @@
 import type { CalendarCell } from '../../utils/scheduleUtils';
-import type { CalendarLabelStyle, DateSchedule, HospitalInfo } from '../../types/schedule';
+import type { CalendarLabelStyle, DateSchedule, HospitalInfo, TitleTextStyle } from '../../types/schedule';
 
 export interface TemplateProps {
   hospital: HospitalInfo;
@@ -12,4 +12,5 @@ export interface TemplateProps {
   /** 진료일정 이미지에 적용할 CSS font-family 값(폴백 체인 포함). */
   fontFamily: string;
   calendarLabelStyle?: CalendarLabelStyle;
+  titleTextStyle?: TitleTextStyle;
 }

@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { CalendarCell } from '../utils/scheduleUtils';
-import { getWeekdayLabels, scheduleTypeIsClosedLike } from '../utils/scheduleUtils';
+import { getWeekdayLabels } from '../utils/scheduleUtils';
 import type { CalendarLabelStyle, DateSchedule } from '../types/schedule';
 import { SCHEDULE_TYPE_META } from '../types/schedule';
 import styles from './PreviewCalendar.module.css';
@@ -42,7 +42,6 @@ export default function PreviewCalendar({ calendarMatrix, resolvedByDate, accent
               return <div key={`adjacent-${idx}`} className={`${styles.cell} ${styles.cellAdjacent}`} />;
             }
             const schedule = resolvedByDate.get(cell.date);
-            const closedLike = schedule ? scheduleTypeIsClosedLike(schedule.type) : false;
             const meta = schedule && schedule.type !== 'open' ? SCHEDULE_TYPE_META[schedule.type] : null;
             const displayLabel = schedule?.label ?? meta?.shortLabel;
             const shortenedStart = schedule?.startTime ?? '09:00';
@@ -56,8 +55,8 @@ export default function PreviewCalendar({ calendarMatrix, resolvedByDate, accent
             const weekday = idx % 7;
             const dayClassName = [
               styles.day,
-              weekday === 0 || closedLike ? styles.dayClosed : '',
-              weekday === 6 && !closedLike ? styles.daySaturday : '',
+              weekday === 0 ? styles.dayClosed : '',
+              weekday === 6 ? styles.daySaturday : '',
             ]
               .filter(Boolean)
               .join(' ');

@@ -1,8 +1,17 @@
 .wrap { display: flex; flex-direction: column; gap: 8px; }
 .fileInput { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-.uploadButton { display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center; min-height: 86px; padding: 14px; color: var(--color-primary); font-size: 14px; font-weight: 700; text-align: center; background: var(--color-primary-bg); border: 1px dashed var(--color-primary); border-radius: var(--radius-sm); cursor: pointer; }
-.uploadButton span { color: var(--color-text-muted); font-size: 12px; font-weight: 400; }
+.uploadButton { display: flex; flex-direction: column; gap: 5px; align-items: center; justify-content: center; min-height: 112px; padding: 16px; color: var(--color-primary); font-size: 14px; text-align: center; background: var(--color-primary-bg); border: 1px dashed var(--color-primary); border-radius: var(--radius-sm); cursor: pointer; transition: background-color 150ms ease, border-color 150ms ease; }
+.uploadButton strong { font-size: 15px; }
+.uploadButton span { color: var(--color-text-muted); font-size: 13px; font-weight: 400; }
+.uploadButton small { color: var(--color-text-muted); font-size: 12px; }
+.uploadButton.dragging { background: color-mix(in srgb, var(--color-primary) 16%, #fff); border-style: solid; }
+.uploadButton:focus-within { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .preview { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
 .preview img { width: 52px; height: 52px; object-fit: contain; }
-.removeButton { margin-left: auto; padding: 7px 10px; color: var(--color-danger); font: inherit; font-size: 13px; font-weight: 600; background: transparent; border: 1px solid var(--color-danger); border-radius: 6px; cursor: pointer; }
+.previewInfo { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; color: var(--color-text); font-size: 13px; }
+.previewInfo span { color: var(--color-text-muted); font-size: 12px; }
+.actions { display: flex; gap: 6px; margin-left: auto; }
+.changeButton, .removeButton { padding: 7px 10px; font: inherit; font-size: 13px; font-weight: 600; background: transparent; border: 1px solid; border-radius: 6px; cursor: pointer; }
+.changeButton { color: var(--color-primary); border-color: var(--color-primary); }
+.removeButton { color: var(--color-danger); border-color: var(--color-danger); }
 .error { font-size: 13px; color: var(--color-danger); }
