@@ -1,36 +1,83 @@
-# React + TypeScript + Vite
+# MNN Calendar
 
-## Notion 요청 접수 연동
+치과·의원용 월간 진료일정 이미지를 만드는 React 웹 애플리케이션입니다. 병원 정보와 진료일정을 입력하면 선택한 템플릿에 즉시 반영되며, 완성된 결과를 PNG 이미지로 내려받거나 맞춤 디자인 요청으로 보낼 수 있습니다.
 
-맞춤 디자인 요청을 복제한 Notion DB에 저장하려면 [Notion 설정 안내](docs/notion-setup.md)를 따라 환경변수만 등록하세요.
+## 주요 기능
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+- 병원명, 대표 색상, 로고 등 기본 정보 입력
+- 월 선택 및 요일별 정기 휴진 설정
+- 날짜별 휴진, 오전·오후 휴진, 단축 진료, 야간 진료, 토요일 진료 설정
+- 단축 진료 시간 설정 및 `단축진료` / `09:00~15:00` 형식의 두 줄 표시
+- 휴가 기간 일괄 휴진 처리 및 개별 날짜 설정으로 우선 적용
+- 템플릿, 글꼴, 요일 표기 방식 선택
+- 변경 내용을 반영한 실시간 일정 이미지 미리보기
+- PNG 이미지 다운로드
+- 맞춤 디자인 요청 및 Notion 데이터베이스 연동
 
-Currently, two official plugins are available:
+## 사용 방법
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. 첫 화면에서 병원 정보를 입력합니다.
+2. 일정에 사용할 템플릿과 글꼴을 선택합니다.
+3. 대상 연·월과 정기 휴진 요일, 휴가 기간을 설정합니다.
+4. 오른쪽 미리보기의 날짜를 클릭해 날짜별 진료 유형을 지정합니다.
+5. 단축 진료를 고르면 시작·종료 시간을 입력합니다. 예를 들어 `09:00`부터 `15:00`까지라면 달력에는 아래처럼 표시됩니다.
 
-## React Compiler
+   ```text
+   단축진료
+   09:00~15:00
+   ```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+6. 미리보기 하단의 **이미지 다운로드**로 PNG 파일을 저장하거나, **맞춤 디자인 요청하기**에서 추가 요청을 접수합니다.
 
-## Expanding the Oxlint configuration
+## 일정이 반영되는 방식
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+일정은 아래 순서로 계산됩니다. 위 항목일수록 우선순위가 높습니다.
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+1. 날짜를 직접 클릭해 설정한 개별 일정
+2. 휴가 기간
+3. 반복 휴진 요일
+4. 기본 정상 진료
+
+예를 들어 휴가 기간에 포함된 날짜라도 해당 날짜를 단축 진료로 따로 설정하면 단축 진료가 표시됩니다. 개별 설정을 해제하면 다시 휴가 또는 정기 휴진 규칙을 따릅니다.
+
+입력 값은 브라우저의 Local Storage에 병원과 연·월 단위로 자동 저장됩니다. 따라서 같은 브라우저에서 다시 열면 최근 작업 월과 작성 중인 일정이 복원됩니다. **이전 달 반복 설정 불러오기**는 정기 휴진, 템플릿 등 반복해서 쓰는 설정만 가져오며, 날짜별 일정과 휴가 기간은 가져오지 않습니다.
+
+## 개발 실행
+
+요구 사항: Node.js 20 이상 권장
+
+```bash
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+개발 서버를 실행한 뒤 터미널에 표시된 로컬 주소를 브라우저에서 엽니다.
+
+## 검증 및 빌드
+
+```bash
+# 일정 계산과 저장 동작 검증
+npm run verify
+
+# TypeScript 검사 및 프로덕션 빌드
+npm run build
+```
+
+## 맞춤 디자인 요청 / Notion 연동
+
+맞춤 디자인 요청을 제출하면 현재 일정 이미지와 요청 정보가 `/api/notion-custom-request`로 전송됩니다. Notion에 접수하려면 프로젝트 루트의 `.env.local`에 아래 환경 변수를 설정해야 합니다.
+
+```env
+NOTION_TOKEN=ntn_...
+NOTION_DATABASE_ID=...
+```
+
+연동 설정, Notion Integration 연결, 데이터베이스 준비 방법은 [Notion 설정 안내](docs/notion-setup.md)를 참고하세요. 환경 변수가 없거나 API가 배포되지 않은 경우에는 맞춤 디자인 요청 전송이 실패할 수 있지만, 이미지 다운로드와 브라우저 내 일정 편집은 계속 사용할 수 있습니다.
+
+## 기술 구성
+
+- React 19 + TypeScript
+- Vite
+- CSS Modules
+- `html-to-image` 기반 PNG 내보내기
+- Notion API 연동용 Vercel Serverless Function
