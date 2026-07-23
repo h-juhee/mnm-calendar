@@ -1,0 +1,28 @@
+.group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.day {
+  flex: 1;
+  min-width: 38px;
+  padding: 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.day:hover {
+  border-color: var(--color-primary);
+}
+
+.daySelected {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}

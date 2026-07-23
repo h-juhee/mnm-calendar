@@ -1,0 +1,86 @@
+:root {
+  --color-bg: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-border: #e5e7eb;
+  --color-text: #1f2430;
+  --color-text-muted: #6b7280;
+  --color-primary: #2f6fed;
+  --color-primary-hover: #2559c7;
+  --color-primary-bg: #eaf2ff;
+  --color-danger: #e0433f;
+  --color-danger-bg: #fdecec;
+  --color-success: #1a9c6b;
+  --color-success-bg: #e8f8f1;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 6px 20px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.1), 0 2px 8px rgba(15, 23, 42, 0.05);
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Roboto, 'Malgun Gothic', sans-serif;
+
+  color-scheme: light;
+  color: var(--color-text);
+  background: var(--color-bg);
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #14161c;
+    --color-surface: #1b1e26;
+    --color-border: #2c313c;
+    --color-text: #edf0f5;
+    --color-text-muted: #9aa3b2;
+    --color-primary: #5b8ef8;
+    --color-primary-hover: #7ba3fa;
+    --color-primary-bg: rgba(91, 142, 248, 0.14);
+    --color-danger: #f2635f;
+    --color-danger-bg: rgba(224, 67, 63, 0.14);
+    --color-success: #34c98d;
+    --color-success-bg: rgba(26, 156, 107, 0.14);
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  /* html/body의 overflow는 뷰포트로 전파되므로, 자식 요소(#root)에 걸면 안 됨
+     (sticky 포지셔닝의 기준이 되는 스크롤 컨테이너가 의도치 않게 생겨버림). */
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100svh;
+  width: 100%;
+}
+
+h1, h2, h3, p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+img {
+  max-width: 100%;
+}

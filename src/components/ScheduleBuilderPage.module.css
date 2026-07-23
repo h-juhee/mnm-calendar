@@ -1,0 +1,170 @@
+.page {
+  min-height: 100svh;
+  background: var(--color-bg);
+}
+
+/* 서비스형 랜딩 느낌의 상단 히어로 */
+.hero {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--hero-accent, #2f6fed) 12%, var(--color-bg)) 0%, var(--color-bg) 70%);
+  padding: 36px 16px 28px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.heroInner {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.heroBadge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+  border-radius: 999px;
+}
+
+.heroTitle {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--color-text);
+  letter-spacing: -0.4px;
+}
+
+.heroSubtitle {
+  font-size: 15px;
+  color: var(--color-text-muted);
+  max-width: 560px;
+}
+
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 460px);
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 데스크톱에서는 미리보기(왼쪽) · 입력(오른쪽) 순서로 보이도록 시각적 순서만 바꾼다.
+   DOM 순서는 그대로 두어 모바일에서는 입력 폼이 먼저 나오게 유지한다. */
+.leftCol {
+  order: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.rightCol {
+  order: 1;
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+@media (max-width: 960px) {
+  .leftCol {
+    order: 0;
+  }
+
+  .rightCol {
+    order: 0;
+    position: static;
+  }
+}
+
+.previewLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 18px;
+  }
+}
+
+.cardTitle {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.cardHint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: -6px;
+}
+
+.calendarDivider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
+}
+
+.utilityRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.secondaryButton {
+  flex: 1;
+  min-width: 140px;
+  padding: 13px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.secondaryButton:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.noticeMessage {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  padding: 10px 12px;
+  background: var(--color-primary-bg);
+  border-radius: var(--radius-sm);
+}

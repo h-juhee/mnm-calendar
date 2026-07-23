@@ -1,0 +1,23 @@
+.wrapper {
+  width: 100%;
+}
+
+.scaledBox {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border);
+  background: #ffffff;
+}
+
+.exportNode {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1080px;
+  height: 1080px;
+  transform-origin: top left;
+  background: #ffffff;
+}
