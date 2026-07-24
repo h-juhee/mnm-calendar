@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CalendarLabelStyle, DateSchedule, ScheduleFormData, TemplateId, TitleTextStyle } from '../types/schedule';
+import type { CalendarLabelStyle, ClinicHours, DateSchedule, ScheduleFormData, TemplateId, TitleTextStyle } from '../types/schedule';
 import { NOTICE_MAX_LENGTH } from '../types/schedule';
 import { DEFAULT_FONT_ID, type FontId } from '../types/font';
 import {
@@ -26,6 +26,15 @@ function normalizeOutputSizes(value: unknown): string[] {
   return typeof value === 'string' ? [value] : [];
 }
 
+function normalizeClinicHours(value: ClinicHours | undefined): ClinicHours {
+  return {
+    rows: Array.isArray(value?.rows) ? value.rows : [],
+    lunchStart: value?.lunchStart ?? '',
+    lunchEnd: value?.lunchEnd ?? '',
+    note: value?.note ?? '',
+  };
+}
+
 function createEmptyFormData(
   hospitalId: string,
   year: number,
@@ -48,6 +57,7 @@ function createEmptyFormData(
     nextMonthEvent: '',
     outputSize: normalizeOutputSizes(keep?.outputSize),
     calendarMustInclude: keep?.calendarMustInclude ?? '',
+    clinicHours: normalizeClinicHours(keep?.clinicHours),
   };
 }
 
@@ -57,7 +67,13 @@ export function useScheduleBuilder(hospitalId: string) {
     const year = lastActive?.year ?? DEFAULT_YEAR;
     const month = lastActive?.month ?? DEFAULT_MONTH;
     const loaded = loadScheduleDraft(hospitalId, year, month);
-    return loaded ? { ...loaded, outputSize: normalizeOutputSizes(loaded.outputSize) } : createEmptyFormData(hospitalId, year, month);
+    return loaded
+      ? {
+          ...loaded,
+          outputSize: normalizeOutputSizes(loaded.outputSize),
+          clinicHours: normalizeClinicHours(loaded.clinicHours),
+        }
+      : createEmptyFormData(hospitalId, year, month);
   });
 
   useEffect(() => {
@@ -78,6 +94,7 @@ export function useScheduleBuilder(hospitalId: string) {
               fontId: prev.fontId,
               titleTextStyle: prev.titleTextStyle,
               outputSize: normalizeOutputSizes(loaded.outputSize),
+              clinicHours: normalizeClinicHours(loaded.clinicHours),
             }
           : createEmptyFormData(hospitalId, year, month, prev);
       });
@@ -136,6 +153,10 @@ export function useScheduleBuilder(hospitalId: string) {
     setFormData((prev) => ({ ...prev, calendarMustInclude }));
   }, []);
 
+  const setClinicHours = useCallback((clinicHours: ClinicHours) => {
+    setFormData((prev) => ({ ...prev, clinicHours }));
+  }, []);
+
   const reset = useCallback(() => {
     setFormData((prev) =>
       createEmptyFormData(hospitalId, prev.year, prev.month, {
@@ -159,6 +180,7 @@ export function useScheduleBuilder(hospitalId: string) {
       titleTextStyle: loaded.titleTextStyle ?? 'outline',
       outputSize: normalizeOutputSizes(loaded.outputSize),
       calendarMustInclude: loaded.calendarMustInclude ?? '',
+      clinicHours: normalizeClinicHours(loaded.clinicHours),
     }));
     return true;
   }, [hospitalId, formData.year, formData.month]);
@@ -195,6 +217,7 @@ export function useScheduleBuilder(hospitalId: string) {
       setNextMonthEvent,
       setOutputSize,
       setCalendarMustInclude,
+      setClinicHours,
       reset,
       loadPreviousMonth,
     },

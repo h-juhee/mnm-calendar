@@ -8,6 +8,7 @@ import ScheduleBTemplate from './templates/ScheduleBTemplate';
 import ScheduleCTemplate from './templates/ScheduleCTemplate';
 import ScheduleDTemplate from './templates/ScheduleDTemplate';
 import styles from './SchedulePreview.module.css';
+import { getOutputFormatMeta, type OutputFormat } from '../types/outputFormat';
 
 interface SchedulePreviewProps {
   hospital: HospitalInfo;
@@ -15,6 +16,7 @@ interface SchedulePreviewProps {
   calendarMatrix: CalendarCell[][];
   resolvedByDate: Map<string, DateSchedule>;
   onDateClick?: (dateKey: string) => void;
+  outputFormat: OutputFormat;
 }
 
 const TEMPLATE_COMPONENTS: Record<TemplateId, typeof ScheduleATemplate> = {
@@ -25,21 +27,22 @@ const TEMPLATE_COMPONENTS: Record<TemplateId, typeof ScheduleATemplate> = {
 };
 
 const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(function SchedulePreview(
-  { hospital, formData, calendarMatrix, resolvedByDate, onDateClick },
+  { hospital, formData, calendarMatrix, resolvedByDate, onDateClick, outputFormat },
   ref,
 ) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const format = getOutputFormatMeta(outputFormat);
 
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
-    const update = () => setScale(el.clientWidth / 1080);
+    const update = () => setScale(el.clientWidth / format.width);
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [format.width]);
 
   const Template = TEMPLATE_COMPONENTS[formData.templateId as TemplateId] ?? ScheduleATemplate;
   const fontOption = getFontOption(formData.fontId);
@@ -50,8 +53,13 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
 
   return (
     <div className={styles.wrapper} ref={wrapperRef}>
-      <div className={styles.scaledBox} style={{ height: 1080 * scale }}>
-        <div ref={ref} className={styles.exportNode} style={{ transform: `scale(${scale})` }}>
+      <div className={styles.scaledBox} style={{ height: format.height * scale }}>
+        <div
+          ref={ref}
+          className={styles.exportNode}
+          data-output-format={outputFormat}
+          style={{ width: format.width, height: format.height, transform: `scale(${scale})` }}
+        >
           <Template
             hospital={hospital}
             year={formData.year}
@@ -63,6 +71,8 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
             fontFamily={fontOption.family}
             calendarLabelStyle={formData.calendarLabelStyle}
             titleTextStyle={formData.titleTextStyle}
+            outputFormat={outputFormat}
+            clinicHours={formData.clinicHours}
           />
         </div>
       </div>

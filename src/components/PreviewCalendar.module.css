@@ -173,3 +173,106 @@
 .badgeSaturday {
   background: var(--schedule-badge-color, #65b6d8);
 }
+
+.a4 {
+  padding: 10px;
+  border-radius: 26px;
+}
+
+.a4 .weekdays {
+  min-height: 62px;
+}
+
+.a4 .weekday {
+  padding: 18px 0 16px;
+  font-size: 23px;
+}
+
+.a4 .cell {
+  gap: 14px;
+  padding: 14px 12px;
+}
+
+.a4 .day {
+  font-size: 32px;
+}
+
+.a4 .badge {
+  min-width: 120px;
+  min-height: 32px;
+  font-size: 20px;
+}
+
+.didVertical {
+  padding: 16px;
+  border-radius: 42px;
+}
+
+.didVertical .frame {
+  border-width: 4px;
+  border-radius: 32px;
+}
+
+.didVertical .weekdays {
+  min-height: 112px;
+}
+
+.didVertical .weekday {
+  padding: 30px 0 26px;
+  font-size: 40px;
+}
+
+.didVertical .cell {
+  gap: 24px;
+  padding: 24px 20px;
+  border-right-width: 2px;
+  border-bottom-width: 2px;
+}
+
+.didVertical .day {
+  font-size: 56px;
+}
+
+.didVertical .badge {
+  min-width: 210px;
+  min-height: 58px;
+  padding: 7px 24px;
+  font-size: 34px;
+}
+
+.didHorizontal {
+  padding: 16px;
+  border-radius: 42px;
+}
+
+.didHorizontal .frame {
+  border-width: 4px;
+  border-radius: 32px;
+}
+
+.didHorizontal .weekdays {
+  min-height: 110px;
+}
+
+.didHorizontal .weekday {
+  padding: 30px 0 26px;
+  font-size: 40px;
+}
+
+.didHorizontal .cell {
+  gap: 20px;
+  padding: 22px 18px;
+  border-right-width: 2px;
+  border-bottom-width: 2px;
+}
+
+.didHorizontal .day {
+  font-size: 56px;
+}
+
+.didHorizontal .badge {
+  min-width: 200px;
+  min-height: 56px;
+  padding: 7px 22px;
+  font-size: 32px;
+}

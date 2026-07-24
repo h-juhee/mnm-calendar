@@ -3,6 +3,7 @@ import type { FontId } from '../types/font';
 import { buildExportFilename, exportNodeAsPng } from '../utils/exportUtils';
 import { ensureFontLoaded } from '../utils/fontLoader';
 import styles from './ExportImageButton.module.css';
+import type { OutputFormat } from '../types/outputFormat';
 
 type ExportStatus = 'idle' | 'loading' | 'done' | 'error';
 
@@ -14,6 +15,7 @@ interface ExportImageButtonProps {
   fontId?: FontId;
   /** 아직 진료일정 내용을 입력하기 전이라 다운로드할 이미지가 준비되지 않은 상태입니다. */
   disabled?: boolean;
+  outputFormat: OutputFormat;
 }
 
 export default function ExportImageButton({
@@ -23,6 +25,7 @@ export default function ExportImageButton({
   month,
   fontId,
   disabled = false,
+  outputFormat,
 }: ExportImageButtonProps) {
   const [status, setStatus] = useState<ExportStatus>('idle');
 
@@ -31,7 +34,11 @@ export default function ExportImageButton({
     setStatus('loading');
     try {
       await ensureFontLoaded(fontId);
-      await exportNodeAsPng(nodeRef.current, buildExportFilename(hospitalName, year, month));
+      await exportNodeAsPng(
+        nodeRef.current,
+        buildExportFilename(hospitalName, year, month, outputFormat),
+        outputFormat,
+      );
       setStatus('done');
       setTimeout(() => setStatus('idle'), 2500);
     } catch {

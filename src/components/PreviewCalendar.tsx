@@ -4,6 +4,7 @@ import { getWeekdayLabels } from '../utils/scheduleUtils';
 import type { CalendarLabelStyle, DateSchedule } from '../types/schedule';
 import { SCHEDULE_TYPE_META } from '../types/schedule';
 import styles from './PreviewCalendar.module.css';
+import type { OutputFormat } from '../types/outputFormat';
 
 interface PreviewCalendarProps {
   calendarMatrix: CalendarCell[][];
@@ -11,6 +12,8 @@ interface PreviewCalendarProps {
   accentColor: string;
   onDateClick?: (dateKey: string) => void;
   labelStyle?: CalendarLabelStyle;
+  outputFormat?: OutputFormat;
+  className?: string;
 }
 
 const BADGE_CLASS: Record<string, string> = {
@@ -24,10 +27,21 @@ const BADGE_CLASS: Record<string, string> = {
   custom: styles.badgeHalf,
 };
 
-export default function PreviewCalendar({ calendarMatrix, resolvedByDate, accentColor, onDateClick, labelStyle = 'korean' }: PreviewCalendarProps) {
+export default function PreviewCalendar({
+  calendarMatrix,
+  resolvedByDate,
+  accentColor,
+  onDateClick,
+  labelStyle = 'korean',
+  outputFormat = 'square',
+  className,
+}: PreviewCalendarProps) {
   const weekdayLabels = getWeekdayLabels(labelStyle);
   return (
-    <div className={styles.wrap} style={{ '--accent': accentColor } as CSSProperties}>
+    <div
+      className={`${styles.wrap} ${styles[outputFormat]} ${className ?? ''}`}
+      style={{ '--accent': accentColor } as CSSProperties}
+    >
       <div className={styles.frame}>
         <div className={styles.weekdays}>
           {weekdayLabels.map((label, i) => (

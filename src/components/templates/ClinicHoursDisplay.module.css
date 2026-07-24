@@ -1,0 +1,110 @@
+.root {
+  position: absolute;
+  z-index: 1;
+  color: #171717;
+  font-family: 'Pretendard Variable', 'Pretendard', sans-serif;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.item strong {
+  margin-right: 0.3em;
+}
+
+.item em {
+  margin-left: 0.55em;
+  color: #fff;
+  background: #4779ca;
+  border-radius: 999px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.root p {
+  margin: 0;
+}
+
+.a4 {
+  top: 420px;
+  left: 92px;
+  width: 1050px;
+  font-size: 36px;
+}
+
+.a4 .grid {
+  row-gap: 14px;
+  column-gap: 20px;
+}
+
+.a4 .item em {
+  padding: 5px 12px;
+  font-size: 23px;
+}
+
+.a4 p {
+  margin-top: 14px;
+  font-size: 30px;
+}
+
+.didHorizontal {
+  top: 1110px;
+  left: 120px;
+  width: 1380px;
+  font-size: 54px;
+}
+
+.didHorizontal .grid {
+  grid-template-columns: 730px minmax(0, 1fr);
+  gap: 26px 45px;
+}
+
+.didHorizontal .item em {
+  padding: 8px 20px;
+  font-size: 34px;
+}
+
+.didHorizontal p {
+  margin-top: 18px;
+  font-size: 42px;
+}
+
+.didVertical {
+  top: 1030px;
+  left: 175px;
+  width: 1860px;
+  font-size: 54px;
+}
+
+.didVertical .grid {
+  grid-template-columns: max-content max-content;
+  gap: 24px 70px;
+}
+
+.didVertical .item em {
+  padding: 8px 18px;
+  font-size: 43px;
+  font-weight: 500;
+}
+
+.didVertical .item > span {
+  font-weight: 500;
+}
+
+.didVertical .item strong {
+  margin-right: 0.35em;
+}
+
+.didVertical p {
+  margin-top: 16px;
+  font-size: 43px;
+}

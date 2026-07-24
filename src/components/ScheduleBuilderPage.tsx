@@ -19,6 +19,9 @@ import ExportImageButton from './ExportImageButton';
 import CustomDesignRequestModal from './CustomDesignRequestModal';
 import Modal from './Modal';
 import styles from './ScheduleBuilderPage.module.css';
+import OutputFormatSelector from './OutputFormatSelector';
+import type { OutputFormat } from '../types/outputFormat';
+import ClinicHoursEditor from './ClinicHoursEditor';
 
 export default function ScheduleBuilderPage() {
   // Always begin with the intake screen. Browser storage survives a dev-server
@@ -51,6 +54,7 @@ function ScheduleBuilderContent({
   const [isCustomModalOpen, setCustomModalOpen] = useState(false);
   const [isTemplateModalOpen, setTemplateModalOpen] = useState(() => formData.templateId === null);
   const [previewMode, setPreviewMode] = useState<'sample' | 'schedule'>('schedule');
+  const [outputFormat, setOutputFormat] = useState<OutputFormat>('square');
   const exportNodeRef = useRef<HTMLDivElement>(null);
 
   const handleReset = () => {
@@ -127,6 +131,17 @@ function ScheduleBuilderContent({
             </section>
 
             <section className={styles.card}>
+              <h2 className={styles.cardTitle}>진료시간</h2>
+              <p className={styles.cardHint}>
+                A4와 DID 이미지의 제목 아래에 표시됩니다. 1080 × 1080 이미지에는 표시되지 않습니다.
+              </p>
+              <ClinicHoursEditor
+                value={formData.clinicHours ?? { rows: [], lunchStart: '', lunchEnd: '', note: '' }}
+                onChange={actions.setClinicHours}
+              />
+            </section>
+
+            <section className={styles.card}>
               <h2 className={styles.cardTitle}>정기 휴진 설정</h2>
               <p className={styles.cardHint}>매주 반복해서 쉬는 요일을 선택하세요.</p>
               <RecurringDaySelector selectedDays={formData.recurringClosedDays} onToggle={actions.toggleRecurringDay} />
@@ -171,6 +186,10 @@ function ScheduleBuilderContent({
               )}
             </div>
 
+            {selectedTemplate && (
+              <OutputFormatSelector value={outputFormat} onChange={setOutputFormat} />
+            )}
+
             {false && (
               <div className={styles.previewMode} aria-label="미리보기 종류">
                 <button
@@ -208,6 +227,7 @@ function ScheduleBuilderContent({
                 calendarMatrix={calendarMatrix}
                 resolvedByDate={resolvedByDate}
                 onDateClick={setSelectedDateKey}
+                outputFormat={outputFormat}
               />
             )}
 
@@ -224,6 +244,7 @@ function ScheduleBuilderContent({
                   month={formData.month}
                   fontId={(formData.fontId as FontId) ?? DEFAULT_FONT_ID}
                   disabled={false}
+                  outputFormat={outputFormat}
                 />
                 <button type="button" className={styles.secondaryButton} onClick={() => setCustomModalOpen(true)}>
                   맞춤 디자인 요청하기

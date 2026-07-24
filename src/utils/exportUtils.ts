@@ -1,6 +1,5 @@
 import { toPng } from 'html-to-image';
-
-const EXPORT_SIZE = 1080;
+import { getOutputFormatMeta, type OutputFormat } from '../types/outputFormat';
 
 async function waitForFontsReady(): Promise<void> {
   const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
@@ -26,28 +25,29 @@ async function waitForImagesLoaded(node: HTMLElement): Promise<void> {
   );
 }
 
-/** 지정된 노드를 정확히 1080x1080 크기의 PNG로 캡처합니다. */
-export async function renderNodeAsPng(node: HTMLElement): Promise<string> {
+/** 지정한 출력 규격의 정확한 픽셀 크기로 PNG를 캡처합니다. */
+export async function renderNodeAsPng(node: HTMLElement, outputFormat: OutputFormat = 'square'): Promise<string> {
   await waitForFontsReady();
   await waitForImagesLoaded(node);
+  const format = getOutputFormatMeta(outputFormat);
 
   return toPng(node, {
-    width: EXPORT_SIZE,
-    height: EXPORT_SIZE,
+    width: format.width,
+    height: format.height,
     pixelRatio: 1,
     backgroundColor: '#ffffff',
     cacheBust: true,
     style: {
       transform: 'none',
-      width: `${EXPORT_SIZE}px`,
-      height: `${EXPORT_SIZE}px`,
+      width: `${format.width}px`,
+      height: `${format.height}px`,
     },
   });
 
 }
 
-export async function exportNodeAsPng(node: HTMLElement, filename: string): Promise<void> {
-  const dataUrl = await renderNodeAsPng(node);
+export async function exportNodeAsPng(node: HTMLElement, filename: string, outputFormat: OutputFormat = 'square'): Promise<void> {
+  const dataUrl = await renderNodeAsPng(node, outputFormat);
   const link = document.createElement('a');
   link.href = dataUrl;
   link.download = filename;
@@ -56,8 +56,9 @@ export async function exportNodeAsPng(node: HTMLElement, filename: string): Prom
   link.remove();
 }
 
-export function buildExportFilename(hospitalName: string, year: number, month: number): string {
+export function buildExportFilename(hospitalName: string, year: number, month: number, outputFormat: OutputFormat = 'square'): string {
   const pad = String(month).padStart(2, '0');
   const safeName = hospitalName.replace(/[\\/:*?"<>|]/g, '');
-  return `${safeName}_${year}년_${pad}월_진료일정.png`;
+  const suffix = outputFormat === 'square' ? '1080x1080' : getOutputFormatMeta(outputFormat).label.replace(/\s/g, '_');
+  return `${safeName}_${year}년_${pad}월_진료일정_${suffix}.png`;
 }

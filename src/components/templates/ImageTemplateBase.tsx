@@ -3,9 +3,11 @@ import PreviewCalendar from '../PreviewCalendar';
 import type { TemplateProps } from './templateTypes';
 import { getCalendarSubtitle, getCalendarTitle } from '../../utils/scheduleUtils';
 import styles from './ImageTemplateBase.module.css';
+import type { OutputFormat } from '../../types/outputFormat';
+import ClinicHoursDisplay from './ClinicHoursDisplay';
 
 interface ImageTemplateBaseProps extends TemplateProps {
-  backgroundUrl: string;
+  backgroundUrls: Record<OutputFormat, string>;
   titleColor: string;
   textColor: string;
   /** 'heroTitle'은 큰 제목을 좌측에, 병원명을 우측 상단 작은 태그로 배치합니다. */
@@ -30,19 +32,21 @@ export default function ImageTemplateBase({
   notice,
   fontFamily,
   calendarLabelStyle,
-  backgroundUrl,
+  backgroundUrls,
   titleColor,
   textColor,
   headerVariant = 'standard',
   titleOutlineColor,
+  outputFormat,
+  clinicHours,
 }: ImageTemplateBaseProps) {
   const titleText = getCalendarTitle(month, calendarLabelStyle);
   const subtitleText = getCalendarSubtitle(calendarLabelStyle);
 
   return (
     <div
-      className={`${styles.root} ${calendarMatrix.length === 6 ? styles.sixWeekMonth : ''}`}
-      style={{ backgroundImage: `url(${backgroundUrl})`, '--export-font-family': fontFamily } as CSSProperties}
+      className={`${styles.root} ${styles[outputFormat]} ${calendarMatrix.length === 6 ? styles.sixWeekMonth : ''}`}
+      style={{ backgroundImage: `url(${backgroundUrls[outputFormat]})`, '--export-font-family': fontFamily } as CSSProperties}
     >
       {headerVariant === 'heroTitle' ? (
         <div className={styles.heroHeader}>
@@ -93,12 +97,16 @@ export default function ImageTemplateBase({
         </>
       )}
 
+      <ClinicHoursDisplay value={clinicHours} outputFormat={outputFormat} />
+
       <PreviewCalendar
+        className={styles.calendarArea}
         calendarMatrix={calendarMatrix}
         resolvedByDate={resolvedByDate}
         accentColor={hospital.primaryColor}
         onDateClick={onDateClick}
         labelStyle={calendarLabelStyle}
+        outputFormat={outputFormat}
       />
 
       {notice && <p className={styles.noticeBox}>{notice}</p>}

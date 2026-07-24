@@ -1,5 +1,6 @@
 import type { CalendarCell } from '../../utils/scheduleUtils';
-import type { CalendarLabelStyle, DateSchedule, HospitalInfo, TitleTextStyle } from '../../types/schedule';
+import type { CalendarLabelStyle, ClinicHours, DateSchedule, HospitalInfo, TitleTextStyle } from '../../types/schedule';
+import type { OutputFormat } from '../../types/outputFormat';
 
 export interface TemplateProps {
   hospital: HospitalInfo;
@@ -13,4 +14,6 @@ export interface TemplateProps {
   fontFamily: string;
   calendarLabelStyle?: CalendarLabelStyle;
   titleTextStyle?: TitleTextStyle;
+  outputFormat: OutputFormat;
+  clinicHours?: ClinicHours;
 }

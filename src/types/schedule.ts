@@ -50,6 +50,22 @@ export interface ScheduleFormData {
   nextMonthEvent?: string;
   outputSize?: string[];
   calendarMustInclude?: string;
+  clinicHours?: ClinicHours;
+}
+
+export interface ClinicHoursRow {
+  id: string;
+  days: number[];
+  startTime: string;
+  endTime: string;
+  badgeLabel?: string;
+}
+
+export interface ClinicHours {
+  rows: ClinicHoursRow[];
+  lunchStart: string;
+  lunchEnd: string;
+  note: string;
 }
 
 export interface OutputSizeMeta {
