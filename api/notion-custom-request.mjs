@@ -10,7 +10,20 @@ const FIELD_CANDIDATES = {
   nextMonthEvent: ['\uC774\uBCA4\uD2B8', '\uB2E4\uC74C\uB2EC \uC774\uBCA4\uD2B8', '\uB2E4\uC74C\uB2EC\uC774\uBCA4\uD2B8'],
   specialNotes: ['\uD2B9\uC774\uC0AC\uD56D/\uBCD1\uC6D0\uC694\uCCAD', '\uD2B9\uC774\uC0AC\uD56D / \uBCD1\uC6D0 \uC694\uCCAD\uC0AC\uD56D', '\uD2B9\uC774\uC0AC\uD56D', '\uBE44\uACE0'],
   requestDetails: ['\uAE30\uD0C0\uC694\uCCAD', '\uAE30\uD0C0 \uC694\uCCAD', '\uC694\uCCAD \uB0B4\uC6A9', '\uC694\uCCAD\uC0AC\uD56D'],
-  calendarMustInclude: ['\uB2EC\uB825 \uD544\uC218 \uD3EC\uD568', '\uB2EC\uB825\uC5D0 \uAF2D \uD45C\uAE30\uD560 \uB0B4\uC6A9'],
+  calendarMustInclude: [
+    '\uB2EC\uB825 \uD45C\uAE30 \uD544\uC218\uB0B4\uC6A9',
+    '\uB2EC\uB825 \uD45C\uAE30 \uD544\uC218 \uB0B4\uC6A9',
+    '\uB2EC\uB825 \uD544\uC218 \uD3EC\uD568',
+    '\uCEA8\uB9B0\uB354 \uD45C\uAE30 \uD544\uC218\uB0B4\uC6A9',
+    '\uCEA8\uB9B0\uB354 \uD45C\uAE30 \uD544\uC218 \uB0B4\uC6A9',
+    '\uCEA8\uB9B0\uB354 \uD544\uC218 \uD3EC\uD568',
+    '\uB2EC\uB825\uC5D0 \uAF2D \uD45C\uAE30\uD560 \uB0B4\uC6A9',
+  ],
+  lunchHours: [
+    '\uC810\uC2EC\uC2DC\uAC04',
+    '\uC810\uC2EC \uC2DC\uAC04',
+    '\uC9C4\uB8CC \uC810\uC2EC\uC2DC\uAC04',
+  ],
   scheduleData: ['\uC77C\uC815\uB370\uC774\uD130', '\uC77C\uC815 \uB370\uC774\uD130'],
   closedDates: ['\uD734\uC9C4\uC77C', '\uD734\uC9C4 \uC77C'],
   createdAt: ['\uC81C\uCD9C\uC77C', '\uC811\uC218\uC77C', '\uC811\uC218\uC77C\uC2DC', '\uC0DD\uC131\uC77C'],
@@ -51,11 +64,29 @@ function fieldValue(request, field) {
   if (field === 'editItems') return request[field]?.join(', ');
   if (field === 'templateId') return request.templateId?.replace('schedule', '') ?? null;
   if (field === 'outputSize') {
-    const labels = { popup: '\uD31D\uC5C5', a4: 'A4', verticalDid: '\uC138\uB85C DID', horizontalDid: '\uAC00\uB85C DID' };
+    const labels = { popup: '\uD31D\uC5C5\uC6A9', a4: 'A4', verticalDid: '\uC138\uB85C DID', horizontalDid: '\uAC00\uB85C DID' };
     const sizes = Array.isArray(request.outputSize) ? request.outputSize : [request.outputSize].filter(Boolean);
     return sizes.map((size) => labels[size] ?? size).join(', ');
   }
   return request[field];
+}
+
+function normalizePropertyName(name) {
+  return name
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/\uCEA8\uB9B0\uB354/g, '\uB2EC\uB825')
+    .replace(/\uD3EC\uD568/g, '\uB0B4\uC6A9')
+    .replace(/[^\p{L}\p{N}]/gu, '');
+}
+
+function findSchemaPropertyName(schema, candidates) {
+  const propertyNames = Object.keys(schema);
+  const exact = candidates.find((name) => schema[name]);
+  if (exact) return exact;
+
+  const normalizedCandidates = new Set(candidates.map(normalizePropertyName));
+  return propertyNames.find((name) => normalizedCandidates.has(normalizePropertyName(name)));
 }
 
 function blocksFor(request) {
@@ -64,8 +95,10 @@ function blocksFor(request) {
     ['수정 항목', request.editItems?.join(', ')], ['요청 내용', request.requestDetails],
     ['색상 변경 요청', request.colorRequest], ['문구 수정 요청', request.textRequest],
     ['이미지 교체 파일', request.replacementImageFilename],
-    ['다음달 이벤트', request.nextMonthEvent], ['출력 사이즈', request.outputSize],
-    ['캘린더 필수 포함', request.calendarMustInclude], ['특이사항', request.specialNotes],
+    ['다음달 이벤트', request.nextMonthEvent], ['출력 사이즈', fieldValue(request, 'outputSize')],
+    ['캘린더 필수 포함', request.calendarMustInclude],
+    ['점심시간', request.lunchHours],
+    ['특이사항', request.specialNotes],
   ].filter(([, value]) => value);
 
   return entries.map(([label, value]) => ({
@@ -194,7 +227,7 @@ export default async function handler(req, res) {
     properties[title[0]] = propertyValue(title[1], pageTitle(request));
 
     for (const [field, candidates] of Object.entries(FIELD_CANDIDATES)) {
-      const match = candidates.find((name) => schema[name]);
+      const match = findSchemaPropertyName(schema, candidates);
       if (!match) continue;
       const rawValue = fieldValue(request, field);
       const value = field === 'outputSize' && schema[match].type === 'select' ? rawValue.split(', ')[0] : rawValue;

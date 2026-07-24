@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { CalendarCell } from '../utils/scheduleUtils';
 import { getWeekdayLabels } from '../utils/scheduleUtils';
-import type { CalendarLabelStyle, DateSchedule } from '../types/schedule';
+import type { CalendarLabelStyle, DateSchedule, LayerEdit } from '../types/schedule';
 import { SCHEDULE_TYPE_META } from '../types/schedule';
 import styles from './PreviewCalendar.module.css';
 import type { OutputFormat } from '../types/outputFormat';
@@ -14,6 +14,8 @@ interface PreviewCalendarProps {
   labelStyle?: CalendarLabelStyle;
   outputFormat?: OutputFormat;
   className?: string;
+  edit?: LayerEdit;
+  selected?: boolean;
 }
 
 const BADGE_CLASS: Record<string, string> = {
@@ -35,12 +37,21 @@ export default function PreviewCalendar({
   labelStyle = 'korean',
   outputFormat = 'square',
   className,
+  edit,
+  selected,
 }: PreviewCalendarProps) {
   const weekdayLabels = getWeekdayLabels(labelStyle);
   return (
     <div
       className={`${styles.wrap} ${styles[outputFormat]} ${className ?? ''}`}
-      style={{ '--accent': accentColor } as CSSProperties}
+      data-edit-layer="calendar"
+      data-selected={selected || undefined}
+      style={{
+        '--accent': accentColor,
+        '--calendar-edit-x': `${edit?.x ?? 0}px`,
+        '--calendar-edit-y': `${edit?.y ?? 0}px`,
+        '--calendar-edit-scale': edit?.scale ?? 1,
+      } as CSSProperties}
     >
       <div className={styles.frame}>
         <div className={styles.weekdays}>

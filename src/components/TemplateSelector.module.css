@@ -4,6 +4,7 @@
   gap: 12px;
 }
 
+
 .card {
   display: flex;
   flex-direction: column;
@@ -39,6 +40,7 @@
   object-fit: cover;
   border-radius: inherit;
 }
+
 
 .name {
   font-size: 13px;

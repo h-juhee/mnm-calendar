@@ -1,4 +1,5 @@
 import type { CalendarLabelStyle, DateSchedule, ScheduleFormData, ScheduleType } from '../types/schedule';
+import { getKoreanHolidays } from './holidayProvider';
 
 export const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'] as const;
 
@@ -127,6 +128,11 @@ export function resolveDateSchedule(
     return { date: dateKey, type: 'closed', label: '휴가' };
   }
 
+  const holiday = getKoreanHolidays(Number(dateKey.slice(0, 4))).find((item) => item.date === dateKey);
+  if (holiday) {
+    return { date: dateKey, type: 'closed', label: holiday.name };
+  }
+
   if (formData.recurringClosedDays.includes(weekday)) {
     return { date: dateKey, type: 'closed' };
   }
@@ -183,7 +189,7 @@ export function getPreviousMonth(year: number, month: number): { year: number; m
 export function hasScheduleContent(
   formData: Pick<
     ScheduleFormData,
-    'recurringClosedDays' | 'dateSchedules' | 'vacationStart' | 'vacationEnd' | 'notice' | 'nextMonthEvent' | 'calendarMustInclude'
+    'recurringClosedDays' | 'dateSchedules' | 'vacationStart' | 'vacationEnd' | 'nextMonthEvent' | 'calendarMustInclude'
   >,
 ): boolean {
   return (
@@ -191,7 +197,6 @@ export function hasScheduleContent(
     formData.dateSchedules.length > 0 ||
     Boolean(formData.vacationStart) ||
     Boolean(formData.vacationEnd) ||
-    formData.notice.trim().length > 0 ||
     Boolean(formData.nextMonthEvent?.trim()) ||
     Boolean(formData.calendarMustInclude?.trim())
   );

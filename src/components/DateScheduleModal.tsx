@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { DateSchedule, ScheduleType } from '../types/schedule';
-import { SCHEDULE_TYPE_META } from '../types/schedule';
+import { SCHEDULE_TYPE_DEFAULT_BADGE_COLOR, SCHEDULE_TYPE_META } from '../types/schedule';
 import Modal from './Modal';
 import styles from './DateScheduleModal.module.css';
 
@@ -32,11 +32,18 @@ export default function DateScheduleModal({
 
   const [year, month, day] = dateKey.split('-');
   const dateLabel = `${year}년 ${Number(month)}월 ${Number(day)}일`;
+  const displayedBadgeColor = badgeColor || SCHEDULE_TYPE_DEFAULT_BADGE_COLOR[type];
 
-  const invalidTime = type === 'shortened' && Boolean(startTime) && Boolean(endTime) && startTime >= endTime;
+  const timeError = type !== 'shortened'
+    ? null
+    : !startTime || !endTime
+      ? '시작 시간과 종료 시간을 모두 선택해 주세요.'
+      : startTime >= endTime
+        ? '종료 시간은 시작 시간 이후여야 합니다.'
+        : null;
 
   const handleSave = () => {
-    if (invalidTime) return;
+    if (timeError) return;
     onSave({
       date: dateKey,
       type,
@@ -95,6 +102,9 @@ export default function DateScheduleModal({
             className={styles.input}
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
+            required
+            aria-invalid={timeError ? 'true' : undefined}
+            aria-describedby={timeError ? 'shortened-time-error' : undefined}
           />
           <label className={styles.label} htmlFor="shortened-end-time">
             단축 진료 종료 시간
@@ -105,6 +115,9 @@ export default function DateScheduleModal({
             className={styles.input}
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
+            required
+            aria-invalid={timeError ? 'true' : undefined}
+            aria-describedby={timeError ? 'shortened-time-error' : undefined}
           />
           <label className={styles.toggleOption}>
             <input
@@ -114,7 +127,11 @@ export default function DateScheduleModal({
             />
             시간 배지 색상 표시
           </label>
-          {invalidTime && <p className={styles.error}>종료 시간은 시작 시간 이후여야 합니다.</p>}
+          {timeError && (
+            <p id="shortened-time-error" className={styles.error} role="alert">
+              {timeError}
+            </p>
+          )}
         </div>
       )}
 
@@ -145,7 +162,7 @@ export default function DateScheduleModal({
               id="schedule-badge-color"
               type="color"
               className={styles.colorInput}
-              value={badgeColor || '#4779ca'}
+              value={displayedBadgeColor}
               onChange={(e) => setBadgeColor(e.target.value)}
               aria-label="일정 라벨 색상 선택"
             />
@@ -176,7 +193,7 @@ export default function DateScheduleModal({
           type="button"
           className={`${styles.button} ${styles.buttonPrimary}`}
           onClick={handleSave}
-          disabled={invalidTime}
+          disabled={Boolean(timeError)}
         >
           저장
         </button>

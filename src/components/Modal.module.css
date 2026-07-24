@@ -6,7 +6,7 @@
   align-items: center;
   justify-content: center;
   padding: 16px;
-  z-index: 100;
+  z-index: 1000;
 }
 
 .panel {
@@ -24,7 +24,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
+}
+
+.headerWithVisual {
+  justify-content: flex-start;
+  gap: 14px;
 }
 
 .title {
@@ -59,7 +64,6 @@
 
 @media (max-width: 767px) {
   .backdrop {
-    padding: 0;
-    background: var(--color-surface);
+    padding: 16px;
   }
 }

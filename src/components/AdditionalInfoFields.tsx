@@ -17,7 +17,7 @@ export default function AdditionalInfoFields({
     <div className={styles.wrap}>
       <div className={styles.field}>
         <label className={styles.label} htmlFor="calendar-must-include">
-          달력에 꼭 표기할 내용
+          달력에 꼭 표기할 내용 · 선택
         </label>
         <textarea
           id="calendar-must-include"
@@ -30,7 +30,7 @@ export default function AdditionalInfoFields({
 
       <div className={styles.field}>
         <label className={styles.label} htmlFor="next-month-event">
-          다음 달 이벤트 내용이 있다면 알려 주세요
+          다음 달 이벤트 · 선택
         </label>
         <textarea
           id="next-month-event"

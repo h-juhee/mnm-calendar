@@ -49,3 +49,9 @@
   background: var(--color-primary-bg);
   border-color: var(--color-primary);
 }
+
+.error {
+  margin: -4px 0 0;
+  font-size: 13px;
+  color: var(--color-danger);
+}

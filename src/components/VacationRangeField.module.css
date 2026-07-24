@@ -70,9 +70,7 @@
 
 .popover {
   position: fixed;
-  z-index: 101;
-  top: 50%;
-  left: 50%;
+  z-index: 1101;
   width: min(calc(100vw - 32px), 400px);
   aspect-ratio: 1;
   display: flex;
@@ -82,15 +80,14 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
-  transform: translate(-50%, -50%);
 }
 
 .backdrop {
   position: fixed;
-  z-index: 100;
+  z-index: 1100;
   inset: 0;
   border: 0;
-  background: rgb(15 23 42 / 34%);
+  background: transparent;
   cursor: default;
 }
 
@@ -140,6 +137,7 @@
   .clearButton { flex: 1; }
   .popover {
     top: auto;
+    left: 50%;
     bottom: 0;
     width: min(100%, 420px);
     padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
@@ -148,5 +146,9 @@
     border-left: 0;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     transform: translateX(-50%);
+  }
+
+  .backdrop {
+    background: rgb(15 23 42 / 34%);
   }
 }

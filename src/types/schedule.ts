@@ -14,6 +14,19 @@ export type ScheduleType =
 export type CalendarLabelStyle = 'korean' | 'english' | 'hanja' | 'japanese';
 export type TitleTextStyle = 'outline' | 'filled';
 
+export type EditableLayerId = 'title' | 'subtitle' | 'hospital' | 'clinicHours' | 'calendar';
+
+export interface LayerEdit {
+  x?: number;
+  y?: number;
+  fontSize?: number;
+  color?: string;
+  text?: string;
+  scale?: number;
+}
+
+export type DesignEdits = Partial<Record<EditableLayerId, LayerEdit>>;
+
 export interface DateSchedule {
   date: string; // YYYY-MM-DD
   type: ScheduleType;
@@ -41,7 +54,6 @@ export interface ScheduleFormData {
   dateSchedules: DateSchedule[]; // 사용자가 개별적으로 지정한 날짜만 포함
   vacationStart?: string;
   vacationEnd?: string;
-  notice: string;
   templateId: TemplateId | null;
   /** 진료일정 이미지에 적용할 폰트. 과거에 저장된 데이터에는 없을 수 있어 선택 필드입니다. */
   fontId?: FontId;
@@ -51,6 +63,8 @@ export interface ScheduleFormData {
   outputSize?: string[];
   calendarMustInclude?: string;
   clinicHours?: ClinicHours;
+  /** 미리보기에서 직접 조정한 레이어별 위치와 글자 스타일입니다. */
+  designEdits?: DesignEdits;
 }
 
 export interface ClinicHoursRow {
@@ -65,6 +79,8 @@ export interface ClinicHours {
   rows: ClinicHoursRow[];
   lunchStart: string;
   lunchEnd: string;
+  lunchDisabled?: boolean;
+  hidden?: boolean;
   note: string;
 }
 
@@ -132,4 +148,15 @@ export const SCHEDULE_TYPE_META: Record<
   open: { label: '정상 진료', shortLabel: '정상진료', icon: '○' },
 };
 
-export const NOTICE_MAX_LENGTH = 80;
+/** 달력 라벨에 사용자 지정 색상이 없을 때 일정 유형별로 표시하는 기본색입니다. */
+export const SCHEDULE_TYPE_DEFAULT_BADGE_COLOR: Record<ScheduleType, string> = {
+  closed: '#dd4b4b',
+  morningClosed: '#4779ca',
+  afternoonClosed: '#4779ca',
+  seminarClosed: '#dd4b4b',
+  shortened: '#1a9c6b',
+  night: '#4779ca',
+  saturday: '#65b6d8',
+  custom: '#4779ca',
+  open: '#4779ca',
+};

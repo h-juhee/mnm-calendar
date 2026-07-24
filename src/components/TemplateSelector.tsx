@@ -10,21 +10,21 @@ interface TemplateSelectorProps {
 export default function TemplateSelector({ selectedId, onSelect }: TemplateSelectorProps) {
   return (
     <div className={styles.list} role="radiogroup" aria-label="디자인 템플릿">
-      {TEMPLATES.map((tpl) => {
-        const selected = tpl.id === selectedId;
+      {TEMPLATES.map((template) => {
+        const selected = template.id === selectedId;
         return (
           <button
-            key={tpl.id}
+            key={template.id}
             type="button"
             role="radio"
             aria-checked={selected}
             className={selected ? `${styles.card} ${styles.cardSelected}` : styles.card}
-            onClick={() => onSelect(tpl.id)}
+            onClick={() => onSelect(template.id)}
           >
             <div className={styles.thumb}>
-              <img className={styles.thumbImage} src={tpl.previewImageUrl} alt="" />
+              <img className={styles.thumbImage} src={template.previewImageUrl} alt="" />
             </div>
-            <span className={styles.name}>{tpl.name}</span>
+            <span className={styles.name}>{template.name}</span>
             {selected && <span className={styles.selectedBadge}>선택됨 ✓</span>}
           </button>
         );

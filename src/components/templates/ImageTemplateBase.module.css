@@ -14,6 +14,24 @@
   overflow: hidden;
 }
 
+.customBackground {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.customBackground img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.root > :not(.customBackground) {
+  z-index: 1;
+}
+
 /* 6주 달도 5주 달과 비슷한 행 높이를 유지하도록, 상·하단 여백과 헤더를 조금 압축한다. */
 .sixWeekMonth {
   padding-top: 44px;
@@ -86,6 +104,7 @@
   line-height: 1.05;
   letter-spacing: -1.5px;
   word-break: keep-all;
+  white-space: nowrap;
 }
 
 .heroTitleBlock .subtitle {
@@ -115,17 +134,14 @@
   white-space: nowrap;
 }
 
-.noticeBox {
-  min-height: 56px;
-  padding: 14px 20px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.88);
-  font-size: 17px;
-  line-height: 1.5;
-  color: #374151;
-  text-align: center;
-  word-break: keep-all;
-  overflow-wrap: break-word;
+.calendarArea {
+  transform:
+    translate(
+      calc(var(--calendar-base-x, 0px) + var(--calendar-edit-x, 0px)),
+      calc(var(--calendar-base-y, 0px) + var(--calendar-edit-y, 0px))
+    )
+    scale(var(--calendar-edit-scale, 1));
+  transform-origin: top left;
 }
 
 /* Design-team canvases use their native pixel sizes. These variants keep the
@@ -142,6 +158,10 @@
   min-height: 560px;
 }
 
+.a4.noClinicHours .heroHeader {
+  min-height: 340px;
+}
+
 .a4 .heroTitleBlock {
   margin-left: 25px;
   padding-top: 130px;
@@ -149,6 +169,11 @@
 
 .a4 .heroTitle {
   font-size: 100px;
+}
+
+.a4 .heroTitle[data-label-style='english'] {
+  font-size: 62px;
+  letter-spacing: -1px;
 }
 
 .a4 .heroTitleBlock .subtitle {
@@ -170,7 +195,7 @@
   flex: 0 0 940px;
   margin-right: -8px;
   margin-left: -8px;
-  transform: translateY(-12px);
+  --calendar-base-y: -12px;
 }
 
 .didVertical {
@@ -186,6 +211,10 @@
   align-content: start;
   min-height: 1400px;
   transform: translate(25px, 130px);
+}
+
+.didVertical.noClinicHours .heroHeader {
+  min-height: 960px;
 }
 
 .didVertical .heroTitleBlock {
@@ -218,16 +247,9 @@
   font-size: 75px;
 }
 
-.didVertical .noticeBox {
-  min-height: 104px;
-  padding: 24px 36px;
-  border-radius: 28px;
-  font-size: 34px;
-}
-
 .didVertical .calendarArea {
   flex: 0 0 1750px;
-  transform: translateY(-95px);
+  --calendar-base-y: -95px;
 }
 
 .didHorizontal {
@@ -272,13 +294,4 @@
   grid-column: 2;
   grid-row: 1 / 3;
   margin: 22px 26px;
-}
-
-.didHorizontal .noticeBox {
-  grid-column: 1;
-  grid-row: 2;
-  min-height: 100px;
-  padding: 25px 34px;
-  border-radius: 28px;
-  font-size: 34px;
 }

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CalendarLabelStyle, ClinicHours, DateSchedule, ScheduleFormData, TemplateId, TitleTextStyle } from '../types/schedule';
-import { NOTICE_MAX_LENGTH } from '../types/schedule';
+import type { CalendarLabelStyle, ClinicHours, DateSchedule, DesignEdits, ScheduleFormData, TemplateId, TitleTextStyle } from '../types/schedule';
 import { DEFAULT_FONT_ID, type FontId } from '../types/font';
 import {
   buildCalendarMatrix,
@@ -26,11 +25,21 @@ function normalizeOutputSizes(value: unknown): string[] {
   return typeof value === 'string' ? [value] : [];
 }
 
+function normalizeTemplateId(value: unknown): TemplateId | null {
+  return value === 'scheduleA' || value === 'scheduleB' || value === 'scheduleC' || value === 'scheduleD'
+    ? value
+    : value === 'custom'
+      ? 'scheduleA'
+      : null;
+}
+
 function normalizeClinicHours(value: ClinicHours | undefined): ClinicHours {
   return {
     rows: Array.isArray(value?.rows) ? value.rows : [],
     lunchStart: value?.lunchStart ?? '',
     lunchEnd: value?.lunchEnd ?? '',
+    lunchDisabled: value?.lunchDisabled ?? false,
+    hidden: value?.hidden ?? false,
     note: value?.note ?? '',
   };
 }
@@ -49,7 +58,6 @@ function createEmptyFormData(
     dateSchedules: [],
     vacationStart: undefined,
     vacationEnd: undefined,
-    notice: keep?.notice ?? '',
     templateId: keep?.templateId ?? null,
     fontId: keep?.fontId ?? DEFAULT_FONT_ID,
     calendarLabelStyle: keep?.calendarLabelStyle ?? 'korean',
@@ -58,6 +66,7 @@ function createEmptyFormData(
     outputSize: normalizeOutputSizes(keep?.outputSize),
     calendarMustInclude: keep?.calendarMustInclude ?? '',
     clinicHours: normalizeClinicHours(keep?.clinicHours),
+    designEdits: keep?.designEdits ?? {},
   };
 }
 
@@ -70,6 +79,7 @@ export function useScheduleBuilder(hospitalId: string) {
     return loaded
       ? {
           ...loaded,
+          templateId: normalizeTemplateId(loaded.templateId),
           outputSize: normalizeOutputSizes(loaded.outputSize),
           clinicHours: normalizeClinicHours(loaded.clinicHours),
         }
@@ -89,6 +99,7 @@ export function useScheduleBuilder(hospitalId: string) {
         return loaded
           ? {
               ...loaded,
+              templateId: normalizeTemplateId(loaded.templateId),
               // The selected font is a design preference, so it stays the
               // same when moving between monthly schedule drafts.
               fontId: prev.fontId,
@@ -119,10 +130,6 @@ export function useScheduleBuilder(hospitalId: string) {
 
   const setVacationRange = useCallback((start: string | undefined, end: string | undefined) => {
     setFormData((prev) => ({ ...prev, vacationStart: start, vacationEnd: end }));
-  }, []);
-
-  const setNotice = useCallback((notice: string) => {
-    setFormData((prev) => ({ ...prev, notice: notice.slice(0, NOTICE_MAX_LENGTH) }));
   }, []);
 
   const setTemplateId = useCallback((templateId: TemplateId) => {
@@ -157,6 +164,10 @@ export function useScheduleBuilder(hospitalId: string) {
     setFormData((prev) => ({ ...prev, clinicHours }));
   }, []);
 
+  const setDesignEdits = useCallback((designEdits: DesignEdits) => {
+    setFormData((prev) => ({ ...prev, designEdits }));
+  }, []);
+
   const reset = useCallback(() => {
     setFormData((prev) =>
       createEmptyFormData(hospitalId, prev.year, prev.month, {
@@ -174,8 +185,7 @@ export function useScheduleBuilder(hospitalId: string) {
     setFormData((prev) => ({
       ...prev,
       recurringClosedDays: loaded.recurringClosedDays,
-      notice: loaded.notice,
-      templateId: loaded.templateId,
+      templateId: normalizeTemplateId(loaded.templateId),
       fontId: loaded.fontId ?? DEFAULT_FONT_ID,
       titleTextStyle: loaded.titleTextStyle ?? 'outline',
       outputSize: normalizeOutputSizes(loaded.outputSize),
@@ -209,7 +219,6 @@ export function useScheduleBuilder(hospitalId: string) {
       setDateSchedule,
       clearDateSchedule,
       setVacationRange,
-      setNotice,
       setTemplateId,
       setFontId,
       setCalendarLabelStyle,
@@ -218,6 +227,7 @@ export function useScheduleBuilder(hospitalId: string) {
       setOutputSize,
       setCalendarMustInclude,
       setClinicHours,
+      setDesignEdits,
       reset,
       loadPreviousMonth,
     },

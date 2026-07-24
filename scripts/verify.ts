@@ -13,6 +13,7 @@ import {
 } from '../src/utils/scheduleUtils';
 import { buildExportFilename } from '../src/utils/exportUtils';
 import type { ScheduleFormData } from '../src/types/schedule';
+import { SCHEDULE_TYPE_DEFAULT_BADGE_COLOR } from '../src/types/schedule';
 
 // Node 실행 환경에는 브라우저 localStorage가 없으므로 검증용 최소 메모리 구현을 주입합니다.
 class MemoryStorage {
@@ -39,6 +40,9 @@ const {
   saveCustomDesignRequest,
   listCustomDesignRequests,
   scheduleKey,
+  saveHospitalInfo,
+  loadHospitalInfo,
+  removeHospitalInfo,
   saveLastActiveMonth,
   loadLastActiveMonth,
 } = await import('../src/utils/storageUtils');
@@ -56,7 +60,6 @@ function baseFormData(overrides: Partial<ScheduleFormData> = {}): ScheduleFormDa
     month: 8,
     recurringClosedDays: [],
     dateSchedules: [],
-    notice: '',
     templateId: 'basic',
     ...overrides,
   };
@@ -204,29 +207,50 @@ test('formatDateKey는 YYYY-MM-DD 형식(0 패딩 포함)으로 생성된다', (
   assert.equal(formatDateKey(2026, 12, 31), '2026-12-31');
 });
 
+test('일정 유형별 색상 선택기의 기본색이 달력 라벨 기본색과 일치한다', () => {
+  assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.closed, '#dd4b4b');
+  assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.seminarClosed, '#dd4b4b');
+  assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.shortened, '#1a9c6b');
+  assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.saturday, '#65b6d8');
+});
+
 test('buildExportFilename은 파일명에 사용할 수 없는 문자를 제거하고 규격대로 생성한다', () => {
-  assert.equal(buildExportFilename('서울다온치과', 2026, 8), '서울다온치과_2026년_08월_진료일정.png');
+  assert.equal(buildExportFilename('서울다온치과', 2026, 8), '서울다온치과_2026년_08월_진료일정_1080x1080.png');
 });
 
 // 9/10. 저장 및 이전 달 불러오기
 test('일정을 저장하면 같은 병원/연월 키로 다시 불러올 수 있다', () => {
-  const formData = baseFormData({ notice: '추석 연휴 안내' });
+  const formData = baseFormData({ recurringClosedDays: [0] });
   saveScheduleDraft(formData.hospitalId, formData.year, formData.month, formData);
   const loaded = loadScheduleDraft(formData.hospitalId, formData.year, formData.month);
-  assert.equal(loaded?.notice, '추석 연휴 안내');
+  assert.deepEqual(loaded?.recurringClosedDays, [0]);
 });
 
 test('이전 달 일정 불러오기는 (year, month-1) 키를 조회하며, 없으면 null을 반환한다', () => {
   assert.equal(loadPreviousMonthSchedule('sample-dental-01', 2099, 5), null);
-  const july = baseFormData({ month: 7, notice: '7월 공지' });
+  const july = baseFormData({ month: 7, recurringClosedDays: [3] });
   saveScheduleDraft(july.hospitalId, july.year, july.month, july);
   const loaded = loadPreviousMonthSchedule('sample-dental-01', 2026, 8);
-  assert.equal(loaded?.notice, '7월 공지');
+  assert.deepEqual(loaded?.recurringClosedDays, [3]);
 });
 
 test('병원 ID/연월이 다르면 저장 키가 충돌하지 않는다', () => {
   assert.notEqual(scheduleKey('hospA', 2026, 8), scheduleKey('hospB', 2026, 8));
   assert.notEqual(scheduleKey('hospA', 2026, 8), scheduleKey('hospA', 2026, 9));
+});
+
+test('병원 정보를 저장·복원하고 병원 변경 시 제거할 수 있다', () => {
+  const hospital = {
+    id: 'restore-hospital',
+    name: '복원치과',
+    directorName: '홍길동',
+    logoUrl: 'data:image/png;base64,c2FtcGxl',
+    primaryColor: '#2f6fed',
+  };
+  assert.equal(saveHospitalInfo(hospital), true);
+  assert.deepEqual(loadHospitalInfo(), hospital);
+  assert.equal(removeHospitalInfo(), true);
+  assert.equal(loadHospitalInfo(), null);
 });
 
 // 14. localStorage 값이 손상돼도 앱이 죽지 않는지
@@ -243,6 +267,14 @@ test('형태가 다른(필수 필드 누락) 값이 저장돼 있어도 null로 
   const key = scheduleKey('malformed-hospital', 2026, 8);
   (globalThis as unknown as { localStorage: MemoryStorage }).localStorage.setItem(key, JSON.stringify({ foo: 'bar' }));
   assert.equal(loadScheduleDraft('malformed-hospital', 2026, 8), null);
+});
+
+test('공지 기능 제거 전 저장된 일정도 나머지 데이터는 계속 불러올 수 있다', () => {
+  const legacy = { ...baseFormData({ recurringClosedDays: [2] }), notice: '과거 공지' };
+  const key = scheduleKey(legacy.hospitalId, legacy.year, legacy.month);
+  (globalThis as unknown as { localStorage: MemoryStorage }).localStorage.setItem(key, JSON.stringify(legacy));
+  const loaded = loadScheduleDraft(legacy.hospitalId, legacy.year, legacy.month);
+  assert.deepEqual(loaded?.recurringClosedDays, [2]);
 });
 
 // 15. 맞춤 요청 저장이 누적되는지 (중복 제출 방지는 UI 상태로 처리되지만, 저장 자체는 누적되어야 한다)
@@ -269,6 +301,7 @@ test('맞춤 디자인 요청은 배열에 누적 저장된다', () => {
     nextMonthEvent: '',
     outputSize: [],
     calendarMustInclude: '',
+    lunchHours: '',
     specialNotes: '',
     scheduleData: '',
     closedDates: '',

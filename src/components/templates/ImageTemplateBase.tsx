@@ -5,6 +5,7 @@ import { getCalendarSubtitle, getCalendarTitle } from '../../utils/scheduleUtils
 import styles from './ImageTemplateBase.module.css';
 import type { OutputFormat } from '../../types/outputFormat';
 import ClinicHoursDisplay from './ClinicHoursDisplay';
+import { hasRenderableClinicHours } from '../../utils/clinicHoursUtils';
 
 interface ImageTemplateBaseProps extends TemplateProps {
   backgroundUrls: Record<OutputFormat, string>;
@@ -29,7 +30,6 @@ export default function ImageTemplateBase({
   calendarMatrix,
   resolvedByDate,
   onDateClick,
-  notice,
   fontFamily,
   calendarLabelStyle,
   backgroundUrls,
@@ -39,65 +39,99 @@ export default function ImageTemplateBase({
   titleOutlineColor,
   outputFormat,
   clinicHours,
+  reserveClinicHoursSpace = false,
+  designEdits = {},
+  selectedLayer,
+  customBackgroundUrl,
 }: ImageTemplateBaseProps) {
-  const titleText = getCalendarTitle(month, calendarLabelStyle);
-  const subtitleText = getCalendarSubtitle(calendarLabelStyle);
+  const hasClinicHours = hasRenderableClinicHours(clinicHours) || reserveClinicHoursSpace;
+  const titleText = designEdits.title?.text ?? getCalendarTitle(month, calendarLabelStyle);
+  const subtitleText = designEdits.subtitle?.text ?? getCalendarSubtitle(calendarLabelStyle);
+  const editableStyle = (id: keyof typeof designEdits): CSSProperties => {
+    const edit = designEdits[id];
+    return {
+      transform: `translate(${edit?.x ?? 0}px, ${edit?.y ?? 0}px) scale(${edit?.scale ?? 1})`,
+      transformOrigin: 'top left',
+      fontSize: edit?.fontSize,
+      color: edit?.color,
+    };
+  };
+  const layerProps = (id: 'title' | 'subtitle' | 'hospital') => ({
+    'data-edit-layer': id,
+    'data-selected': selectedLayer === id || undefined,
+    style: editableStyle(id),
+  });
 
   return (
     <div
-      className={`${styles.root} ${styles[outputFormat]} ${calendarMatrix.length === 6 ? styles.sixWeekMonth : ''}`}
-      style={{ backgroundImage: `url(${backgroundUrls[outputFormat]})`, '--export-font-family': fontFamily } as CSSProperties}
+      className={`${styles.root} ${styles[outputFormat]} ${hasClinicHours ? styles.hasClinicHours : styles.noClinicHours} ${calendarMatrix.length === 6 ? styles.sixWeekMonth : ''}`}
+      style={{
+        backgroundImage: customBackgroundUrl ? undefined : `url(${backgroundUrls[outputFormat]})`,
+        '--export-font-family': fontFamily,
+      } as CSSProperties}
     >
+      {customBackgroundUrl && (
+        <div className={styles.customBackground} aria-hidden="true">
+          <img
+            src={customBackgroundUrl}
+            alt=""
+          />
+        </div>
+      )}
       {headerVariant === 'heroTitle' ? (
         <div className={styles.heroHeader}>
           <div className={styles.heroTitleBlock}>
             <span
               className={styles.heroTitle}
+              data-label-style={calendarLabelStyle}
+              {...layerProps('title')}
               style={{
+                ...editableStyle('title'),
                 color: titleColor,
+                ...(designEdits.title?.color ? { color: designEdits.title.color } : {}),
                 textShadow: titleOutlineColor ? buildTitleOutlineShadow(titleOutlineColor) : undefined,
               }}
             >
               {titleText}
             </span>
-            <span className={styles.subtitle} style={{ color: textColor }}>
+            <span className={styles.subtitle} {...layerProps('subtitle')} style={{ ...editableStyle('subtitle'), color: designEdits.subtitle?.color ?? textColor }}>
               {subtitleText}
             </span>
           </div>
-          <div className={styles.heroHospitalTag}>
+          <div className={styles.heroHospitalTag} data-edit-layer="hospital" data-selected={selectedLayer === 'hospital' || undefined} style={editableStyle('hospital')}>
             {hospital.logoUrl ? (
               <img className={styles.heroLogo} src={hospital.logoUrl} alt={`${hospital.name} 로고`} />
             ) : (
-              <span className={styles.heroHospitalName} style={{ color: textColor }}>
-                {hospital.name}
+              <span className={styles.heroHospitalName} style={{ color: designEdits.hospital?.color ?? textColor, fontSize: designEdits.hospital?.fontSize }}>
+                {designEdits.hospital?.text ?? hospital.name}
               </span>
             )}
           </div>
         </div>
       ) : (
         <>
-          <div className={styles.hospitalRow}>
+          <div className={styles.hospitalRow} data-edit-layer="hospital" data-selected={selectedLayer === 'hospital' || undefined} style={editableStyle('hospital')}>
             {hospital.logoUrl ? (
               <img className={styles.logo} src={hospital.logoUrl} alt={`${hospital.name} 로고`} />
             ) : (
-              <span className={styles.hospitalName} style={{ color: textColor }}>
-                {hospital.name}
+              <span className={styles.hospitalName} style={{ color: designEdits.hospital?.color ?? textColor, fontSize: designEdits.hospital?.fontSize }}>
+                {designEdits.hospital?.text ?? hospital.name}
               </span>
             )}
           </div>
 
           <div className={styles.titleBlock}>
-            <span className={styles.monthTitle} style={{ color: titleColor }}>
+            <span className={styles.monthTitle} {...layerProps('title')} style={{ ...editableStyle('title'), color: designEdits.title?.color ?? titleColor }}>
               {titleText}
             </span>
-            <span className={styles.subtitle} style={{ color: textColor }}>
+            <span className={styles.subtitle} {...layerProps('subtitle')} style={{ ...editableStyle('subtitle'), color: designEdits.subtitle?.color ?? textColor }}>
               {subtitleText}
             </span>
           </div>
         </>
       )}
 
-      <ClinicHoursDisplay value={clinicHours} outputFormat={outputFormat} />
+      <ClinicHoursDisplay value={clinicHours} outputFormat={outputFormat} edit={designEdits.clinicHours} selected={selectedLayer === 'clinicHours'} />
 
       <PreviewCalendar
         className={styles.calendarArea}
@@ -107,9 +141,9 @@ export default function ImageTemplateBase({
         onDateClick={onDateClick}
         labelStyle={calendarLabelStyle}
         outputFormat={outputFormat}
+        edit={designEdits.calendar}
+        selected={selectedLayer === 'calendar'}
       />
-
-      {notice && <p className={styles.noticeBox}>{notice}</p>}
     </div>
   );
 }

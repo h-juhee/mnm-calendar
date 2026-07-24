@@ -1,113 +1,51 @@
-.wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.rowCard {
-  padding: 12px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-}
-
-.rowHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 9px;
-  font-size: 13px;
-}
-
-.removeButton {
-  padding: 3px 7px;
-  color: var(--color-danger);
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-}
-
-.days {
-  display: flex;
-  gap: 5px;
-  margin-bottom: 10px;
-}
-
-.day {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  color: var(--color-text-muted);
-  background: #fff;
-  border: 1px solid var(--color-border);
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.dayActive {
-  color: #fff;
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.timeFields {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1.2fr;
-  gap: 8px;
-}
-
-.timeFields label,
-.noteField {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  color: var(--color-text-muted);
-  font-size: 11px;
-}
-
-.timeFields input,
-.secondaryFields input {
-  min-width: 0;
-  padding: 8px;
-  color: var(--color-text);
-  background: #fff;
-  border: 1px solid var(--color-border);
-  border-radius: 7px;
-  font: inherit;
-}
-
-.addButton {
-  padding: 10px;
-  color: var(--color-primary);
-  font-weight: 700;
-  background: var(--color-primary-bg);
-  border: 1px dashed var(--color-primary);
-  border-radius: 9px;
-  cursor: pointer;
-}
-
-.secondaryFields {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-top: 4px;
-}
-
-.lunchFields {
-  display: grid;
-  grid-template-columns: auto 1fr auto 1fr;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  font-weight: 700;
-}
+.wrap { display: flex; flex-direction: column; gap: 14px; }
+.fields { display: flex; flex-direction: column; gap: 14px; }
+.fields[hidden] { display: none; }
+.visibilityOption { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; color: var(--color-text); background: color-mix(in srgb, var(--color-primary-bg) 55%, #fff); border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--color-border)); border-radius: 10px; cursor: pointer; }
+.visibilityOption input { width: 18px; height: 18px; margin: 1px 0 0; flex: 0 0 auto; accent-color: var(--color-primary); }
+.visibilityOption span { display: flex; flex-direction: column; gap: 3px; line-height: 1.4; }
+.visibilityOption strong { font-size: 13px; }
+.visibilityOption small { color: var(--color-text-muted); font-size: 11px; }
+.rowCard { padding: 20px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 12px; }
+.rowHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+.rowHeader strong { font-size: 15px; }
+.removeButton { min-height: 34px; padding: 6px 9px; color: color-mix(in srgb, var(--color-danger) 65%, var(--color-text-muted)); background: transparent; border: 0; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 700; }
+.removeButton:hover { color: var(--color-danger); background: var(--color-danger-bg); }
+.dayHint { margin: 5px 0 12px; color: var(--color-text-muted); font-size: 11px; line-height: 1.45; }
+.days { display: grid; grid-template-columns: repeat(7, minmax(34px, 1fr)); gap: 6px; margin-bottom: 16px; }
+.day { min-width: 0; height: 38px; padding: 0; color: var(--color-text-muted); background: #fff; border: 1px solid var(--color-border); border-radius: 10px; cursor: pointer; font-weight: 700; }
+.dayActive { color: #fff; background: var(--color-primary); border-color: var(--color-primary); }
+.timeFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; }
+.timeFields label, .noteField { min-width: 0; display: flex; flex-direction: column; gap: 6px; color: var(--color-text-muted); font-size: 11px; font-weight: 700; }
+.badgeField { grid-column: 1 / -1; }
+.badgeField small { color: var(--color-text-muted); font-size: 10px; font-weight: 400; }
+.timeFields input, .timeFields select, .secondaryFields input, .secondaryFields select { width: 100%; min-width: 0; min-height: 44px; padding: 9px 11px; color: var(--color-text); background: #fff; border: 1px solid var(--color-border); border-radius: 8px; font: inherit; }
+.timeFields input:focus, .timeFields select:focus, .secondaryFields input:focus, .secondaryFields select:focus { border-color: var(--color-primary); }
+.addButton { width: 100%; min-height: 48px; padding: 11px; color: var(--color-primary); font-weight: 800; background: var(--color-primary-bg); border: 1px dashed var(--color-primary); border-radius: 9px; cursor: pointer; }
+.addButtonSecondary { min-height: 42px; background: color-mix(in srgb, var(--color-primary-bg) 55%, #fff); border-style: solid; font-size: 13px; }
+.secondaryFields { display: flex; flex-direction: column; gap: 10px; padding-top: 8px; }
+.lunchHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--color-text); font-size: 13px; }
+.noLunchOption { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-muted); font-size: 11px; font-weight: 700; cursor: pointer; }
+.noLunchOption input { width: 16px; min-height: 16px; accent-color: var(--color-primary); }
+.lunchFields { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
+.secondaryFields input:disabled, .secondaryFields select:disabled { color: var(--color-text-muted); background: var(--color-bg); cursor: not-allowed; opacity: .7; }
+.errorList { display: flex; flex-direction: column; gap: 3px; margin-top: 12px; }
+.errorList p, .inlineError { margin: 0; color: var(--color-danger); font-size: 11px; line-height: 1.4; }
+.noteField { position: relative; margin-top: 4px; }
+.noteField input { padding-right: 58px; }
+.counter { position: absolute; right: 10px; bottom: 13px; color: var(--color-text-muted); font-size: 10px; font-weight: 500; }
+.confirmContent { display: flex; flex-direction: column; gap: 8px; }
+.confirmContent p { margin: 0; color: var(--color-text-muted); font-size: 13px; line-height: 1.5; }
+.confirmContent strong { color: var(--color-text); }
+.confirmActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.confirmActions button { min-height: 38px; padding: 8px 14px; background: #fff; border: 1px solid var(--color-border); border-radius: 7px; cursor: pointer; font-weight: 700; }
+.confirmActions .confirmDelete { color: #fff; background: var(--color-danger); border-color: var(--color-danger); }
 
 @media (max-width: 540px) {
-  .timeFields {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .badgeField {
-    grid-column: 1 / -1;
-  }
+  .rowCard { padding: 16px; }
+  .days { grid-template-columns: repeat(7, minmax(30px, 1fr)); gap: 4px; }
+  .day { height: 34px; border-radius: 8px; font-size: 12px; }
+  .timeFields { grid-template-columns: minmax(0, 1fr); }
+  .badgeField { grid-column: auto; }
+  .lunchHeader { align-items: flex-start; flex-wrap: wrap; }
 }

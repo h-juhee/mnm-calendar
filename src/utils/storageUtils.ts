@@ -36,6 +36,15 @@ export function saveHospitalInfo(hospital: HospitalInfo): boolean {
   return safeSet(HOSPITAL_INFO_KEY, hospital);
 }
 
+export function removeHospitalInfo(): boolean {
+  try {
+    localStorage.removeItem(HOSPITAL_INFO_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function loadHospitalInfo(): HospitalInfo | null {
   const value = safeGet<unknown>(HOSPITAL_INFO_KEY, null);
   if (!value || typeof value !== 'object') return null;
@@ -60,7 +69,6 @@ function isValidScheduleFormData(value: unknown): value is ScheduleFormData {
     typeof v.month === 'number' &&
     Array.isArray(v.recurringClosedDays) &&
     Array.isArray(v.dateSchedules) &&
-    typeof v.notice === 'string' &&
     (typeof v.templateId === 'string' || v.templateId === null)
   );
 }
@@ -116,13 +124,10 @@ export interface CustomDesignRequestRecord {
   templateId: string | null;
   scheduleSummary: string;
   requestDetails: string;
-  editItems: string[];
-  colorRequest: string;
-  textRequest: string;
-  replacementImageName: string;
   nextMonthEvent: string;
   outputSize: string[];
   calendarMustInclude: string;
+  lunchHours: string;
   specialNotes: string;
   /** Notion의 `일정데이터` 속성에 전달할, 사람이 읽을 수 있는 최종 일정입니다. */
   scheduleData: string;

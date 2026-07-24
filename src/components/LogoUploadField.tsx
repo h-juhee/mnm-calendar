@@ -76,8 +76,8 @@ export default function LogoUploadField({ logoUrl, onChange }: LogoUploadFieldPr
         <div className={styles.preview}>
           <img src={logoUrl} alt="추가한 병원 로고 미리보기" />
           <div className={styles.previewInfo}>
-            <strong>로고 미리보기</strong>
-            <span>업로드한 로고가 일정표에 표시됩니다.</span>
+            <strong>현재 등록된 로고</strong>
+            <span>진료일정 이미지에 표시됩니다.</span>
           </div>
           <div className={styles.actions}>
             <label className={styles.changeButton} htmlFor="hospital-logo">변경</label>

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import styles from './VacationRangeField.module.css';
 
 interface VacationRangeFieldProps {
@@ -34,6 +35,9 @@ export default function VacationRangeField({ start, end, onChange }: VacationRan
   const [viewMonth, setViewMonth] = useState(initialMonth.month);
   const [hoveredDate, setHoveredDate] = useState<string>();
   const fieldRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [popoverStyle, setPopoverStyle] = useState<CSSProperties>();
   const isSelectingEnd = Boolean(start && !end);
   const displayValue = start && end
     ? `${formatRangeDate(start)} ~ ${formatRangeDate(end)}`
@@ -49,7 +53,14 @@ export default function VacationRangeField({ start, end, onChange }: VacationRan
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
-      if (fieldRef.current && !fieldRef.current.contains(event.target as Node)) setIsOpen(false);
+      const target = event.target as Node;
+      if (
+        fieldRef.current
+        && !fieldRef.current.contains(target)
+        && !popoverRef.current?.contains(target)
+      ) {
+        setIsOpen(false);
+      }
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setIsOpen(false);
@@ -61,6 +72,38 @@ export default function VacationRangeField({ start, end, onChange }: VacationRan
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+
+    const updatePosition = () => {
+      const button = buttonRef.current;
+      if (!button) return;
+      if (window.innerWidth <= 767) {
+        setPopoverStyle(undefined);
+        return;
+      }
+      const rect = button.getBoundingClientRect();
+      const edge = 16;
+      const gap = 8;
+      const width = Math.min(400, window.innerWidth - edge * 2);
+      const left = Math.min(Math.max(edge, rect.right - width), window.innerWidth - width - edge);
+      const opensAbove = rect.bottom + gap + width > window.innerHeight - edge
+        && rect.top - gap - width >= edge;
+      const top = opensAbove
+        ? rect.top - gap - width
+        : Math.min(rect.bottom + gap, window.innerHeight - width - edge);
+      setPopoverStyle({ top, left, width });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen]);
 
   const openPicker = () => {
     const currentMonth = getInitialMonth(start);
@@ -94,6 +137,7 @@ export default function VacationRangeField({ start, end, onChange }: VacationRan
       </label>
       <div className={styles.row}>
         <button
+          ref={buttonRef}
           id="vacation-range"
           type="button"
           className={styles.rangeButton}
@@ -118,10 +162,17 @@ export default function VacationRangeField({ start, end, onChange }: VacationRan
         {start && end ? '선택한 기간이 휴가로 표시됩니다.' : '시작일과 종료일을 순서대로 선택하세요.'}
       </p>
 
-      {isOpen && (
+      {isOpen && createPortal(
         <>
           <button type="button" className={styles.backdrop} aria-label="날짜 선택 닫기" onClick={() => setIsOpen(false)} />
-          <div className={styles.popover} role="dialog" aria-modal="true" aria-label="휴가 기간 선택">
+          <div
+            ref={popoverRef}
+            className={styles.popover}
+            style={popoverStyle}
+            role="dialog"
+            aria-modal="false"
+            aria-label="휴가 기간 선택"
+          >
             <div className={styles.monthHeader}>
               <button type="button" className={styles.monthButton} aria-label="이전 달" onClick={() => moveMonth(-1)}>‹</button>
               <strong>{viewYear}년 {viewMonth}월</strong>
@@ -173,7 +224,8 @@ export default function VacationRangeField({ start, end, onChange }: VacationRan
               )}
             </div>
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   );

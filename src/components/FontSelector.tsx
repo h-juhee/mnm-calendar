@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FontId } from '../types/font';
-import { FONT_OPTIONS } from '../types/font';
+import { FONT_OPTIONS, getFontOption } from '../types/font';
 import { ensureFontLoaded } from '../utils/fontLoader';
 import styles from './FontSelector.module.css';
 
@@ -12,6 +12,34 @@ interface FontSelectorProps {
 export default function FontSelector({ selectedId, onSelect }: FontSelectorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [previewFontsRequested, setPreviewFontsRequested] = useState(false);
+  const [isMobileListExpanded, setIsMobileListExpanded] = useState(false);
+  const selectedFont = getFontOption(selectedId);
+  const recommendedFonts = FONT_OPTIONS.slice(0, 4);
+  const remainingFonts = FONT_OPTIONS.slice(4);
+
+  const selectMobileFont = (id: FontId) => {
+    onSelect(id);
+    setIsMobileListExpanded(false);
+  };
+
+  const renderOption = (font: (typeof FONT_OPTIONS)[number], onClick: (id: FontId) => void) => {
+    const selected = font.id === selectedId;
+    return (
+      <button
+        key={font.id}
+        type="button"
+        role="radio"
+        aria-checked={selected}
+        className={selected ? `${styles.option} ${styles.optionSelected}` : styles.option}
+        onClick={() => onClick(font.id)}
+      >
+        <span className={styles.previewText} style={{ fontFamily: font.family }}>
+          가나다 Aa
+        </span>
+        <span className={styles.fontName}>{font.name}</span>
+      </button>
+    );
+  };
 
   // 카드형 미리보기는 폰트 실제 스타일을 보여줘야 하지만, 화면에 보이기 전까지는 불필요한
   // Google Fonts 요청을 미뤄 초기 로딩 성능에 영향을 주지 않도록 합니다.
@@ -42,26 +70,35 @@ export default function FontSelector({ selectedId, onSelect }: FontSelectorProps
   }, [previewFontsRequested]);
 
   return (
-    <div className={styles.grid} role="radiogroup" aria-label="폰트 선택" ref={containerRef}>
-      {FONT_OPTIONS.map((font) => {
-        const selected = font.id === selectedId;
-        return (
-          <button
-            key={font.id}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            className={selected ? `${styles.option} ${styles.optionSelected}` : styles.option}
-            onClick={() => onSelect(font.id)}
-          >
-            <span className={styles.previewText} style={{ fontFamily: font.family }}>
-              가나다 Aa
-            </span>
-            <span className={styles.fontName}>{font.name}</span>
-            {selected && <span className={styles.selectedBadge}>선택됨 ✓</span>}
-          </button>
-        );
-      })}
+    <div className={styles.selector} ref={containerRef}>
+      <div className={`${styles.grid} ${styles.desktopGrid}`} role="radiogroup" aria-label="폰트 선택">
+        {FONT_OPTIONS.map((font) => renderOption(font, onSelect))}
+      </div>
+
+      <div className={styles.mobileSelector}>
+        <div className={styles.currentFont} aria-live="polite">
+          <span className={styles.currentLabel}>현재 선택된 폰트</span>
+          <strong style={{ fontFamily: selectedFont.family }}>{selectedFont.name}</strong>
+          <span className={styles.currentPreview} style={{ fontFamily: selectedFont.family }}>
+            가나다 Aa
+          </span>
+        </div>
+
+        <div className={styles.mobileSectionLabel}>추천 폰트</div>
+        <div className={styles.grid} role="radiogroup" aria-label="모바일 폰트 선택">
+          {recommendedFonts.map((font) => renderOption(font, selectMobileFont))}
+          {isMobileListExpanded && remainingFonts.map((font) => renderOption(font, selectMobileFont))}
+        </div>
+
+        <button
+          type="button"
+          className={styles.expandButton}
+          aria-expanded={isMobileListExpanded}
+          onClick={() => setIsMobileListExpanded((expanded) => !expanded)}
+        >
+          {isMobileListExpanded ? '폰트 목록 접기' : '전체 폰트 보기'}
+        </button>
+      </div>
     </div>
   );
 }

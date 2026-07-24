@@ -30,19 +30,25 @@ export async function renderNodeAsPng(node: HTMLElement, outputFormat: OutputFor
   await waitForFontsReady();
   await waitForImagesLoaded(node);
   const format = getOutputFormatMeta(outputFormat);
+  const selectedLayers = Array.from(node.querySelectorAll<HTMLElement>('[data-selected="true"]'));
+  selectedLayers.forEach((layer) => layer.removeAttribute('data-selected'));
 
-  return toPng(node, {
-    width: format.width,
-    height: format.height,
-    pixelRatio: 1,
-    backgroundColor: '#ffffff',
-    cacheBust: true,
-    style: {
-      transform: 'none',
-      width: `${format.width}px`,
-      height: `${format.height}px`,
-    },
-  });
+  try {
+    return await toPng(node, {
+      width: format.width,
+      height: format.height,
+      pixelRatio: 1,
+      backgroundColor: '#ffffff',
+      cacheBust: true,
+      style: {
+        transform: 'none',
+        width: `${format.width}px`,
+        height: `${format.height}px`,
+      },
+    });
+  } finally {
+    selectedLayers.forEach((layer) => layer.setAttribute('data-selected', 'true'));
+  }
 
 }
 
