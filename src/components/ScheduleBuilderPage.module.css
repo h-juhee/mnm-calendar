@@ -4,16 +4,31 @@
 .heroBadge { width: fit-content; padding: 3px 10px; color: var(--color-text-muted); background: var(--color-primary-bg); border: 1px solid var(--color-border); border-radius: 999px; font-size: 11px; font-weight: 600; }
 .heroTitle { color: var(--color-text); font-size: 26px; font-weight: 800; letter-spacing: -.4px; }
 .heroSubtitle { max-width: 560px; color: var(--color-text-muted); font-size: 14px; }
-.heroChangeButton { position: absolute; top: 50%; right: 0; min-height: 38px; padding: 8px 13px; color: var(--color-text-muted); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); transform: translateY(-50%); cursor: pointer; font-size: 12px; font-weight: 700; }
+.heroActions { position: absolute; top: 50%; right: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; transform: translateY(-50%); }
+.saveStatus { color: var(--color-text-muted); font-size: 11px; font-weight: 700; }
+.saveStatus::before { content: '●'; margin-right: 5px; color: #24a36a; font-size: 8px; }
+.saveStatusError { color: var(--color-danger); }
+.saveStatusError::before { color: var(--color-danger); }
+.heroChangeButton { min-height: 38px; padding: 8px 13px; color: var(--color-text-muted); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; font-weight: 700; }
 .heroChangeButton:hover { color: var(--color-primary); border-color: var(--color-primary); }
 .container { max-width: 1320px; margin: 0 auto; padding: 16px 16px 48px; display: flex; flex-direction: column; gap: 16px; }
 
 .previewTools { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .previewLabel { color: var(--color-text); font-size: 18px; font-weight: 800; }
 .previewActions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.previewEditHint { margin: 4px 0 0; color: var(--color-text-muted); font-size: 12px; line-height: 1.45; }
+.previewEditHint { width: fit-content; margin: 7px 0 0; padding: 8px 11px; display: flex; align-items: center; gap: 6px; color: var(--color-text-muted); background: var(--color-primary-bg); border: 1px solid color-mix(in srgb, var(--color-primary) 25%, var(--color-border)); border-radius: var(--radius-sm); font-size: 12px; line-height: 1.45; }
+.previewEditHint > span { color: var(--color-primary); font-size: 13px; }
+.previewEditHint strong { color: var(--color-primary); white-space: nowrap; }
 .previewDesignButton { flex-shrink: 0; padding: 9px 13px; color: var(--color-primary); background: var(--color-primary-bg); border: 1px solid color-mix(in srgb, var(--color-primary) 35%, var(--color-border)); border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 700; }
-.formatSection { display: flex; flex-direction: column; gap: 10px; padding: 18px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+.formatSection { display: flex; flex-direction: column; padding: 10px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+.formatSectionTrigger { width: 100%; min-height: 46px; padding: 7px 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--color-text); background: transparent; border: 0; border-radius: var(--radius-sm); cursor: pointer; text-align: left; }
+.formatSectionTrigger:hover { background: var(--color-primary-bg); }
+.formatSectionTrigger > span { display: flex; align-items: baseline; gap: 8px; }
+.formatSectionTrigger strong { font-size: 17px; font-weight: 800; }
+.formatSectionTrigger small { color: var(--color-primary); font-size: 11px; font-weight: 700; }
+.formatSectionTrigger svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; transition: transform 160ms ease; }
+.formatSectionTrigger[aria-expanded='true'] svg { transform: rotate(180deg); }
+.formatSectionContent { padding: 3px 8px 8px; display: flex; flex-direction: column; gap: 10px; }
 .card { min-width: 0; padding: 20px; display: flex; flex-direction: column; gap: 12px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
 .cardTitle { color: var(--color-text); font-size: 17px; font-weight: 800; }
 .cardHint { margin-top: -5px; color: var(--color-text-muted); font-size: 12px; }
@@ -22,9 +37,13 @@
 .settingsNav { align-self: start; height: auto; padding: 8px; background: color-mix(in srgb, var(--color-bg) 70%, #fff); border: 1px solid var(--color-border); border-right: 0; border-radius: var(--radius-lg) 0 0 var(--radius-lg); }
 .settingsGroup { display: flex; flex-direction: column; gap: 4px; }
 .settingsGroup + .settingsGroup { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--color-border); }
-.settingsGroup > p { padding: 0 8px 3px; color: var(--color-text-muted); font-size: 10px; font-weight: 800; letter-spacing: .04em; }
 .settingsNav button { min-height: 38px; padding: 8px 10px; color: var(--color-text-muted); background: transparent; border: 0; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; font-weight: 700; text-align: left; }
 .settingsNav button:hover { color: var(--color-primary); background: var(--color-primary-bg); }
+.settingsNav .settingsGroupTrigger { display: flex; align-items: center; justify-content: space-between; color: var(--color-text); font-weight: 800; }
+.settingsGroupTrigger svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; transition: transform 160ms ease; }
+.settingsGroupTrigger[aria-expanded='true'] { color: var(--color-primary); background: var(--color-primary-bg); }
+.settingsGroupTrigger[aria-expanded='true'] svg { transform: rotate(180deg); }
+.settingsGroupItems { display: flex; flex-direction: column; gap: 3px; padding-left: 5px; }
 .settingsNav .settingsNavActive { color: var(--color-primary); background: var(--color-primary-bg); box-shadow: inset 3px 0 0 var(--color-primary); }
 .settingsPanel { width: 100%; height: auto; min-height: 0; align-self: start; border-radius: 0 var(--radius-lg) var(--radius-lg) 0; box-shadow: none; }
 .downloadActions { display: grid; gap: 8px; }
@@ -32,6 +51,15 @@
 .secondaryButton:hover { color: var(--color-primary); border-color: var(--color-primary); }
 .previewDisabled { min-height: 420px; display: grid; place-items: center; color: var(--color-text-muted); border: 1px dashed var(--color-border); border-radius: var(--radius-lg); }
 .templateSelectModal { max-width: 520px; }
+.switchConfirmContent { display: flex; flex-direction: column; gap: 9px; }
+.switchConfirmContent p { color: var(--color-text-muted); font-size: 13px; line-height: 1.55; }
+.switchConfirmContent strong { color: var(--color-text); }
+.switchStorageHint { padding: 9px 11px; background: var(--color-bg); border-radius: var(--radius-sm); font-size: 12px !important; }
+.switchSaveError { color: var(--color-danger) !important; font-weight: 700; }
+.switchConfirmActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.switchConfirmActions button { min-height: 38px; padding: 8px 13px; color: var(--color-text); background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; font-weight: 700; }
+.switchConfirmActions .switchConfirmPrimary { color: #fff; background: var(--color-primary); border-color: var(--color-primary); }
+.switchConfirmActions button:disabled { opacity: .5; cursor: not-allowed; }
 
 @media (max-width: 960px) {
   .settingsLayout { grid-template-columns: 112px minmax(0, 1fr); }
@@ -39,17 +67,19 @@
 
 @media (max-width: 720px) {
   .heroInner { padding-right: 0; }
-  .heroChangeButton { position: static; align-self: flex-start; margin-top: 8px; transform: none; }
+  .heroActions { position: static; align-items: flex-start; margin-top: 8px; transform: none; }
   .previewTools { align-items: flex-start; flex-direction: column; }
+  .previewEditHint { width: 100%; align-items: flex-start; flex-wrap: wrap; }
   .previewActions { width: 100%; }
   .previewDesignButton { flex: 1 1 auto; }
   .settingsLayout { display: flex; flex-direction: column; }
-  .settingsNav { width: 100%; display: flex; gap: 4px; overflow-x: auto; border-right: 1px solid var(--color-border); border-radius: var(--radius-lg) var(--radius-lg) 0 0; scrollbar-width: none; }
+  .settingsNav { width: 100%; display: flex; flex-direction: column; gap: 6px; overflow: visible; border-right: 1px solid var(--color-border); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
   .settingsNav::-webkit-scrollbar { display: none; }
-  .settingsGroup { flex: 0 0 auto; display: contents; }
-  .settingsGroup > p { display: none; }
+  .settingsGroup { width: 100%; flex: 0 0 auto; }
   .settingsGroup + .settingsGroup { margin: 0; padding: 0; border: 0; }
-  .settingsNav button { flex: 0 0 auto; white-space: nowrap; text-align: center; }
+  .settingsGroupItems { position: static; width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 5px 0 0 8px; overflow: visible; background: transparent; border: 0; box-shadow: none; }
+  .settingsNav button { width: 100%; flex: 0 0 auto; white-space: normal; text-align: left; }
+  .settingsGroupItems button { text-align: center; }
   .settingsNav .settingsNavActive { box-shadow: inset 0 -3px 0 var(--color-primary); }
   .settingsPanel { width: 100%; min-height: 0; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
   .templateSelectModal { width: 100%; max-width: 520px; max-height: calc(100dvh - 32px); padding: 20px; }

@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import styles from './VacationRangeField.module.css';
 
 interface VacationRangeFieldProps {
+  year: number;
+  month: number;
   start?: string;
   end?: string;
   onChange: (start: string | undefined, end: string | undefined) => void;
@@ -19,20 +21,8 @@ function formatRangeDate(value: string) {
   return `${year}.${month}.${day}`;
 }
 
-function getInitialMonth(start?: string) {
-  if (start) {
-    const [year, month] = start.split('-').map(Number);
-    return { year, month };
-  }
-  const today = new Date();
-  return { year: today.getFullYear(), month: today.getMonth() + 1 };
-}
-
-export default function VacationRangeField({ start, end, onChange }: VacationRangeFieldProps) {
-  const initialMonth = getInitialMonth(start);
+export default function VacationRangeField({ year, month, start, end, onChange }: VacationRangeFieldProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [viewYear, setViewYear] = useState(initialMonth.year);
-  const [viewMonth, setViewMonth] = useState(initialMonth.month);
   const [hoveredDate, setHoveredDate] = useState<string>();
   const fieldRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -46,10 +36,10 @@ export default function VacationRangeField({ start, end, onChange }: VacationRan
       : '휴가 기간을 선택하세요';
 
   const days = useMemo(() => {
-    const firstWeekday = new Date(viewYear, viewMonth - 1, 1).getDay();
-    const daysInMonth = new Date(viewYear, viewMonth, 0).getDate();
+    const firstWeekday = new Date(year, month - 1, 1).getDay();
+    const daysInMonth = new Date(year, month, 0).getDate();
     return Array.from({ length: firstWeekday + daysInMonth }, (_, index) => (index < firstWeekday ? null : index - firstWeekday + 1));
-  }, [viewMonth, viewYear]);
+  }, [month, year]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -106,17 +96,8 @@ export default function VacationRangeField({ start, end, onChange }: VacationRan
   }, [isOpen]);
 
   const openPicker = () => {
-    const currentMonth = getInitialMonth(start);
-    setViewYear(currentMonth.year);
-    setViewMonth(currentMonth.month);
     setHoveredDate(undefined);
     setIsOpen(true);
-  };
-
-  const moveMonth = (amount: number) => {
-    const date = new Date(viewYear, viewMonth - 1 + amount, 1);
-    setViewYear(date.getFullYear());
-    setViewMonth(date.getMonth() + 1);
   };
 
   const selectDate = (date: string) => {
@@ -159,7 +140,9 @@ export default function VacationRangeField({ start, end, onChange }: VacationRan
         )}
       </div>
       <p className={styles.hint} aria-live="polite">
-        {start && end ? '선택한 기간이 휴가로 표시됩니다.' : '시작일과 종료일을 순서대로 선택하세요.'}
+        {start && end
+          ? `선택한 기간이 ${year}년 ${month}월 달력에 휴가로 표시됩니다.`
+          : `${year}년 ${month}월 안에서 시작일과 종료일을 선택하세요.`}
       </p>
 
       {isOpen && createPortal(
@@ -174,9 +157,7 @@ export default function VacationRangeField({ start, end, onChange }: VacationRan
             aria-label="휴가 기간 선택"
           >
             <div className={styles.monthHeader}>
-              <button type="button" className={styles.monthButton} aria-label="이전 달" onClick={() => moveMonth(-1)}>‹</button>
-              <strong>{viewYear}년 {viewMonth}월</strong>
-              <button type="button" className={styles.monthButton} aria-label="다음 달" onClick={() => moveMonth(1)}>›</button>
+              <strong>{year}년 {month}월 휴가 기간</strong>
             </div>
             <div className={styles.weekdays}>
               {WEEKDAYS.map((weekday) => <span key={weekday}>{weekday}</span>)}
@@ -188,7 +169,7 @@ export default function VacationRangeField({ start, end, onChange }: VacationRan
             >
               {days.map((day, index) => {
                 if (!day) return <span key={`blank-${index}`} />;
-                const date = toDateKey(viewYear, viewMonth, day);
+                const date = toDateKey(year, month, day);
                 const isSelected = date === start || date === end;
                 const isInRange = Boolean(start && end && date > start && date < end);
                 const previewStart = start && hoveredDate ? (start < hoveredDate ? start : hoveredDate) : undefined;
@@ -200,7 +181,7 @@ export default function VacationRangeField({ start, end, onChange }: VacationRan
                     key={date}
                     type="button"
                   className={`${styles.day} ${isSelected ? styles.selected : ''} ${isInRange ? styles.inRange : ''} ${isInPreview ? styles.previewRange : ''} ${isPreviewEnd ? styles.previewEnd : ''}`}
-                  aria-label={`${viewYear}년 ${viewMonth}월 ${day}일`}
+                  aria-label={`${year}년 ${month}월 ${day}일`}
                   aria-pressed={isSelected}
                   onMouseEnter={() => isSelectingEnd && setHoveredDate(date)}
                   onFocus={() => isSelectingEnd && setHoveredDate(date)}

@@ -1,15 +1,20 @@
 import { useRef, useState, type FormEvent } from 'react';
 import type { HospitalInfo } from '../types/schedule';
+import { createHospitalId, listHospitalInfos } from '../utils/storageUtils';
 import Modal from './Modal';
 import styles from './HospitalIntakeForm.module.css';
 
 interface HospitalIntakeFormProps {
   onSubmit: (hospital: HospitalInfo) => void;
+  onDeleteHospital: (hospital: HospitalInfo) => Promise<boolean>;
 }
 
 const DEFAULT_PRIMARY_COLOR = '#2f6fed';
 
-export default function HospitalIntakeForm({ onSubmit }: HospitalIntakeFormProps) {
+export default function HospitalIntakeForm({ onSubmit, onDeleteHospital }: HospitalIntakeFormProps) {
+  const [recentHospitals, setRecentHospitals] = useState(() => listHospitalInfos());
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [directorName, setDirectorName] = useState('');
   const [touched, setTouched] = useState({ name: false, directorName: false });
@@ -34,10 +39,11 @@ export default function HospitalIntakeForm({ onSubmit }: HospitalIntakeFormProps
     const trimmedDirectorName = directorName.trim();
     if (!trimmedName || !trimmedDirectorName) return;
     onSubmit({
-      id: trimmedName,
+      id: createHospitalId(),
       name: trimmedName,
       directorName: trimmedDirectorName,
       primaryColor: DEFAULT_PRIMARY_COLOR,
+      storageVersion: 2,
     });
   };
 
@@ -62,6 +68,65 @@ export default function HospitalIntakeForm({ onSubmit }: HospitalIntakeFormProps
             진료일정 제작과 맞춤 제작 요청에 필요한 기본 정보예요.
           </p>
         </div>
+
+        {recentHospitals.length > 0 && (
+          <section className={styles.recentSection} aria-labelledby="recent-hospitals-title">
+            <div className={styles.recentHeading}>
+              <h3 id="recent-hospitals-title">최근 병원</h3>
+              <span>이 브라우저에 저장된 작업</span>
+            </div>
+            <div className={styles.recentList}>
+              {recentHospitals.map((hospital) => (
+                <div className={styles.recentItem} key={hospital.id}>
+                  <button
+                    type="button"
+                    className={styles.recentSelect}
+                    onClick={() => onSubmit(hospital)}
+                  >
+                    <strong>{hospital.name}</strong>
+                    <span>{hospital.directorName ? `${hospital.directorName} 원장` : '저장된 작업 열기'}</span>
+                  </button>
+                  {deleteConfirmId === hospital.id ? (
+                    <div className={styles.deleteConfirm}>
+                      <span>삭제할까요?</span>
+                      <button type="button" onClick={() => setDeleteConfirmId(null)}>취소</button>
+                      <button
+                        type="button"
+                        className={styles.deleteConfirmButton}
+                        onClick={async () => {
+                          setDeleteError(null);
+                          const removed = await onDeleteHospital(hospital);
+                          if (!removed) {
+                            setDeleteError('병원 데이터를 삭제하지 못했습니다.');
+                            return;
+                          }
+                          setRecentHospitals((current) => current.filter((item) => item.id !== hospital.id));
+                          setDeleteConfirmId(null);
+                        }}
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.deleteButton}
+                      aria-label={`${hospital.name} 저장 데이터 삭제`}
+                      onClick={() => setDeleteConfirmId(hospital.id)}
+                    >
+                      삭제
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            {deleteError && <p className={styles.error} role="alert">{deleteError}</p>}
+          </section>
+        )}
+
+        {recentHospitals.length > 0 && (
+          <div className={styles.divider}><span>새 병원 등록</span></div>
+        )}
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor="hospital-name">

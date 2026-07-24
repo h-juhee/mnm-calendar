@@ -9,13 +9,16 @@ const BACKGROUND_URLS = {
 };
 
 export default function ScheduleBTemplate(props: TemplateProps) {
+  const isFilled = props.titleTextStyle === 'filled';
+
   return (
     <ImageTemplateBase
       {...props}
       backgroundUrls={BACKGROUND_URLS}
-      titleColor="#ec4899"
+      titleColor={isFilled ? '#ec4899' : '#fff0f7'}
       textColor="#111827"
       headerVariant="heroTitle"
+      titleOutlineColor={isFilled ? undefined : '#ec4899'}
     />
   );
 }

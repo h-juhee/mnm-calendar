@@ -1,4 +1,5 @@
 import type { FontId } from './font';
+import type { OutputFormat } from './outputFormat';
 
 export type ScheduleType =
   | 'closed'
@@ -20,7 +21,9 @@ export interface LayerEdit {
   x?: number;
   y?: number;
   fontSize?: number;
+  fontId?: FontId;
   color?: string;
+  outlineColor?: string;
   text?: string;
   scale?: number;
 }
@@ -44,6 +47,10 @@ export interface HospitalInfo {
   directorName?: string;
   logoUrl?: string;
   primaryColor: string;
+  /** UUID 기반 저장 체계로 생성되거나 이전된 병원 정보의 버전입니다. */
+  storageVersion?: 2;
+  /** 기존 병원 ID에 저장된 IndexedDB 배경을 이전할 때만 임시로 사용합니다. */
+  legacyBackgroundHospitalId?: string;
 }
 
 export interface ScheduleFormData {
@@ -64,6 +71,8 @@ export interface ScheduleFormData {
   calendarMustInclude?: string;
   clinicHours?: ClinicHours;
   /** 미리보기에서 직접 조정한 레이어별 위치와 글자 스타일입니다. */
+  designEditsByFormat?: Partial<Record<OutputFormat, DesignEdits>>;
+  /** 규격별 저장 도입 전 데이터의 자동 이전을 위한 과거 필드입니다. */
   designEdits?: DesignEdits;
 }
 

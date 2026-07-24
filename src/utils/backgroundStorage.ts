@@ -46,3 +46,27 @@ export async function deleteCustomBackground(hospitalId: string): Promise<void> 
   });
   db.close();
 }
+
+export async function migrateCustomBackground(oldHospitalId: string, newHospitalId: string): Promise<void> {
+  if (oldHospitalId === newHospitalId) return;
+  const db = await openDatabase();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(oldHospitalId);
+      request.onsuccess = () => {
+        if (request.result instanceof File) {
+          store.put(request.result, newHospitalId);
+          store.delete(oldHospitalId);
+        }
+      };
+      request.onerror = () => reject(request.error);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
+    });
+  } finally {
+    db.close();
+  }
+}

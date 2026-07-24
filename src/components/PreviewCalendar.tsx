@@ -5,6 +5,7 @@ import type { CalendarLabelStyle, DateSchedule, LayerEdit } from '../types/sched
 import { SCHEDULE_TYPE_META } from '../types/schedule';
 import styles from './PreviewCalendar.module.css';
 import type { OutputFormat } from '../types/outputFormat';
+import { getFontOption } from '../types/font';
 
 interface PreviewCalendarProps {
   calendarMatrix: CalendarCell[][];
@@ -51,6 +52,7 @@ export default function PreviewCalendar({
         '--calendar-edit-x': `${edit?.x ?? 0}px`,
         '--calendar-edit-y': `${edit?.y ?? 0}px`,
         '--calendar-edit-scale': edit?.scale ?? 1,
+        '--calendar-font-family': edit?.fontId ? getFontOption(edit.fontId).family : undefined,
       } as CSSProperties}
     >
       <div className={styles.frame}>

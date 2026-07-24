@@ -12,6 +12,7 @@ interface FontSelectorProps {
 export default function FontSelector({ selectedId, onSelect }: FontSelectorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [previewFontsRequested, setPreviewFontsRequested] = useState(false);
+  const [isAccordionOpen, setIsAccordionOpen] = useState(false);
   const [isMobileListExpanded, setIsMobileListExpanded] = useState(false);
   const selectedFont = getFontOption(selectedId);
   const recommendedFonts = FONT_OPTIONS.slice(0, 4);
@@ -19,6 +20,7 @@ export default function FontSelector({ selectedId, onSelect }: FontSelectorProps
 
   const selectMobileFont = (id: FontId) => {
     onSelect(id);
+    setIsAccordionOpen(false);
     setIsMobileListExpanded(false);
   };
 
@@ -76,28 +78,41 @@ export default function FontSelector({ selectedId, onSelect }: FontSelectorProps
       </div>
 
       <div className={styles.mobileSelector}>
-        <div className={styles.currentFont} aria-live="polite">
+        <button
+          type="button"
+          className={styles.currentFont}
+          aria-expanded={isAccordionOpen}
+          aria-controls="font-accordion-content"
+          onClick={() => setIsAccordionOpen((open) => !open)}
+        >
           <span className={styles.currentLabel}>현재 선택된 폰트</span>
           <strong style={{ fontFamily: selectedFont.family }}>{selectedFont.name}</strong>
           <span className={styles.currentPreview} style={{ fontFamily: selectedFont.family }}>
             가나다 Aa
           </span>
-        </div>
-
-        <div className={styles.mobileSectionLabel}>추천 폰트</div>
-        <div className={styles.grid} role="radiogroup" aria-label="모바일 폰트 선택">
-          {recommendedFonts.map((font) => renderOption(font, selectMobileFont))}
-          {isMobileListExpanded && remainingFonts.map((font) => renderOption(font, selectMobileFont))}
-        </div>
-
-        <button
-          type="button"
-          className={styles.expandButton}
-          aria-expanded={isMobileListExpanded}
-          onClick={() => setIsMobileListExpanded((expanded) => !expanded)}
-        >
-          {isMobileListExpanded ? '폰트 목록 접기' : '전체 폰트 보기'}
+          <svg className={styles.accordionIcon} aria-hidden="true" viewBox="0 0 20 20">
+            <path d="m5 7.5 5 5 5-5" />
+          </svg>
         </button>
+
+        {isAccordionOpen && (
+          <div id="font-accordion-content" className={styles.accordionContent}>
+            <div className={styles.mobileSectionLabel}>추천 폰트</div>
+            <div className={styles.grid} role="radiogroup" aria-label="폰트 선택">
+              {recommendedFonts.map((font) => renderOption(font, selectMobileFont))}
+              {isMobileListExpanded && remainingFonts.map((font) => renderOption(font, selectMobileFont))}
+            </div>
+
+            <button
+              type="button"
+              className={styles.expandButton}
+              aria-expanded={isMobileListExpanded}
+              onClick={() => setIsMobileListExpanded((expanded) => !expanded)}
+            >
+              {isMobileListExpanded ? '폰트 목록 접기' : '전체 폰트 보기'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

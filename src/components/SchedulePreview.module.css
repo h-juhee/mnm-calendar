@@ -195,28 +195,57 @@
   font-size: 11px;
 }
 
-.layerTabs {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 5px;
+.layerAccordion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.layerTabs button {
-  min-height: 34px;
-  padding: 6px 4px;
-  color: var(--color-text);
+.accordionItem {
+  overflow: hidden;
   background: #fff;
   border: 1px solid var(--color-border);
-  border-radius: 7px;
-  font-size: 11px;
-  font-weight: 700;
+  border-radius: 10px;
+}
+
+.openAccordionItem {
+  border-color: color-mix(in srgb, var(--color-primary) 48%, var(--color-border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+.accordionTrigger {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  color: var(--color-text);
+  background: #fff;
+  border: 0;
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 800;
   cursor: pointer;
 }
 
-.layerTabs .activeLayer {
-  color: #fff;
-  border-color: var(--color-primary);
-  background: var(--color-primary);
+.accordionTrigger svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  transition: transform 160ms ease;
+}
+
+.accordionTrigger[aria-expanded='true'] {
+  color: var(--color-primary);
+}
+
+.accordionTrigger[aria-expanded='true'] svg {
+  transform: rotate(180deg);
 }
 
 .elementControls {
@@ -225,7 +254,7 @@
   gap: 12px;
   padding: 13px;
   background: var(--color-bg);
-  border-radius: var(--radius-sm);
+  border-top: 1px solid var(--color-border);
 }
 
 .elementControls h4 {
@@ -234,6 +263,32 @@
   font-size: 13px;
   font-weight: 800;
   line-height: 1.35;
+}
+
+.hospitalLogoEditor {
+  min-width: 0;
+}
+
+.hospitalDisplayHint {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-primary) 6%, #fff);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.layerFontField,
+.titleStyleEditor {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .calendarDragHint {
@@ -272,6 +327,9 @@
 }
 
 .sliderField output {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
   color: var(--color-primary);
   font-weight: 800;
 }
@@ -313,6 +371,8 @@
   margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid color-mix(in srgb, var(--color-danger) 22%, var(--color-border));
+  flex-direction: column;
+  gap: 10px;
 }
 
 .allResetRow button {
@@ -322,6 +382,24 @@
   background: color-mix(in srgb, var(--color-danger) 5%, #fff);
   border-color: color-mix(in srgb, var(--color-danger) 35%, var(--color-border));
   font-size: 13px;
+}
+
+.dangerZone {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 18%, var(--color-border));
+  border-radius: 8px;
+  background: #fff;
+}
+
+.dangerZone summary {
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dangerZone button {
+  margin-top: 10px;
 }
 
 .canvasWrapper {
@@ -541,6 +619,11 @@
   color: var(--color-text);
 }
 
+.confirmContent .resetError {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
 .confirmActions {
   display: flex;
   justify-content: flex-end;
@@ -557,10 +640,6 @@
 @media (max-width: 520px) {
   .editorSection {
     padding: 13px;
-  }
-
-  .layerTabs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .backgroundSummary {

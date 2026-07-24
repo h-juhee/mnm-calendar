@@ -6,6 +6,7 @@ import styles from './ImageTemplateBase.module.css';
 import type { OutputFormat } from '../../types/outputFormat';
 import ClinicHoursDisplay from './ClinicHoursDisplay';
 import { hasRenderableClinicHours } from '../../utils/clinicHoursUtils';
+import { getFontOption } from '../../types/font';
 
 interface ImageTemplateBaseProps extends TemplateProps {
   backgroundUrls: Record<OutputFormat, string>;
@@ -53,6 +54,7 @@ export default function ImageTemplateBase({
       transform: `translate(${edit?.x ?? 0}px, ${edit?.y ?? 0}px) scale(${edit?.scale ?? 1})`,
       transformOrigin: 'top left',
       fontSize: edit?.fontSize,
+      fontFamily: edit?.fontId ? getFontOption(edit.fontId).family : undefined,
       color: edit?.color,
     };
   };
@@ -89,7 +91,9 @@ export default function ImageTemplateBase({
                 ...editableStyle('title'),
                 color: titleColor,
                 ...(designEdits.title?.color ? { color: designEdits.title.color } : {}),
-                textShadow: titleOutlineColor ? buildTitleOutlineShadow(titleOutlineColor) : undefined,
+                textShadow: titleOutlineColor
+                  ? buildTitleOutlineShadow(designEdits.title?.outlineColor ?? titleOutlineColor)
+                  : undefined,
               }}
             >
               {titleText}

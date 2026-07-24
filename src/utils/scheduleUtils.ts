@@ -185,6 +185,32 @@ export function getPreviousMonth(year: number, month: number): { year: number; m
   return month === 1 ? { year: year - 1, month: 12 } : { year, month: month - 1 };
 }
 
+export function clipVacationRangeToMonth(
+  start: string | undefined,
+  end: string | undefined,
+  year: number,
+  month: number,
+): { vacationStart?: string; vacationEnd?: string } {
+  if (!start) return {};
+  const monthStart = formatDateKey(year, month, 1);
+  const monthEnd = formatDateKey(year, month, getDaysInMonth(year, month));
+
+  if (!end) {
+    return start >= monthStart && start <= monthEnd
+      ? { vacationStart: start }
+      : {};
+  }
+
+  const rangeStart = start <= end ? start : end;
+  const rangeEnd = start <= end ? end : start;
+  const clippedStart = rangeStart < monthStart ? monthStart : rangeStart;
+  const clippedEnd = rangeEnd > monthEnd ? monthEnd : rangeEnd;
+
+  return clippedStart <= clippedEnd
+    ? { vacationStart: clippedStart, vacationEnd: clippedEnd }
+    : {};
+}
+
 /** 원장이 실제로 진료일정 내용을 입력하기 시작했는지 판단합니다. 이 전에는 미리보기에 시안 목업만 보여줍니다. */
 export function hasScheduleContent(
   formData: Pick<

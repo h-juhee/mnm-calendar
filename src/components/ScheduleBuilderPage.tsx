@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { HospitalInfo } from '../types/schedule';
 import { TEMPLATES } from '../types/schedule';
 import { DEFAULT_FONT_ID, type FontId } from '../types/font';
@@ -11,25 +11,27 @@ import RecurringDaySelector from './RecurringDaySelector';
 import DateScheduleModal from './DateScheduleModal';
 import VacationRangeField from './VacationRangeField';
 import TemplateSelector from './TemplateSelector';
-import FontSelector from './FontSelector';
 import TitleTextStyleSelector from './TitleTextStyleSelector';
 import SchedulePreview from './SchedulePreview';
 import ExportImageButton from './ExportImageButton';
 import CustomDesignRequestModal from './CustomDesignRequestModal';
 import Modal from './Modal';
 import OutputFormatSelector from './OutputFormatSelector';
-import type { OutputFormat } from '../types/outputFormat';
+import { getOutputFormatMeta, type OutputFormat } from '../types/outputFormat';
 import ClinicHoursEditor from './ClinicHoursEditor';
-import { deleteCustomBackground, loadCustomBackground, saveCustomBackground } from '../utils/backgroundStorage';
-import { loadHospitalInfo, removeHospitalInfo, saveHospitalInfo } from '../utils/storageUtils';
+import { deleteCustomBackground, loadCustomBackground, migrateCustomBackground, saveCustomBackground } from '../utils/backgroundStorage';
+import { removeHospitalData, removeHospitalInfo, saveHospitalInfo } from '../utils/storageUtils';
 import styles from './ScheduleBuilderPage.module.css';
 
 type SettingsPanel =
   | 'basic' | 'closed' | 'vacation' | 'hours'
-  | 'background' | 'elements' | 'title' | 'font' | 'logo';
+  | 'background' | 'elements';
 
-const SETTINGS_GROUPS: { label: string; items: { id: SettingsPanel; label: string }[] }[] = [
+type SettingsGroupId = 'schedule' | 'design';
+
+const SETTINGS_GROUPS: { id: SettingsGroupId; label: string; items: { id: SettingsPanel; label: string }[] }[] = [
   {
+    id: 'schedule',
     label: '일정 설정',
     items: [
       { id: 'basic', label: '기본 설정' },
@@ -39,31 +41,45 @@ const SETTINGS_GROUPS: { label: string; items: { id: SettingsPanel; label: strin
     ],
   },
   {
+    id: 'design',
     label: '디자인 설정',
     items: [
       { id: 'background', label: '배경 이미지' },
       { id: 'elements', label: '요소 편집' },
-      { id: 'title', label: '제목 스타일' },
-      { id: 'font', label: '폰트 선택' },
-      { id: 'logo', label: '병원 로고' },
     ],
   },
 ];
 
 export default function ScheduleBuilderPage() {
-  const [hospital, setHospital] = useState<HospitalInfo | null>(() => loadHospitalInfo());
+  const [hospital, setHospital] = useState<HospitalInfo | null>(null);
 
-  const handleHospitalChange = (nextHospital: HospitalInfo) => {
+  const handleHospitalChange = useCallback((nextHospital: HospitalInfo) => {
     saveHospitalInfo(nextHospital);
     setHospital(nextHospital);
-  };
+  }, []);
 
-  const handleHospitalReset = () => {
+  const handleHospitalReset = useCallback(() => {
     removeHospitalInfo();
     setHospital(null);
-  };
+  }, []);
 
-  if (!hospital) return <HospitalIntakeForm onSubmit={handleHospitalChange} />;
+  const handleHospitalDelete = useCallback(async (target: HospitalInfo) => {
+    try {
+      await deleteCustomBackground(target.id);
+      return removeHospitalData(target.id);
+    } catch {
+      return false;
+    }
+  }, []);
+
+  if (!hospital) {
+    return (
+      <HospitalIntakeForm
+        onSubmit={handleHospitalChange}
+        onDeleteHospital={handleHospitalDelete}
+      />
+    );
+  }
   return (
     <ScheduleBuilderContent
       hospital={hospital}
@@ -82,12 +98,15 @@ function ScheduleBuilderContent({
   onHospitalChange: (hospital: HospitalInfo) => void;
   onHospitalReset: () => void;
 }) {
-  const { formData, resolvedSchedule, resolvedByDate, calendarMatrix, actions } = useScheduleBuilder(hospital.id);
+  const { formData, saveStatus, resolvedSchedule, resolvedByDate, calendarMatrix, actions } = useScheduleBuilder(hospital.id);
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [isCustomModalOpen, setCustomModalOpen] = useState(false);
   const [isTemplateModalOpen, setTemplateModalOpen] = useState(() => formData.templateId === null);
+  const [isHospitalSwitchConfirmOpen, setHospitalSwitchConfirmOpen] = useState(false);
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('square');
+  const [isFormatSectionExpanded, setFormatSectionExpanded] = useState(true);
   const [activeSettingsPanel, setActiveSettingsPanel] = useState<SettingsPanel>('basic');
+  const [expandedSettingsGroup, setExpandedSettingsGroup] = useState<SettingsGroupId | null>('schedule');
   const [customBackgroundUrl, setCustomBackgroundUrl] = useState<string>();
   const [customBackgroundFileName, setCustomBackgroundFileName] = useState<string>();
   const customBackgroundObjectUrlRef = useRef<string | undefined>(undefined);
@@ -96,7 +115,19 @@ function ScheduleBuilderContent({
 
   useEffect(() => {
     let active = true;
-    void loadCustomBackground(hospital.id).then((file) => {
+    const prepareBackground = async () => {
+      if (hospital.legacyBackgroundHospitalId) {
+        await migrateCustomBackground(hospital.legacyBackgroundHospitalId, hospital.id);
+        if (active) {
+          onHospitalChange({
+            ...hospital,
+            legacyBackgroundHospitalId: undefined,
+          });
+        }
+      }
+      return loadCustomBackground(hospital.id);
+    };
+    void prepareBackground().then((file) => {
       if (!active || !file) return;
       const objectUrl = URL.createObjectURL(file);
       customBackgroundObjectUrlRef.current = objectUrl;
@@ -107,7 +138,7 @@ function ScheduleBuilderContent({
       active = false;
       if (customBackgroundObjectUrlRef.current) URL.revokeObjectURL(customBackgroundObjectUrlRef.current);
     };
-  }, [hospital.id]);
+  }, [hospital, onHospitalChange]);
 
   const handleCustomBackgroundSelect = async (file: File) => {
     await saveCustomBackground(hospital.id, file);
@@ -133,6 +164,7 @@ function ScheduleBuilderContent({
   const selectedTemplate = formData.templateId
     ? TEMPLATES.find((template) => template.id === formData.templateId)
     : undefined;
+  const currentDesignEdits = formData.designEditsByFormat?.[outputFormat] ?? {};
 
   const panelContent: Partial<Record<SettingsPanel, ReactNode>> = {
     basic: (
@@ -153,6 +185,8 @@ function ScheduleBuilderContent({
       <>
         <h2 className={styles.cardTitle}>휴가 설정</h2>
         <VacationRangeField
+          year={formData.year}
+          month={formData.month}
           start={formData.vacationStart}
           end={formData.vacationEnd}
           onChange={actions.setVacationRange}
@@ -169,50 +203,60 @@ function ScheduleBuilderContent({
         />
       </>
     ),
-    title: (
-      <>
-        <h2 className={styles.cardTitle}>제목 글자 스타일</h2>
-        <TitleTextStyleSelector value={formData.titleTextStyle ?? 'outline'} onChange={actions.setTitleTextStyle} />
-      </>
-    ),
-    font: (
-      <>
-        <h2 className={styles.cardTitle}>폰트 선택</h2>
-        <FontSelector selectedId={(formData.fontId as FontId) ?? DEFAULT_FONT_ID} onSelect={actions.setFontId} />
-      </>
-    ),
-    logo: (
-      <>
-        <h2 className={styles.cardTitle}>병원 로고</h2>
-        <LogoUploadField
-          logoUrl={hospital.logoUrl}
-          onChange={(logoUrl) => onHospitalChange({ ...hospital, logoUrl })}
-        />
-      </>
-    ),
   };
 
   const settingsContent = (
       <nav className={styles.settingsNav} aria-label="일정 이미지 설정">
         {SETTINGS_GROUPS.map((group) => (
           <div className={styles.settingsGroup} key={group.label}>
-            <p>{group.label}</p>
+            <button
+              type="button"
+              className={styles.settingsGroupTrigger}
+              aria-expanded={expandedSettingsGroup === group.id}
+              aria-controls={`settings-group-${group.id}`}
+              onClick={() => setExpandedSettingsGroup((current) => current === group.id ? null : group.id)}
+            >
+              <span>{group.label}</span>
+              <svg aria-hidden="true" viewBox="0 0 20 20">
+                <path d="m5 7.5 5 5 5-5" />
+              </svg>
+            </button>
+            {expandedSettingsGroup === group.id && (
+            <div id={`settings-group-${group.id}`} className={styles.settingsGroupItems}>
             {group.items.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 className={activeSettingsPanel === item.id ? styles.settingsNavActive : undefined}
                 aria-current={activeSettingsPanel === item.id ? 'page' : undefined}
-                onClick={() => setActiveSettingsPanel(item.id)}
+                onClick={() => {
+                  setActiveSettingsPanel(item.id);
+                  setExpandedSettingsGroup(group.id);
+                }}
               >
                 {item.label}
               </button>
             ))}
+            </div>
+            )}
           </div>
         ))}
       </nav>
   );
-  const standardPanelContent = activeSettingsPanel !== 'background' && activeSettingsPanel !== 'elements'
+  const activeSettingsGroup = SETTINGS_GROUPS.find((group) =>
+    group.items.some((item) => item.id === activeSettingsPanel),
+  )?.id;
+  const isActiveSettingsPanelVisible = expandedSettingsGroup === activeSettingsGroup;
+  const visibleActiveEditor = isActiveSettingsPanelVisible
+    ? activeSettingsPanel === 'background'
+      ? 'background'
+      : activeSettingsPanel === 'elements'
+        ? 'elements'
+        : null
+    : null;
+  const standardPanelContent = isActiveSettingsPanelVisible
+    && activeSettingsPanel !== 'background'
+    && activeSettingsPanel !== 'elements'
     ? <section ref={settingsPanelRef} className={`${styles.card} ${styles.settingsPanel}`}>{panelContent[activeSettingsPanel]}</section>
     : null;
 
@@ -221,7 +265,11 @@ function ScheduleBuilderContent({
       <div className={styles.previewTools}>
         <div>
           <p className={styles.previewLabel}>실시간 미리보기</p>
-          <p className={styles.previewEditHint}>달력의 날짜를 선택해 일정을 설정할 수 있어요.</p>
+          <p className={styles.previewEditHint}>
+            <span aria-hidden="true">✦</span>
+            <strong>날짜별 일정 편집</strong>
+            달력에서 날짜를 눌러 휴진·단축 진료·야간 진료를 설정하세요.
+          </p>
         </div>
         <div className={styles.previewActions}>
           <button type="button" className={styles.previewDesignButton} onClick={() => setTemplateModalOpen(true)}>
@@ -230,9 +278,27 @@ function ScheduleBuilderContent({
         </div>
       </div>
       <section className={styles.formatSection}>
-        <h2 className={styles.cardTitle}>이미지 규격</h2>
-        <p className={styles.cardHint}>제작할 이미지의 크기와 용도를 선택하세요.</p>
-        <OutputFormatSelector value={outputFormat} onChange={setOutputFormat} />
+        <button
+          type="button"
+          className={styles.formatSectionTrigger}
+          aria-expanded={isFormatSectionExpanded}
+          aria-controls="output-format-options"
+          onClick={() => setFormatSectionExpanded((current) => !current)}
+        >
+          <span>
+            <strong>이미지 규격</strong>
+            <small>{getOutputFormatMeta(outputFormat).label}</small>
+          </span>
+          <svg aria-hidden="true" viewBox="0 0 20 20">
+            <path d="m5 7.5 5 5 5-5" />
+          </svg>
+        </button>
+        {isFormatSectionExpanded && (
+          <div id="output-format-options" className={styles.formatSectionContent}>
+            <p className={styles.cardHint}>제작할 이미지의 크기와 용도를 선택하세요.</p>
+            <OutputFormatSelector value={outputFormat} onChange={setOutputFormat} />
+          </div>
+        )}
       </section>
     </>
   );
@@ -263,9 +329,22 @@ function ScheduleBuilderContent({
           <p className={styles.heroSubtitle}>
             휴진일과 진료 일정을 선택하면 진료안내 이미지를 실시간으로 만들 수 있어요.
           </p>
-          <button type="button" className={styles.heroChangeButton} onClick={onHospitalReset}>
-            병원 변경
-          </button>
+          <div className={styles.heroActions}>
+            <span
+              className={`${styles.saveStatus} ${saveStatus === 'error' ? styles.saveStatusError : ''}`}
+              role="status"
+              aria-live="polite"
+            >
+              {saveStatus === 'saving' ? '저장 중…' : saveStatus === 'error' ? '저장 실패' : '자동 저장됨'}
+            </span>
+            <button
+              type="button"
+              className={styles.heroChangeButton}
+              onClick={() => setHospitalSwitchConfirmOpen(true)}
+            >
+              다른 병원으로 전환
+            </button>
+          </div>
         </div>
       </header>
 
@@ -275,26 +354,52 @@ function ScheduleBuilderContent({
             ref={exportNodeRef}
             hospital={hospital}
             formData={formData}
+            designEdits={currentDesignEdits}
             calendarMatrix={calendarMatrix}
             resolvedByDate={resolvedByDate}
             onDateClick={setSelectedDateKey}
             outputFormat={outputFormat}
-            onDesignEditsChange={actions.setDesignEdits}
+            onDesignEditsChange={(edits) => actions.setDesignEdits(outputFormat, edits)}
             customBackgroundUrl={customBackgroundUrl}
             customBackgroundFileName={customBackgroundFileName}
             onCustomBackgroundSelect={handleCustomBackgroundSelect}
             onCustomBackgroundRemove={handleCustomBackgroundRemove}
-            onResetAllDesign={async () => {
-              actions.reset();
+            onResetSchedule={actions.resetSchedule}
+            onResetDesign={async () => {
               await handleCustomBackgroundRemove();
+              actions.resetDesign();
             }}
-            activeEditor={activeSettingsPanel === 'background' ? 'background' : activeSettingsPanel === 'elements' ? 'elements' : null}
+            onResetAll={async () => {
+              await handleCustomBackgroundRemove();
+              actions.resetAll();
+              setOutputFormat('square');
+              setTemplateModalOpen(true);
+            }}
+            activeEditor={visibleActiveEditor}
+            settingsPanelVisible={isActiveSettingsPanelVisible}
             settingsContent={settingsContent}
             standardPanelContent={standardPanelContent}
+            hospitalLogoEditor={(
+              <LogoUploadField
+                logoUrl={hospital.logoUrl}
+                onChange={(logoUrl) => onHospitalChange({ ...hospital, logoUrl })}
+              />
+            )}
+            titleStyleEditor={(
+              <TitleTextStyleSelector
+                value={formData.titleTextStyle ?? 'outline'}
+                onChange={actions.setTitleTextStyle}
+              />
+            )}
             previewHeader={previewHeader}
             previewFooter={previewFooter}
+            onOpenElements={() => {
+              setActiveSettingsPanel('elements');
+              setExpandedSettingsGroup('design');
+            }}
             onOpenClinicHours={() => {
               setActiveSettingsPanel('hours');
+              setExpandedSettingsGroup('schedule');
               requestAnimationFrame(() => {
                 settingsPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               });
@@ -314,6 +419,37 @@ function ScheduleBuilderContent({
           onClear={() => actions.clearDateSchedule(selectedDateKey)}
           onClose={() => setSelectedDateKey(null)}
         />
+      )}
+
+      {isHospitalSwitchConfirmOpen && (
+        <Modal title="다른 병원으로 전환" onClose={() => setHospitalSwitchConfirmOpen(false)}>
+          <div className={styles.switchConfirmContent}>
+            <p><strong>{hospital.name} 작업을 마치고 다른 병원으로 전환할까요?</strong></p>
+            {saveStatus === 'error' ? (
+              <p className={styles.switchSaveError} role="alert">
+                현재 변경사항을 브라우저에 저장하지 못했습니다. 저장 공간을 확인한 뒤 다시 시도해 주세요.
+              </p>
+            ) : (
+              <p>
+                현재 일정과 디자인은 이 브라우저에 저장되어 있으며, 전환해도 삭제되지 않습니다.
+              </p>
+            )}
+            <p className={styles.switchStorageHint}>
+              저장 내용은 다른 브라우저나 기기에 자동으로 동기화되지 않습니다.
+            </p>
+            <div className={styles.switchConfirmActions}>
+              <button type="button" onClick={() => setHospitalSwitchConfirmOpen(false)}>취소</button>
+              <button
+                type="button"
+                className={styles.switchConfirmPrimary}
+                onClick={onHospitalReset}
+                disabled={saveStatus === 'error'}
+              >
+                다른 병원으로 전환
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {isTemplateModalOpen && (

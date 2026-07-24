@@ -17,14 +17,18 @@
 
 .currentFont {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto 20px;
   align-items: center;
   gap: 2px 12px;
+  width: 100%;
   min-height: 64px;
   padding: 10px 13px;
+  color: inherit;
   background: var(--color-primary-bg);
   border: 1px solid color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
   border-radius: 9px;
+  cursor: pointer;
+  text-align: left;
 }
 
 .currentLabel {
@@ -36,11 +40,9 @@
 
 .currentFont strong {
   min-width: 0;
-  overflow: hidden;
   color: var(--color-text);
   font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .currentPreview {
@@ -48,6 +50,33 @@
   font-size: 16px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.accordionIcon {
+  grid-column: 3;
+  grid-row: 2;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  transition: transform 160ms ease;
+}
+
+.currentFont[aria-expanded='true'] .accordionIcon {
+  transform: rotate(180deg);
+}
+
+.accordionContent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
 }
 
 .mobileSectionLabel {
@@ -119,20 +148,23 @@
 }
 
 .previewText {
-  font-size: 17px;
+  max-width: 100%;
+  font-size: 15px;
   font-weight: 600;
   color: var(--color-text);
   line-height: 1.2;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .fontName {
   display: block;
-  font-size: 10.5px;
+  width: 100%;
+  max-width: 100%;
+  font-size: 9.5px;
   font-weight: 600;
   letter-spacing: -0.1px;
   color: var(--color-text-muted);
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 640px) {
@@ -148,7 +180,7 @@
 
   .currentFont {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto 20px;
     align-items: center;
     gap: 2px 12px;
     min-height: 58px;
@@ -167,11 +199,9 @@
 
   .currentFont strong {
     min-width: 0;
-    overflow: hidden;
     color: var(--color-text);
     font-size: 14px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
 
   .currentPreview {
@@ -201,14 +231,12 @@
   }
 
   .previewText {
-    font-size: 15px;
+    font-size: 14px;
   }
 
   .fontName {
     max-width: 100%;
-    font-size: 11px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 9.5px;
   }
 
   .expandButton {

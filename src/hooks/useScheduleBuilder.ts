@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CalendarLabelStyle, ClinicHours, DateSchedule, DesignEdits, ScheduleFormData, TemplateId, TitleTextStyle } from '../types/schedule';
-import { DEFAULT_FONT_ID, type FontId } from '../types/font';
+import { DEFAULT_FONT_ID } from '../types/font';
+import type { OutputFormat } from '../types/outputFormat';
 import {
   buildCalendarMatrix,
+  clipVacationRangeToMonth,
   removeDateSchedule,
   resolveMonthSchedule,
   toggleRecurringDay as toggleRecurringDayUtil,
@@ -10,11 +12,16 @@ import {
 } from '../utils/scheduleUtils';
 import {
   loadLastActiveMonth,
-  loadPreviousMonthSchedule,
   loadScheduleDraft,
   saveLastActiveMonth,
   saveScheduleDraft,
 } from '../utils/storageUtils';
+import {
+  resetCurrentMonthAll,
+  resetDesignSettings,
+  resetScheduleSettings,
+} from '../utils/resetUtils';
+import { normalizeDesignEditsByFormat, setDesignEditsForFormat } from '../utils/designEditsUtils';
 
 const today = new Date();
 const DEFAULT_YEAR = today.getFullYear();
@@ -66,11 +73,13 @@ function createEmptyFormData(
     outputSize: normalizeOutputSizes(keep?.outputSize),
     calendarMustInclude: keep?.calendarMustInclude ?? '',
     clinicHours: normalizeClinicHours(keep?.clinicHours),
-    designEdits: keep?.designEdits ?? {},
+    designEditsByFormat: keep?.designEditsByFormat ?? {},
   };
 }
 
 export function useScheduleBuilder(hospitalId: string) {
+  const [saveStatus, setSaveStatus] = useState<'saving' | 'saved' | 'error'>('saving');
+  const saveStatusTimerRef = useRef<number | undefined>(undefined);
   const [formData, setFormData] = useState<ScheduleFormData>(() => {
     const lastActive = loadLastActiveMonth(hospitalId);
     const year = lastActive?.year ?? DEFAULT_YEAR;
@@ -79,6 +88,9 @@ export function useScheduleBuilder(hospitalId: string) {
     return loaded
       ? {
           ...loaded,
+          ...clipVacationRangeToMonth(loaded.vacationStart, loaded.vacationEnd, year, month),
+          designEdits: undefined,
+          designEditsByFormat: normalizeDesignEditsByFormat(loaded),
           templateId: normalizeTemplateId(loaded.templateId),
           outputSize: normalizeOutputSizes(loaded.outputSize),
           clinicHours: normalizeClinicHours(loaded.clinicHours),
@@ -87,8 +99,16 @@ export function useScheduleBuilder(hospitalId: string) {
   });
 
   useEffect(() => {
-    saveScheduleDraft(formData.hospitalId, formData.year, formData.month, formData);
-    saveLastActiveMonth(formData.hospitalId, formData.year, formData.month);
+    window.clearTimeout(saveStatusTimerRef.current);
+    setSaveStatus('saving');
+    const scheduleSaved = saveScheduleDraft(formData.hospitalId, formData.year, formData.month, formData);
+    const activeMonthSaved = saveLastActiveMonth(formData.hospitalId, formData.year, formData.month);
+    if (!scheduleSaved || !activeMonthSaved) {
+      setSaveStatus('error');
+      return;
+    }
+    saveStatusTimerRef.current = window.setTimeout(() => setSaveStatus('saved'), 350);
+    return () => window.clearTimeout(saveStatusTimerRef.current);
   }, [formData]);
 
   const setYearMonth = useCallback(
@@ -99,6 +119,9 @@ export function useScheduleBuilder(hospitalId: string) {
         return loaded
           ? {
               ...loaded,
+              ...clipVacationRangeToMonth(loaded.vacationStart, loaded.vacationEnd, year, month),
+              designEdits: undefined,
+              designEditsByFormat: normalizeDesignEditsByFormat(loaded),
               templateId: normalizeTemplateId(loaded.templateId),
               // The selected font is a design preference, so it stays the
               // same when moving between monthly schedule drafts.
@@ -136,10 +159,6 @@ export function useScheduleBuilder(hospitalId: string) {
     setFormData((prev) => ({ ...prev, templateId }));
   }, []);
 
-  const setFontId = useCallback((fontId: FontId) => {
-    setFormData((prev) => ({ ...prev, fontId }));
-  }, []);
-
   const setCalendarLabelStyle = useCallback((calendarLabelStyle: CalendarLabelStyle) => {
     setFormData((prev) => ({ ...prev, calendarLabelStyle }));
   }, []);
@@ -164,36 +183,25 @@ export function useScheduleBuilder(hospitalId: string) {
     setFormData((prev) => ({ ...prev, clinicHours }));
   }, []);
 
-  const setDesignEdits = useCallback((designEdits: DesignEdits) => {
-    setFormData((prev) => ({ ...prev, designEdits }));
-  }, []);
-
-  const reset = useCallback(() => {
-    setFormData((prev) =>
-      createEmptyFormData(hospitalId, prev.year, prev.month, {
-        templateId: prev.templateId,
-        fontId: prev.fontId,
-        titleTextStyle: prev.titleTextStyle,
-      }),
-    );
-  }, [hospitalId]);
-
-  const loadPreviousMonth = useCallback((): boolean => {
-    const loaded = loadPreviousMonthSchedule(hospitalId, formData.year, formData.month);
-    if (!loaded) return false;
-    // 날짜별 개별 설정/휴가는 월이 바뀌면 의미가 없으므로, 반복 설정만 이어받습니다.
+  const setDesignEdits = useCallback((format: OutputFormat, designEdits: DesignEdits) => {
     setFormData((prev) => ({
       ...prev,
-      recurringClosedDays: loaded.recurringClosedDays,
-      templateId: normalizeTemplateId(loaded.templateId),
-      fontId: loaded.fontId ?? DEFAULT_FONT_ID,
-      titleTextStyle: loaded.titleTextStyle ?? 'outline',
-      outputSize: normalizeOutputSizes(loaded.outputSize),
-      calendarMustInclude: loaded.calendarMustInclude ?? '',
-      clinicHours: normalizeClinicHours(loaded.clinicHours),
+      designEdits: undefined,
+      designEditsByFormat: setDesignEditsForFormat(prev.designEditsByFormat, format, designEdits),
     }));
-    return true;
-  }, [hospitalId, formData.year, formData.month]);
+  }, []);
+
+  const resetSchedule = useCallback(() => {
+    setFormData(resetScheduleSettings);
+  }, []);
+
+  const resetDesign = useCallback(() => {
+    setFormData(resetDesignSettings);
+  }, []);
+
+  const resetAll = useCallback(() => {
+    setFormData(resetCurrentMonthAll);
+  }, []);
 
   const resolvedSchedule = useMemo(() => resolveMonthSchedule(formData), [formData]);
 
@@ -210,6 +218,7 @@ export function useScheduleBuilder(hospitalId: string) {
 
   return {
     formData,
+    saveStatus,
     resolvedSchedule,
     resolvedByDate,
     calendarMatrix,
@@ -220,7 +229,6 @@ export function useScheduleBuilder(hospitalId: string) {
       clearDateSchedule,
       setVacationRange,
       setTemplateId,
-      setFontId,
       setCalendarLabelStyle,
       setTitleTextStyle,
       setNextMonthEvent,
@@ -228,8 +236,9 @@ export function useScheduleBuilder(hospitalId: string) {
       setCalendarMustInclude,
       setClinicHours,
       setDesignEdits,
-      reset,
-      loadPreviousMonth,
+      resetSchedule,
+      resetDesign,
+      resetAll,
     },
   };
 }

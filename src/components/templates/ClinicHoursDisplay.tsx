@@ -3,6 +3,7 @@ import type { ClinicHours, LayerEdit } from '../../types/schedule';
 import type { OutputFormat } from '../../types/outputFormat';
 import { getValidClinicHoursRows, hasValidLunchHours } from '../../utils/clinicHoursUtils';
 import styles from './ClinicHoursDisplay.module.css';
+import { getFontOption } from '../../types/font';
 
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -30,6 +31,7 @@ export default function ClinicHoursDisplay({ value, outputFormat, edit, selected
         transformOrigin: 'top left',
         color: edit?.color,
         fontSize: edit?.fontSize,
+        fontFamily: edit?.fontId ? getFontOption(edit.fontId).family : undefined,
       } as CSSProperties}
     >
       <div className={styles.grid}>

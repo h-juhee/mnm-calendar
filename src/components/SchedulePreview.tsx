@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -20,13 +21,14 @@ import type {
   ScheduleFormData,
   TemplateId,
 } from '../types/schedule';
-import { getFontOption } from '../types/font';
+import { DEFAULT_FONT_ID, getFontOption, type FontId } from '../types/font';
 import { ensureFontLoaded } from '../utils/fontLoader';
 import ScheduleATemplate from './templates/ScheduleATemplate';
 import ScheduleBTemplate from './templates/ScheduleBTemplate';
 import ScheduleCTemplate from './templates/ScheduleCTemplate';
 import ScheduleDTemplate from './templates/ScheduleDTemplate';
 import Modal from './Modal';
+import FontSelector from './FontSelector';
 import styles from './SchedulePreview.module.css';
 import { getOutputFormatMeta, type OutputFormat } from '../types/outputFormat';
 import { hasRenderableClinicHours } from '../utils/clinicHoursUtils';
@@ -34,6 +36,7 @@ import { hasRenderableClinicHours } from '../utils/clinicHoursUtils';
 interface SchedulePreviewProps {
   hospital: HospitalInfo;
   formData: ScheduleFormData;
+  designEdits: DesignEdits;
   calendarMatrix: CalendarCell[][];
   resolvedByDate: Map<string, DateSchedule>;
   onDateClick?: (dateKey: string) => void;
@@ -43,12 +46,18 @@ interface SchedulePreviewProps {
   customBackgroundFileName?: string;
   onCustomBackgroundSelect: (file: File) => Promise<void>;
   onCustomBackgroundRemove: () => Promise<void>;
-  onResetAllDesign: () => Promise<void>;
+  onResetSchedule: () => void;
+  onResetDesign: () => Promise<void>;
+  onResetAll: () => Promise<void>;
   activeEditor: 'background' | 'elements' | null;
+  settingsPanelVisible: boolean;
   settingsContent: ReactNode;
   standardPanelContent: ReactNode;
+  hospitalLogoEditor: ReactNode;
+  titleStyleEditor: ReactNode;
   previewHeader: ReactNode;
   previewFooter: ReactNode;
+  onOpenElements: () => void;
   onOpenClinicHours: () => void;
 }
 
@@ -57,7 +66,7 @@ type VisibleLayerId = EditableLayerId;
 const LAYER_LABELS: Record<VisibleLayerId, string> = {
   title: '제목',
   subtitle: '부제목',
-  hospital: '병원명·로고',
+  hospital: '병원 표시',
   clinicHours: '진료시간',
   calendar: '달력',
 };
@@ -78,11 +87,31 @@ const DEFAULT_FONT_SIZES: Record<OutputFormat, Record<VisibleLayerId, number>> =
 
 const MAX_BACKGROUND_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_BACKGROUND_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const MAX_DESIGN_HISTORY = 50;
+const DEFAULT_TITLE_OUTLINE_COLORS: Record<TemplateId, string> = {
+  scheduleA: '#1e3a5f',
+  scheduleB: '#ec4899',
+  scheduleC: '#111827',
+  scheduleD: '#073a8c',
+};
+
+function copyDesignEdits(edits: DesignEdits | undefined): DesignEdits {
+  return Object.fromEntries(
+    Object.entries(edits ?? {}).map(([id, edit]) => [id, { ...edit }]),
+  ) as DesignEdits;
+}
+
+function isTextEditingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable
+    || Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
+}
 
 const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(function SchedulePreview(
   {
     hospital,
     formData,
+    designEdits,
     calendarMatrix,
     resolvedByDate,
     onDateClick,
@@ -92,12 +121,18 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     customBackgroundFileName,
     onCustomBackgroundSelect,
     onCustomBackgroundRemove,
-    onResetAllDesign,
+    onResetSchedule,
+    onResetDesign,
+    onResetAll,
     activeEditor,
+    settingsPanelVisible,
     settingsContent,
     standardPanelContent,
+    hospitalLogoEditor,
+    titleStyleEditor,
     previewHeader,
     previewFooter,
+    onOpenElements,
     onOpenClinicHours,
   },
   ref,
@@ -105,10 +140,15 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
   const wrapperRef = useRef<HTMLDivElement>(null);
   const backgroundInputRef = useRef<HTMLInputElement>(null);
   const inlineEditOriginalRef = useRef('');
-  const [scale, setScale] = useState(1);
+  const currentDesignEditsRef = useRef<DesignEdits>(copyDesignEdits(designEdits));
+  const undoStackRef = useRef<DesignEdits[]>([]);
+  const redoStackRef = useRef<DesignEdits[]>([]);
+  const [fitScale, setFitScale] = useState(1);
   const [selectedLayer, setSelectedLayer] = useState<VisibleLayerId>('title');
+  const [expandedLayer, setExpandedLayer] = useState<VisibleLayerId | null>('title');
   const [backgroundError, setBackgroundError] = useState<string | null>(null);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetConfirm, setResetConfirm] = useState<'schedule' | 'design' | 'all' | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
   const format = getOutputFormatMeta(outputFormat);
   const visibleLayerIds = (Object.keys(LAYER_LABELS) as VisibleLayerId[])
     .filter((id) => outputFormat !== 'square' || id !== 'clinicHours');
@@ -116,11 +156,63 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     && !formData.clinicHours?.hidden
     && !hasRenderableClinicHours(formData.clinicHours);
   const hasIncompleteClinicHours = Boolean(formData.clinicHours?.rows.length);
+  const scale = fitScale;
+
+  useEffect(() => {
+    currentDesignEditsRef.current = copyDesignEdits(designEdits);
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+  }, [designEdits, outputFormat]);
+
+  const applyDesignEdits = useCallback((edits: DesignEdits) => {
+    const next = copyDesignEdits(edits);
+    currentDesignEditsRef.current = next;
+    onDesignEditsChange(next);
+  }, [onDesignEditsChange]);
+
+  const rememberDesignState = useCallback((edits: DesignEdits) => {
+    undoStackRef.current = [
+      ...undoStackRef.current.slice(-(MAX_DESIGN_HISTORY - 1)),
+      copyDesignEdits(edits),
+    ];
+    redoStackRef.current = [];
+  }, []);
+
+  const changeDesignEdits = useCallback((edits: DesignEdits) => {
+    rememberDesignState(currentDesignEditsRef.current);
+    applyDesignEdits(edits);
+  }, [applyDesignEdits, rememberDesignState]);
+
+  useEffect(() => {
+    const handleUndoRedo = (event: globalThis.KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || isTextEditingTarget(event.target)) return;
+      const key = event.key.toLowerCase();
+      const isUndo = key === 'z' && !event.shiftKey;
+      const isRedo = key === 'y' || (key === 'z' && event.shiftKey);
+      if (!isUndo && !isRedo) return;
+
+      const source = isUndo ? undoStackRef : redoStackRef;
+      const destination = isUndo ? redoStackRef : undoStackRef;
+      const previous = source.current.at(-1);
+      if (!previous) return;
+
+      event.preventDefault();
+      source.current = source.current.slice(0, -1);
+      destination.current = [
+        ...destination.current.slice(-(MAX_DESIGN_HISTORY - 1)),
+        copyDesignEdits(currentDesignEditsRef.current),
+      ];
+      applyDesignEdits(previous);
+    };
+
+    window.addEventListener('keydown', handleUndoRedo);
+    return () => window.removeEventListener('keydown', handleUndoRedo);
+  }, [applyDesignEdits]);
 
   useEffect(() => {
     const element = wrapperRef.current;
     if (!element) return;
-    const update = () => setScale(element.clientWidth / format.width);
+    const update = () => setFitScale(element.clientWidth / format.width);
     update();
     const observer = new ResizeObserver(update);
     observer.observe(element);
@@ -132,15 +224,19 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
 
   useEffect(() => {
     void ensureFontLoaded(formData.fontId);
-  }, [formData.fontId]);
+    Object.values(designEdits).forEach((edit) => {
+      if (edit?.fontId) void ensureFontLoaded(edit.fontId);
+    });
+  }, [designEdits, formData.fontId]);
 
   useEffect(() => {
     if (outputFormat === 'square' && selectedLayer === 'clinicHours') {
       setSelectedLayer('title');
+      setExpandedLayer('title');
     }
   }, [outputFormat, selectedLayer]);
 
-  const selectedEdit = formData.designEdits?.[selectedLayer] ?? {};
+  const selectedEdit = designEdits[selectedLayer] ?? {};
   const selectedLabel = LAYER_LABELS[selectedLayer];
   const defaultFontSize = DEFAULT_FONT_SIZES[outputFormat][selectedLayer];
   const selectedText = selectedLayer === 'title'
@@ -152,16 +248,16 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
         : '';
 
   const updateSelected = (patch: DesignEdits[EditableLayerId]) => {
-    onDesignEditsChange({
-      ...(formData.designEdits ?? {}),
+    changeDesignEdits({
+      ...designEdits,
       [selectedLayer]: { ...selectedEdit, ...patch },
     });
   };
 
   const resetSelected = () => {
-    const next = { ...(formData.designEdits ?? {}) };
+    const next = { ...designEdits };
     delete next[selectedLayer];
-    onDesignEditsChange(next);
+    changeDesignEdits(next);
   };
 
   const handleBackgroundFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -206,11 +302,14 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     }
 
     setSelectedLayer(id);
+    setExpandedLayer(id);
     event.preventDefault();
     event.stopPropagation();
     const startX = event.clientX;
     const startY = event.clientY;
-    const initial = formData.designEdits?.[id] ?? {};
+    const initial = designEdits[id] ?? {};
+    const designBeforeDrag = copyDesignEdits(designEdits);
+    let didChange = false;
     const rect = target.getBoundingClientRect();
     const handleSize = Math.max(14, 24 * scale);
     const isResize = event.clientX >= rect.right - handleSize
@@ -219,20 +318,21 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     const logicalWidth = rect.width / scale / initialScale;
     const logicalHeight = rect.height / scale / initialScale;
     const onMove = (moveEvent: PointerEvent) => {
+      didChange = true;
       if (isResize) {
         const dx = (moveEvent.clientX - startX) / scale;
         const dy = (moveEvent.clientY - startY) / scale;
         const widthRatio = (logicalWidth + dx) / logicalWidth;
         const heightRatio = (logicalHeight + dy) / logicalHeight;
         const nextScale = Math.min(3.5, Math.max(0.2, initialScale * Math.max(widthRatio, heightRatio)));
-        onDesignEditsChange({
-          ...(formData.designEdits ?? {}),
+        applyDesignEdits({
+          ...designEdits,
           [id]: { ...initial, scale: Math.round(nextScale * 100) / 100 },
         });
         return;
       }
-      onDesignEditsChange({
-        ...(formData.designEdits ?? {}),
+      applyDesignEdits({
+        ...designEdits,
         [id]: {
           ...initial,
           x: Math.round((initial.x ?? 0) + (moveEvent.clientX - startX) / scale),
@@ -241,6 +341,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
       });
     };
     const onUp = () => {
+      if (didChange) rememberDesignState(designBeforeDrag);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
     };
@@ -250,9 +351,17 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
 
   const handleDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = (event.target as HTMLElement).closest<HTMLElement>('[data-edit-layer]');
-    if (!target || target.querySelector('img')) return;
+    if (!target) return;
     const id = target.dataset.editLayer as EditableLayerId;
-    if (!['title', 'subtitle', 'hospital'].includes(id)) return;
+    setSelectedLayer(id);
+    setExpandedLayer(id);
+    onOpenElements();
+
+    if (target.querySelector('img') || !['title', 'subtitle', 'hospital'].includes(id)) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     inlineEditOriginalRef.current = target.textContent ?? '';
     target.contentEditable = 'true';
     target.spellcheck = false;
@@ -271,10 +380,10 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     if (!target.matches('[data-edit-layer][contenteditable="true"]')) return;
     const id = target.dataset.editLayer as EditableLayerId;
     target.contentEditable = 'false';
-    onDesignEditsChange({
-      ...(formData.designEdits ?? {}),
+    changeDesignEdits({
+      ...designEdits,
       [id]: {
-        ...(formData.designEdits?.[id] ?? {}),
+        ...(designEdits[id] ?? {}),
         text: (target.textContent ?? '').trim(),
       },
     });
@@ -344,84 +453,150 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
             <h3>요소 편집</h3>
             <p>미리보기에서 요소를 직접 드래그해도 위치가 변경돼요.</p>
           </div>
-          <div className={styles.layerTabs} role="tablist" aria-label="편집할 요소">
+          <div className={styles.layerAccordion}>
             {visibleLayerIds.map((id) => (
-              <button
-                type="button"
-                role="tab"
-                aria-selected={selectedLayer === id}
+              <div
+                className={`${styles.accordionItem} ${expandedLayer === id ? styles.openAccordionItem : ''}`}
                 key={id}
-                className={selectedLayer === id ? styles.activeLayer : undefined}
-                onClick={() => setSelectedLayer(id)}
               >
-                {LAYER_LABELS[id]}
-              </button>
+                <button
+                  type="button"
+                  className={styles.accordionTrigger}
+                  aria-expanded={expandedLayer === id}
+                  aria-controls={`layer-controls-${id}`}
+                  onClick={() => {
+                    setSelectedLayer(id);
+                    setExpandedLayer((current) => current === id ? null : id);
+                  }}
+                >
+                  <span>{LAYER_LABELS[id]}</span>
+                  <svg aria-hidden="true" viewBox="0 0 20 20">
+                    <path d="m5 7.5 5 5 5-5" />
+                  </svg>
+                </button>
+                {expandedLayer === id && (
+                  <div id={`layer-controls-${id}`} className={styles.elementControls}>
+                    <h4>
+                      {selectedLayer === 'hospital'
+                        ? isLogoLayer ? '로고 설정' : '병원명 설정'
+                        : `${selectedLabel} 설정`}
+                    </h4>
+                    {selectedLayer === 'hospital' && (
+                      <div className={styles.hospitalLogoEditor}>
+                        <p className={styles.hospitalDisplayHint}>
+                          {isLogoLayer
+                            ? '현재 병원명 대신 로고가 표시됩니다. 로고를 삭제하면 병원명이 다시 표시돼요.'
+                            : '현재 병원명이 표시됩니다. 로고를 추가하면 같은 자리에 병원명 대신 로고가 표시돼요.'}
+                        </p>
+                        {hospitalLogoEditor}
+                      </div>
+                    )}
+                    {selectedLayer !== 'clinicHours' && selectedLayer !== 'calendar' && !isLogoLayer && (
+                      <label className={styles.field}>
+                        <span>문구</span>
+                        <input
+                          type="text"
+                          value={selectedText}
+                          onChange={(event) => updateSelected({ text: event.target.value })}
+                        />
+                      </label>
+                    )}
+                    {!isLogoLayer && (
+                      <div className={styles.layerFontField}>
+                        <span>폰트</span>
+                        <FontSelector
+                          selectedId={(selectedEdit.fontId as FontId | undefined) ?? formData.fontId ?? DEFAULT_FONT_ID}
+                          onSelect={(fontId) => updateSelected({ fontId })}
+                        />
+                      </div>
+                    )}
+                    {selectedLayer === 'title' && (
+                      <div className={styles.titleStyleEditor}>
+                        <span>글자 스타일</span>
+                        {titleStyleEditor}
+                      </div>
+                    )}
+
+                    {selectedLayer === 'calendar' ? (
+                      <p className={styles.calendarDragHint}>미리보기의 요일 영역이나 달력 테두리를 드래그해 위치를 옮길 수 있어요.</p>
+                    ) : isLogoLayer ? (
+                      <label className={styles.sliderField}>
+                        <span>로고 크기 <output>{Math.round((selectedEdit.scale ?? 1) * 100)}%</output></span>
+                        <input
+                          type="range"
+                          min="0.3"
+                          max="2.5"
+                          step="0.05"
+                          value={selectedEdit.scale ?? 1}
+                          onChange={(event) => updateSelected({ scale: Number(event.target.value) })}
+                        />
+                      </label>
+                    ) : (
+                      <>
+                        <label className={styles.sliderField}>
+                          <span>
+                            글자 크기
+                            <output>
+                              {Math.round(selectedEdit.fontSize ?? defaultFontSize)}px
+                            </output>
+                          </span>
+                          <input
+                            type="range"
+                            min={Math.max(10, Math.round(defaultFontSize * 0.35))}
+                            max={Math.round(defaultFontSize * 2.2)}
+                            value={selectedEdit.fontSize ?? defaultFontSize}
+                            onChange={(event) => updateSelected({ fontSize: Number(event.target.value), scale: 1 })}
+                          />
+                        </label>
+                        <label className={styles.colorField}>
+                          <span>글자 색상</span>
+                          <input
+                            type="color"
+                            value={selectedEdit.color ?? '#111827'}
+                            onChange={(event) => updateSelected({ color: event.target.value })}
+                          />
+                          <output>{selectedEdit.color ?? '#111827'}</output>
+                        </label>
+                        {selectedLayer === 'title' && formData.titleTextStyle !== 'filled' && (
+                          <label className={styles.colorField}>
+                            <span>테두리 색상</span>
+                            <input
+                              type="color"
+                              value={selectedEdit.outlineColor ?? DEFAULT_TITLE_OUTLINE_COLORS[formData.templateId as TemplateId] ?? '#1e3a5f'}
+                              onChange={(event) => updateSelected({ outlineColor: event.target.value })}
+                            />
+                            <output>
+                              {selectedEdit.outlineColor ?? DEFAULT_TITLE_OUTLINE_COLORS[formData.templateId as TemplateId] ?? '#1e3a5f'}
+                            </output>
+                          </label>
+                        )}
+                      </>
+                    )}
+
+                    <button type="button" className={styles.resetElementButton} onClick={resetSelected}>
+                      {selectedLabel} 설정 초기화
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
-          </div>
-
-          <div className={styles.elementControls}>
-            <h4>{isLogoLayer ? '로고 설정' : `${selectedLabel} 설정`}</h4>
-            {selectedLayer !== 'clinicHours' && selectedLayer !== 'calendar' && !isLogoLayer && (
-              <label className={styles.field}>
-                <span>문구</span>
-                <input
-                  type="text"
-                  value={selectedText}
-                  onChange={(event) => updateSelected({ text: event.target.value })}
-                />
-              </label>
-            )}
-
-            {selectedLayer === 'calendar' ? (
-              <p className={styles.calendarDragHint}>미리보기의 요일 영역이나 달력 테두리를 드래그해 위치를 옮길 수 있어요.</p>
-            ) : isLogoLayer ? (
-              <label className={styles.sliderField}>
-                <span>로고 크기 <output>{Math.round((selectedEdit.scale ?? 1) * 100)}%</output></span>
-                <input
-                  type="range"
-                  min="0.3"
-                  max="2.5"
-                  step="0.05"
-                  value={selectedEdit.scale ?? 1}
-                  onChange={(event) => updateSelected({ scale: Number(event.target.value) })}
-                />
-              </label>
-            ) : (
-              <>
-                <label className={styles.sliderField}>
-                  <span>글자 크기 <output>{Math.round(selectedEdit.fontSize ?? defaultFontSize)}px</output></span>
-                  <input
-                    type="range"
-                    min={Math.max(10, Math.round(defaultFontSize * 0.35))}
-                    max={Math.round(defaultFontSize * 2.2)}
-                    value={selectedEdit.fontSize ?? defaultFontSize}
-                    onChange={(event) => updateSelected({ fontSize: Number(event.target.value), scale: 1 })}
-                  />
-                </label>
-                <label className={styles.colorField}>
-                  <span>글자 색상</span>
-                  <input
-                    type="color"
-                    value={selectedEdit.color ?? '#111827'}
-                    onChange={(event) => updateSelected({ color: event.target.value })}
-                  />
-                  <output>{selectedEdit.color ?? '#111827'}</output>
-                </label>
-              </>
-            )}
-
-            <button type="button" className={styles.resetElementButton} onClick={resetSelected}>
-              {selectedLabel} 설정 초기화
-            </button>
           </div>
         </section>
 
         </div>
         )}
         {!activeEditor && standardPanelContent}
+        {settingsPanelVisible && (
         <div className={styles.allResetRow}>
-          <button type="button" onClick={() => setShowResetConfirm(true)}>전체 설정 초기화</button>
+          <button type="button" onClick={() => setResetConfirm(activeEditor ? 'design' : 'schedule')}>
+            {activeEditor ? '디자인 설정 초기화' : '일정 설정 초기화'}
+          </button>
+          <details className={styles.dangerZone}>
+            <summary>위험 작업</summary>
+            <button type="button" onClick={() => setResetConfirm('all')}>현재 월 전체 작업 초기화</button>
+          </details>
         </div>
+        )}
         </div>
         </div>
       </aside>
@@ -429,7 +604,10 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
       <div className={styles.previewColumn}>
         {previewHeader}
         <div className={styles.canvasWrapper} ref={wrapperRef}>
-        <div className={styles.scaledBox} style={{ height: format.height * scale }}>
+        <div
+          className={styles.scaledBox}
+          style={{ height: format.height * scale }}
+        >
           <div
             ref={ref}
             className={styles.exportNode}
@@ -453,7 +631,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
               outputFormat={outputFormat}
               clinicHours={formData.clinicHours}
               reserveClinicHoursSpace={showClinicHoursGuide}
-              designEdits={formData.designEdits}
+              designEdits={designEdits}
               selectedLayer={selectedLayer}
               customBackgroundUrl={customBackgroundUrl}
             />
@@ -486,21 +664,59 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
         {previewFooter}
       </div>
 
-      {showResetConfirm && (
-        <Modal title="전체 설정 초기화" onClose={() => setShowResetConfirm(false)}>
+      {resetConfirm && (
+        <Modal
+          title={
+            resetConfirm === 'schedule'
+              ? '일정 설정 초기화'
+              : resetConfirm === 'design'
+                ? '디자인 설정 초기화'
+                : '현재 월 전체 작업 초기화'
+          }
+          onClose={() => {
+            setResetConfirm(null);
+            setResetError(null);
+          }}
+        >
           <div className={styles.confirmContent}>
-            <p><strong>모든 설정을 초기 상태로 되돌릴까요?</strong></p>
-            <p>일정, 배경 이미지, 글자 위치와 스타일 설정이 모두 초기화됩니다.</p>
+            {resetConfirm === 'schedule' ? (
+              <>
+                <p><strong>{formData.year}년 {formData.month}월의 일정 설정을 초기화할까요?</strong></p>
+                <p>정기 휴진일, 휴가 기간, 날짜별 일정과 진료시간이 삭제됩니다.</p>
+                <p>템플릿, 배경 이미지와 디자인 설정은 유지됩니다.</p>
+              </>
+            ) : resetConfirm === 'design' ? (
+              <>
+                <p><strong>현재 디자인 설정을 초기화할까요?</strong></p>
+                <p>배경 이미지와 요소별 위치, 크기, 글꼴, 색상, 수정 문구가 초기화됩니다.</p>
+                <p>일정, 진료시간, 병원 정보, 템플릿과 출력 규격은 유지됩니다.</p>
+              </>
+            ) : (
+              <>
+                <p><strong>{formData.year}년 {formData.month}월 작업을 모두 초기화할까요?</strong></p>
+                <p>현재 월의 일정, 진료시간, 배경 이미지, 디자인, 맞춤 요청 입력과 템플릿이 초기화됩니다.</p>
+                <p>병원 정보와 다른 연월에 저장된 일정은 유지됩니다.</p>
+              </>
+            )}
+            {resetError && <p className={styles.resetError} role="alert">{resetError}</p>}
             <div className={styles.confirmActions}>
-              <button type="button" onClick={() => setShowResetConfirm(false)}>취소</button>
+              <button type="button" onClick={() => setResetConfirm(null)}>취소</button>
               <button
                 type="button"
                 className={styles.confirmResetButton}
-                onClick={() => {
-                  void onResetAllDesign().then(() => setShowResetConfirm(false));
+                onClick={async () => {
+                  setResetError(null);
+                  try {
+                    if (resetConfirm === 'schedule') onResetSchedule();
+                    else if (resetConfirm === 'design') await onResetDesign();
+                    else await onResetAll();
+                    setResetConfirm(null);
+                  } catch {
+                    setResetError('초기화하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+                  }
                 }}
               >
-                전체 초기화
+                {resetConfirm === 'all' ? '현재 월 전체 초기화' : '초기화'}
               </button>
             </div>
           </div>

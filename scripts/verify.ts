@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   buildCalendarMatrix,
+  clipVacationRangeToMonth,
   formatDateKey,
   getDaysInMonth,
   getFirstWeekday,
@@ -14,6 +15,15 @@ import {
 import { buildExportFilename } from '../src/utils/exportUtils';
 import type { ScheduleFormData } from '../src/types/schedule';
 import { SCHEDULE_TYPE_DEFAULT_BADGE_COLOR } from '../src/types/schedule';
+import {
+  resetCurrentMonthAll,
+  resetDesignSettings,
+  resetScheduleSettings,
+} from '../src/utils/resetUtils';
+import {
+  normalizeDesignEditsByFormat,
+  setDesignEditsForFormat,
+} from '../src/utils/designEditsUtils';
 
 // Node 실행 환경에는 브라우저 localStorage가 없으므로 검증용 최소 메모리 구현을 주입합니다.
 class MemoryStorage {
@@ -30,12 +40,17 @@ class MemoryStorage {
   clear() {
     this.store.clear();
   }
+  get length() {
+    return this.store.size;
+  }
+  key(index: number) {
+    return Array.from(this.store.keys())[index] ?? null;
+  }
 }
 (globalThis as unknown as { localStorage: MemoryStorage }).localStorage = new MemoryStorage();
 
 const {
   loadScheduleDraft,
-  loadPreviousMonthSchedule,
   saveScheduleDraft,
   saveCustomDesignRequest,
   listCustomDesignRequests,
@@ -45,6 +60,9 @@ const {
   removeHospitalInfo,
   saveLastActiveMonth,
   loadLastActiveMonth,
+  createHospitalId,
+  listHospitalInfos,
+  removeHospitalData,
 } = await import('../src/utils/storageUtils');
 
 type Test = { name: string; run: () => void };
@@ -160,6 +178,30 @@ test('휴가 기간 중 하루를 개별적으로 단축 진료로 바꿀 수 �
   assert.equal(resolved.find((r) => r.date === '2026-08-12')?.type, 'closed');
 });
 
+test('월 경계를 넘는 기존 휴가 범위는 현재 제작 월과 겹치는 구간만 유지한다', () => {
+  assert.deepEqual(
+    clipVacationRangeToMonth('2026-07-30', '2026-08-03', 2026, 8),
+    { vacationStart: '2026-08-01', vacationEnd: '2026-08-03' },
+  );
+  assert.deepEqual(
+    clipVacationRangeToMonth('2026-08-29', '2026-09-02', 2026, 8),
+    { vacationStart: '2026-08-29', vacationEnd: '2026-08-31' },
+  );
+  assert.deepEqual(
+    clipVacationRangeToMonth('2026-07-30', '2026-09-02', 2026, 8),
+    { vacationStart: '2026-08-01', vacationEnd: '2026-08-31' },
+  );
+});
+
+test('현재 제작 월과 겹치지 않는 휴가와 다른 달의 미완성 선택은 제거한다', () => {
+  assert.deepEqual(clipVacationRangeToMonth('2026-07-01', '2026-07-03', 2026, 8), {});
+  assert.deepEqual(clipVacationRangeToMonth('2026-07-30', undefined, 2026, 8), {});
+  assert.deepEqual(
+    clipVacationRangeToMonth('2026-08-10', undefined, 2026, 8),
+    { vacationStart: '2026-08-10' },
+  );
+});
+
 test('개별 설정을 해제하면 다시 우선순위(휴가/정기휴진) 규칙을 따른다', () => {
   let formData = baseFormData({ vacationStart: '2026-08-10', vacationEnd: '2026-08-12' });
   formData = {
@@ -218,7 +260,7 @@ test('buildExportFilename은 파일명에 사용할 수 없는 문자를 제거�
   assert.equal(buildExportFilename('서울다온치과', 2026, 8), '서울다온치과_2026년_08월_진료일정_1080x1080.png');
 });
 
-// 9/10. 저장 및 이전 달 불러오기
+// 9/10. 월별 일정 저장
 test('일정을 저장하면 같은 병원/연월 키로 다시 불러올 수 있다', () => {
   const formData = baseFormData({ recurringClosedDays: [0] });
   saveScheduleDraft(formData.hospitalId, formData.year, formData.month, formData);
@@ -226,17 +268,16 @@ test('일정을 저장하면 같은 병원/연월 키로 다시 불러올 수 �
   assert.deepEqual(loaded?.recurringClosedDays, [0]);
 });
 
-test('이전 달 일정 불러오기는 (year, month-1) 키를 조회하며, 없으면 null을 반환한다', () => {
-  assert.equal(loadPreviousMonthSchedule('sample-dental-01', 2099, 5), null);
-  const july = baseFormData({ month: 7, recurringClosedDays: [3] });
-  saveScheduleDraft(july.hospitalId, july.year, july.month, july);
-  const loaded = loadPreviousMonthSchedule('sample-dental-01', 2026, 8);
-  assert.deepEqual(loaded?.recurringClosedDays, [3]);
-});
-
 test('병원 ID/연월이 다르면 저장 키가 충돌하지 않는다', () => {
   assert.notEqual(scheduleKey('hospA', 2026, 8), scheduleKey('hospB', 2026, 8));
   assert.notEqual(scheduleKey('hospA', 2026, 8), scheduleKey('hospA', 2026, 9));
+});
+
+test('새 병원 ID는 치과명과 무관한 서로 다른 UUID로 생성된다', () => {
+  const first = createHospitalId();
+  const second = createHospitalId();
+  assert.notEqual(first, second);
+  assert.match(first, /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|hospital-)/i);
 });
 
 test('병원 정보를 저장·복원하고 병원 변경 시 제거할 수 있다', () => {
@@ -248,9 +289,54 @@ test('병원 정보를 저장·복원하고 병원 변경 시 제거할 수 있�
     primaryColor: '#2f6fed',
   };
   assert.equal(saveHospitalInfo(hospital), true);
-  assert.deepEqual(loadHospitalInfo(), hospital);
+  assert.deepEqual(loadHospitalInfo(), { ...hospital, storageVersion: 2 });
+  assert.equal(listHospitalInfos().some((item) => item.id === hospital.id), true);
   assert.equal(removeHospitalInfo(), true);
   assert.equal(loadHospitalInfo(), null);
+  assert.equal(listHospitalInfos().some((item) => item.id === hospital.id), true);
+});
+
+test('최근 병원을 다시 선택할 수 있고 삭제하면 해당 월별 데이터도 제거된다', () => {
+  const hospital = {
+    id: createHospitalId(),
+    name: '최근병원치과',
+    directorName: '김원장',
+    primaryColor: '#2f6fed',
+  };
+  saveHospitalInfo(hospital);
+  saveScheduleDraft(hospital.id, 2026, 8, baseFormData({ hospitalId: hospital.id }));
+  assert.equal(listHospitalInfos()[0]?.id, hospital.id);
+  assert.equal(removeHospitalData(hospital.id), true);
+  assert.equal(listHospitalInfos().some((item) => item.id === hospital.id), false);
+  assert.equal(loadScheduleDraft(hospital.id, 2026, 8), null);
+});
+
+test('치과명 기반 기존 병원 데이터는 UUID 키로 자동 이전된다', () => {
+  const storage = (globalThis as unknown as { localStorage: MemoryStorage }).localStorage;
+  storage.clear();
+  const legacyHospital = {
+    id: '같은이름치과',
+    name: '같은이름치과',
+    directorName: '기존원장',
+    primaryColor: '#2f6fed',
+  };
+  storage.setItem('mnn:hospitalInfo', JSON.stringify(legacyHospital));
+  saveScheduleDraft(legacyHospital.id, 2026, 8, baseFormData({
+    hospitalId: legacyHospital.id,
+    recurringClosedDays: [0],
+  }));
+  saveLastActiveMonth(legacyHospital.id, 2026, 8);
+
+  const migrated = loadHospitalInfo();
+  assert.ok(migrated);
+  assert.notEqual(migrated.id, legacyHospital.id);
+  assert.equal(migrated.storageVersion, 2);
+  assert.equal(migrated.legacyBackgroundHospitalId, legacyHospital.id);
+  assert.deepEqual(loadScheduleDraft(migrated.id, 2026, 8)?.recurringClosedDays, [0]);
+  assert.equal(loadScheduleDraft(migrated.id, 2026, 8)?.hospitalId, migrated.id);
+  assert.deepEqual(loadLastActiveMonth(migrated.id), { year: 2026, month: 8 });
+  assert.equal(loadScheduleDraft(legacyHospital.id, 2026, 8), null);
+  assert.equal(loadLastActiveMonth(legacyHospital.id), null);
 });
 
 // 14. localStorage 값이 손상돼도 앱이 죽지 않는지
@@ -307,6 +393,80 @@ test('맞춤 디자인 요청은 배열에 누적 저장된다', () => {
     closedDates: '',
   });
   assert.equal(listCustomDesignRequests().length, before + 1);
+});
+
+test('일정 초기화는 일정만 지우고 디자인과 템플릿을 유지한다', () => {
+  const before = baseFormData({
+    recurringClosedDays: [0],
+    vacationStart: '2026-08-01',
+    vacationEnd: '2026-08-03',
+    dateSchedules: [{ date: '2026-08-10', type: 'closed' }],
+    templateId: 'scheduleB',
+    designEdits: { title: { color: '#123456' } },
+  });
+  const after = resetScheduleSettings(before);
+  assert.deepEqual(after.recurringClosedDays, []);
+  assert.deepEqual(after.dateSchedules, []);
+  assert.equal(after.vacationStart, undefined);
+  assert.equal(after.templateId, 'scheduleB');
+  assert.deepEqual(after.designEdits, before.designEdits);
+});
+
+test('디자인 초기화는 일정과 템플릿을 유지한다', () => {
+  const before = baseFormData({
+    recurringClosedDays: [0],
+    templateId: 'scheduleC',
+    titleTextStyle: 'filled',
+    designEditsByFormat: {
+      square: { title: { color: '#123456', x: 20 } },
+      didHorizontal: { title: { color: '#654321', y: 40 } },
+    },
+  });
+  const after = resetDesignSettings(before);
+  assert.deepEqual(after.recurringClosedDays, [0]);
+  assert.equal(after.templateId, 'scheduleC');
+  assert.equal(after.titleTextStyle, 'outline');
+  assert.deepEqual(after.designEditsByFormat, {});
+});
+
+test('규격별 디자인 편집값은 다른 출력 규격의 값을 변경하지 않는다', () => {
+  const square = { title: { x: 20, y: 30, fontSize: 90 } };
+  const horizontal = { title: { x: 400, y: 120, fontSize: 190 } };
+  let edits = setDesignEditsForFormat({}, 'square', square);
+  edits = setDesignEditsForFormat(edits, 'didHorizontal', horizontal);
+  assert.deepEqual(edits.square, square);
+  assert.deepEqual(edits.didHorizontal, horizontal);
+  assert.equal(edits.a4, undefined);
+});
+
+test('과거 공통 디자인 편집값은 정사각형 규격으로만 이전된다', () => {
+  const legacy = baseFormData({
+    designEdits: { title: { x: 15, y: 25 } },
+  });
+  const normalized = normalizeDesignEditsByFormat(legacy);
+  assert.deepEqual(normalized?.square, legacy.designEdits);
+  assert.equal(normalized?.didHorizontal, undefined);
+  assert.equal(normalized?.didVertical, undefined);
+  assert.equal(normalized?.a4, undefined);
+});
+
+test('현재 월 전체 초기화는 병원과 연월을 유지하고 작업 데이터만 지운다', () => {
+  const before = baseFormData({
+    templateId: 'scheduleD',
+    recurringClosedDays: [2],
+    nextMonthEvent: '이벤트',
+    outputSize: ['a4'],
+    calendarMustInclude: '필수 문구',
+  });
+  const after = resetCurrentMonthAll(before);
+  assert.equal(after.hospitalId, before.hospitalId);
+  assert.equal(after.year, before.year);
+  assert.equal(after.month, before.month);
+  assert.equal(after.templateId, null);
+  assert.deepEqual(after.recurringClosedDays, []);
+  assert.equal(after.nextMonthEvent, '');
+  assert.deepEqual(after.outputSize, []);
+  assert.equal(after.calendarMustInclude, '');
 });
 
 let passed = 0;
