@@ -106,7 +106,7 @@ function ScheduleBuilderContent({
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('square');
   const [isFormatSectionExpanded, setFormatSectionExpanded] = useState(true);
   const [activeSettingsPanel, setActiveSettingsPanel] = useState<SettingsPanel>('basic');
-  const [expandedSettingsGroup, setExpandedSettingsGroup] = useState<SettingsGroupId | null>('schedule');
+  const [expandedSettingsGroup, setExpandedSettingsGroup] = useState<SettingsGroupId>('schedule');
   const [customBackgroundUrl, setCustomBackgroundUrl] = useState<string>();
   const [customBackgroundFileName, setCustomBackgroundFileName] = useState<string>();
   const customBackgroundObjectUrlRef = useRef<string | undefined>(undefined);
@@ -214,7 +214,11 @@ function ScheduleBuilderContent({
               className={styles.settingsGroupTrigger}
               aria-expanded={expandedSettingsGroup === group.id}
               aria-controls={`settings-group-${group.id}`}
-              onClick={() => setExpandedSettingsGroup((current) => current === group.id ? null : group.id)}
+              onClick={() => {
+                if (expandedSettingsGroup === group.id) return;
+                setExpandedSettingsGroup(group.id);
+                setActiveSettingsPanel(group.items[0].id);
+              }}
             >
               <span>{group.label}</span>
               <svg aria-hidden="true" viewBox="0 0 20 20">

@@ -141,25 +141,32 @@
   background: var(--schedule-badge-color, #4779ca);
 }
 
-.badgeShortened {
+.badgeShortened,
+.badgeWithTime {
   min-width: 0;
-  width: auto;
-  max-width: none;
+  width: max-content;
+  max-width: 100%;
   padding: 0;
   gap: 2px;
   font-size: clamp(9px, 1.35vw, 18px);
+  background: transparent;
 }
 
-.badgeShortened > span {
+.badgeShortened > span,
+.badgeWithTime > span {
   display: block;
-  padding: 3px 14px;
+  width: auto;
+  max-width: none;
+  box-sizing: border-box;
+  padding: 3px clamp(7px, 1vw, 14px);
   background: var(--schedule-badge-color, #1a9c6b);
   border-radius: 999px;
   font-weight: 600;
   white-space: nowrap;
 }
 
-.badgeShortened > .badgeTimePlain {
+.badgeShortened > .badgeTimePlain,
+.badgeWithTime > .badgeTimePlain {
   background: transparent;
   color: var(--schedule-badge-color, #1a9c6b);
 }
@@ -170,6 +177,12 @@
 
 .badgeSaturday {
   background: var(--schedule-badge-color, #65b6d8);
+}
+
+.badge.badgeWithTime {
+  width: max-content;
+  max-width: calc(100% + 16px);
+  background: transparent;
 }
 
 .a4 {

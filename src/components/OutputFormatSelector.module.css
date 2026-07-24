@@ -32,10 +32,14 @@
 }
 
 .active {
-  color: var(--color-primary);
-  background: var(--color-primary-bg);
+  color: #fff;
+  background: var(--color-primary);
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px var(--color-primary);
+  box-shadow: none;
+}
+
+.active span {
+  color: #fff;
 }
 
 @media (max-width: 520px) {

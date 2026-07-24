@@ -624,6 +624,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
               month={formData.month}
               calendarMatrix={calendarMatrix}
               resolvedByDate={resolvedByDate}
+              dateSchedules={formData.dateSchedules}
               onDateClick={onDateClick}
               fontFamily={fontOption.family}
               calendarLabelStyle={formData.calendarLabelStyle}

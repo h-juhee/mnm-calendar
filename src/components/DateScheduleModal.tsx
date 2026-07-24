@@ -5,6 +5,12 @@ import Modal from './Modal';
 import styles from './DateScheduleModal.module.css';
 
 const TYPE_ORDER: ScheduleType[] = ['closed', 'morningClosed', 'afternoonClosed', 'seminarClosed', 'shortened', 'night', 'saturday', 'open', 'custom'];
+const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+
+function formatTimeInput(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 4);
+  return digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits;
+}
 
 interface DateScheduleModalProps {
   dateKey: string;
@@ -24,7 +30,7 @@ export default function DateScheduleModal({
   onClose,
 }: DateScheduleModalProps) {
   const [type, setType] = useState<ScheduleType>(currentSchedule.type);
-  const [startTime, setStartTime] = useState(currentSchedule.startTime ?? '09:00');
+  const [startTime, setStartTime] = useState(currentSchedule.startTime ?? '');
   const [endTime, setEndTime] = useState(currentSchedule.endTime ?? '');
   const [showTimeBadge, setShowTimeBadge] = useState(currentSchedule.showTimeBadge !== false);
   const [label, setLabel] = useState(currentSchedule.label ?? '');
@@ -34,10 +40,13 @@ export default function DateScheduleModal({
   const dateLabel = `${year}년 ${Number(month)}월 ${Number(day)}일`;
   const displayedBadgeColor = badgeColor || SCHEDULE_TYPE_DEFAULT_BADGE_COLOR[type];
 
-  const timeError = type !== 'shortened'
+  const hasAnyTime = Boolean(startTime || endTime);
+  const timeError = !hasAnyTime
     ? null
     : !startTime || !endTime
-      ? '시작 시간과 종료 시간을 모두 선택해 주세요.'
+      ? '시간을 표시하려면 시작 시간과 종료 시간을 모두 입력해 주세요.'
+      : !TIME_PATTERN.test(startTime) || !TIME_PATTERN.test(endTime)
+        ? '시간을 09:30 형식으로 입력해 주세요.'
       : startTime >= endTime
         ? '종료 시간은 시작 시간 이후여야 합니다.'
         : null;
@@ -47,10 +56,10 @@ export default function DateScheduleModal({
     onSave({
       date: dateKey,
       type,
-      badgeColor: type === 'open' ? undefined : badgeColor || undefined,
-      startTime: type === 'shortened' ? startTime || undefined : undefined,
-      endTime: type === 'shortened' ? endTime || undefined : undefined,
-      showTimeBadge: type === 'shortened' ? showTimeBadge : undefined,
+      badgeColor: badgeColor || undefined,
+      startTime: startTime || undefined,
+      endTime: endTime || undefined,
+      showTimeBadge,
       label: type === 'custom' ? label.trim() || undefined : undefined,
     });
     onClose();
@@ -91,34 +100,11 @@ export default function DateScheduleModal({
         })}
       </div>
 
-      {type === 'shortened' && (
-        <div className={styles.endTimeField}>
-          <label className={styles.label} htmlFor="shortened-start-time">
-            진료 시작 시간
-          </label>
-          <input
-            id="shortened-start-time"
-            type="time"
-            className={styles.input}
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            required
-            aria-invalid={timeError ? 'true' : undefined}
-            aria-describedby={timeError ? 'shortened-time-error' : undefined}
-          />
-          <label className={styles.label} htmlFor="shortened-end-time">
-            단축 진료 종료 시간
-          </label>
-          <input
-            id="shortened-end-time"
-            type="time"
-            className={styles.input}
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-            required
-            aria-invalid={timeError ? 'true' : undefined}
-            aria-describedby={timeError ? 'shortened-time-error' : undefined}
-          />
+      <div className={styles.timeField}>
+        <div className={styles.timeHeader}>
+          <span className={styles.timeTitle}>
+            진료시간 <small>선택</small>
+          </span>
           <label className={styles.toggleOption}>
             <input
               type="checkbox"
@@ -127,13 +113,44 @@ export default function DateScheduleModal({
             />
             시간 배지 색상 표시
           </label>
-          {timeError && (
-            <p id="shortened-time-error" className={styles.error} role="alert">
-              {timeError}
-            </p>
-          )}
         </div>
-      )}
+        <div className={styles.timeRange}>
+          <label className={styles.timeInputLabel}>
+            <span className={styles.srOnly}>진료 시작 시간</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              className={styles.input}
+              value={startTime}
+              maxLength={5}
+              placeholder="09:30"
+              onChange={(e) => setStartTime(formatTimeInput(e.target.value))}
+              aria-invalid={timeError ? 'true' : undefined}
+              aria-describedby={timeError ? 'schedule-time-error' : undefined}
+            />
+          </label>
+          <span className={styles.timeSeparator} aria-hidden="true">~</span>
+          <label className={styles.timeInputLabel}>
+            <span className={styles.srOnly}>진료 종료 시간</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              className={styles.input}
+              value={endTime}
+              maxLength={5}
+              placeholder="09:30"
+              onChange={(e) => setEndTime(formatTimeInput(e.target.value))}
+              aria-invalid={timeError ? 'true' : undefined}
+              aria-describedby={timeError ? 'schedule-time-error' : undefined}
+            />
+          </label>
+        </div>
+        {timeError && (
+          <p id="schedule-time-error" className={styles.error} role="alert">
+            {timeError}
+          </p>
+        )}
+      </div>
 
       {type === 'custom' && (
         <div className={styles.endTimeField}>
@@ -152,8 +169,7 @@ export default function DateScheduleModal({
         </div>
       )}
 
-      {type !== 'open' && (
-        <div className={styles.colorField}>
+      <div className={styles.colorField}>
           <label className={styles.label} htmlFor="schedule-badge-color">
             일정 라벨 색상
           </label>
@@ -173,8 +189,7 @@ export default function DateScheduleModal({
               </button>
             )}
           </div>
-        </div>
-      )}
+      </div>
 
       <div className={styles.footer}>
         <button type="button" className={styles.button} onClick={onClose}>

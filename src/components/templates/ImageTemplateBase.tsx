@@ -30,6 +30,7 @@ export default function ImageTemplateBase({
   month,
   calendarMatrix,
   resolvedByDate,
+  dateSchedules,
   onDateClick,
   fontFamily,
   calendarLabelStyle,
@@ -141,6 +142,7 @@ export default function ImageTemplateBase({
         className={styles.calendarArea}
         calendarMatrix={calendarMatrix}
         resolvedByDate={resolvedByDate}
+        explicitDateKeys={new Set(dateSchedules.map((schedule) => schedule.date))}
         accentColor={hospital.primaryColor}
         onDateClick={onDateClick}
         labelStyle={calendarLabelStyle}

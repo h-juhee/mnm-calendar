@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import type { CalendarCell } from '../utils/scheduleUtils';
 import { getWeekdayLabels } from '../utils/scheduleUtils';
 import type { CalendarLabelStyle, DateSchedule, LayerEdit } from '../types/schedule';
-import { SCHEDULE_TYPE_META } from '../types/schedule';
+import { SCHEDULE_TYPE_DEFAULT_BADGE_COLOR, SCHEDULE_TYPE_META } from '../types/schedule';
 import styles from './PreviewCalendar.module.css';
 import type { OutputFormat } from '../types/outputFormat';
 import { getFontOption } from '../types/font';
@@ -10,6 +10,7 @@ import { getFontOption } from '../types/font';
 interface PreviewCalendarProps {
   calendarMatrix: CalendarCell[][];
   resolvedByDate: Map<string, DateSchedule>;
+  explicitDateKeys?: ReadonlySet<string>;
   accentColor: string;
   onDateClick?: (dateKey: string) => void;
   labelStyle?: CalendarLabelStyle;
@@ -28,11 +29,13 @@ const BADGE_CLASS: Record<string, string> = {
   night: styles.badgeNight,
   saturday: styles.badgeSaturday,
   custom: styles.badgeHalf,
+  open: styles.badgeHalf,
 };
 
 export default function PreviewCalendar({
   calendarMatrix,
   resolvedByDate,
+  explicitDateKeys,
   accentColor,
   onDateClick,
   labelStyle = 'korean',
@@ -69,15 +72,22 @@ export default function PreviewCalendar({
               return <div key={`adjacent-${idx}`} className={`${styles.cell} ${styles.cellAdjacent}`} />;
             }
             const schedule = resolvedByDate.get(cell.date);
-            const meta = schedule && schedule.type !== 'open' ? SCHEDULE_TYPE_META[schedule.type] : null;
+            const isExplicitDateSchedule = explicitDateKeys?.has(cell.date) ?? false;
+            const meta = schedule && (schedule.type !== 'open' || isExplicitDateSchedule)
+              ? SCHEDULE_TYPE_META[schedule.type]
+              : null;
             const displayLabel = schedule?.label ?? meta?.shortLabel;
-            const shortenedStart = schedule?.startTime ?? '09:00';
-            const shortenedTime = schedule?.type === 'shortened' && schedule.endTime && shortenedStart < schedule.endTime
-              ? `${shortenedStart}~${schedule.endTime}`
+            const scheduleStart = schedule?.startTime ?? '09:00';
+            const scheduleTime = schedule?.endTime
+              && scheduleStart < schedule.endTime
+              ? `${scheduleStart}~${schedule.endTime}`
               : '';
             const timeBadgeClass = schedule?.showTimeBadge === false ? styles.badgeTimePlain : undefined;
-            const badgeStyle = schedule?.badgeColor
-              ? ({ '--schedule-badge-color': schedule.badgeColor } as CSSProperties)
+            const badgeStyle = schedule
+              ? ({
+                  '--schedule-badge-color': schedule.badgeColor
+                    ?? SCHEDULE_TYPE_DEFAULT_BADGE_COLOR[schedule.type],
+                } as CSSProperties)
               : undefined;
             const weekday = idx % 7;
             const dayClassName = [
@@ -92,15 +102,12 @@ export default function PreviewCalendar({
               <>
                 <span className={dayClassName}>{cell.day}</span>
                 {meta && (
-                  <span className={`${styles.badge} ${BADGE_CLASS[schedule!.type] ?? ''}`} style={badgeStyle}>
-                    {schedule?.type === 'shortened' ? (
-                      <>
-                        <span>{displayLabel}</span>
-                        {shortenedTime && <span className={timeBadgeClass}>{shortenedTime}</span>}
-                      </>
-                    ) : (
-                      displayLabel
-                    )}
+                  <span
+                    className={`${styles.badge} ${BADGE_CLASS[schedule!.type] ?? ''} ${scheduleTime ? styles.badgeWithTime : ''}`}
+                    style={badgeStyle}
+                  >
+                    <span>{displayLabel}</span>
+                    {scheduleTime && <span className={timeBadgeClass}>{scheduleTime}</span>}
                   </span>
                 )}
               </>

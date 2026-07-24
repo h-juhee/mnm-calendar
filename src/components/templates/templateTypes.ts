@@ -8,6 +8,7 @@ export interface TemplateProps {
   month: number;
   calendarMatrix: CalendarCell[][];
   resolvedByDate: Map<string, DateSchedule>;
+  dateSchedules: DateSchedule[];
   onDateClick?: (dateKey: string) => void;
   /** 진료일정 이미지에 적용할 CSS font-family 값(폴백 체인 포함). */
   fontFamily: string;
