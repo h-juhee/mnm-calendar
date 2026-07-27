@@ -101,6 +101,21 @@ function copyDesignEdits(edits: DesignEdits | undefined): DesignEdits {
   ) as DesignEdits;
 }
 
+function designEditsAreEqual(left: DesignEdits, right: DesignEdits): boolean {
+  const leftEntries = Object.entries(left);
+  const rightEntries = Object.entries(right);
+  if (leftEntries.length !== rightEntries.length) return false;
+
+  return leftEntries.every(([id, edit]) => {
+    const other = right[id as EditableLayerId];
+    if (!other) return false;
+    const keys = Object.keys(edit);
+    return keys.length === Object.keys(other).length
+      && keys.every((key) =>
+        edit[key as keyof typeof edit] === other[key as keyof typeof other]);
+  });
+}
+
 function isTextEditingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return target.isContentEditable
@@ -141,6 +156,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
   const backgroundInputRef = useRef<HTMLInputElement>(null);
   const inlineEditOriginalRef = useRef('');
   const currentDesignEditsRef = useRef<DesignEdits>(copyDesignEdits(designEdits));
+  const currentOutputFormatRef = useRef(outputFormat);
   const undoStackRef = useRef<DesignEdits[]>([]);
   const redoStackRef = useRef<DesignEdits[]>([]);
   const [fitScale, setFitScale] = useState(1);
@@ -159,6 +175,11 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
   const scale = fitScale;
 
   useEffect(() => {
+    const formatChanged = currentOutputFormatRef.current !== outputFormat;
+    const externalDesignChange = !designEditsAreEqual(currentDesignEditsRef.current, designEdits);
+    if (!formatChanged && !externalDesignChange) return;
+
+    currentOutputFormatRef.current = outputFormat;
     currentDesignEditsRef.current = copyDesignEdits(designEdits);
     undoStackRef.current = [];
     redoStackRef.current = [];
