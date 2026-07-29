@@ -30,20 +30,23 @@ export async function renderNodeAsPng(node: HTMLElement, outputFormat: OutputFor
   await waitForFontsReady();
   await waitForImagesLoaded(node);
   const format = getOutputFormatMeta(outputFormat);
+  const renderWidth = format.renderWidth ?? format.width;
+  const renderHeight = format.renderHeight ?? format.height;
+  const pixelRatio = format.width / renderWidth;
   const selectedLayers = Array.from(node.querySelectorAll<HTMLElement>('[data-selected="true"]'));
   selectedLayers.forEach((layer) => layer.removeAttribute('data-selected'));
 
   try {
     return await toPng(node, {
-      width: format.width,
-      height: format.height,
-      pixelRatio: 1,
+      width: renderWidth,
+      height: renderHeight,
+      pixelRatio,
       backgroundColor: '#ffffff',
       cacheBust: true,
       style: {
         transform: 'none',
-        width: `${format.width}px`,
-        height: `${format.height}px`,
+        width: `${renderWidth}px`,
+        height: `${renderHeight}px`,
       },
     });
   } finally {

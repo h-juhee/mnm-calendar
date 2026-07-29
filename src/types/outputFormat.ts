@@ -5,6 +5,8 @@ export interface OutputFormatMeta {
   label: string;
   width: number;
   height: number;
+  renderWidth?: number;
+  renderHeight?: number;
   physicalWidthMm?: number;
   physicalHeightMm?: number;
 }
@@ -12,8 +14,8 @@ export interface OutputFormatMeta {
 export const OUTPUT_FORMATS: OutputFormatMeta[] = [
   { id: 'square', label: '정사각형', width: 1080, height: 1080 },
   { id: 'instagram', label: '인스타 세로', width: 1080, height: 1350 },
-  { id: 'a4', label: 'A4 세로', width: 1276, height: 1789, physicalWidthMm: 216, physicalHeightMm: 303 },
-  { id: 'a4Horizontal', label: 'A4 가로', width: 1789, height: 1276, physicalWidthMm: 303, physicalHeightMm: 216 },
+  { id: 'a4', label: 'A4 세로', width: 2480, height: 3508, renderWidth: 1240, renderHeight: 1754, physicalWidthMm: 210, physicalHeightMm: 297 },
+  { id: 'a4Horizontal', label: 'A4 가로', width: 3508, height: 2480, renderWidth: 1754, renderHeight: 1240, physicalWidthMm: 297, physicalHeightMm: 210 },
   { id: 'didHorizontal', label: 'DID 가로', width: 3840, height: 2160 },
   { id: 'didVertical', label: 'DID 세로', width: 2160, height: 3840 },
 ];

@@ -253,6 +253,8 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
   const [resetConfirm, setResetConfirm] = useState<'schedule' | 'design' | 'all' | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
   const format = getOutputFormatMeta(outputFormat);
+  const renderWidth = format.renderWidth ?? format.width;
+  const renderHeight = format.renderHeight ?? format.height;
   const hidesClinicHours = outputFormat === 'square';
   const visibleLayerIds = (Object.keys(LAYER_LABELS) as VisibleLayerId[])
     .filter((id) => !hidesClinicHours || id !== 'clinicHours');
@@ -375,12 +377,12 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
   useEffect(() => {
     const element = wrapperRef.current;
     if (!element) return;
-    const update = () => setFitScale(element.clientWidth / format.width);
+    const update = () => setFitScale(element.clientWidth / renderWidth);
     update();
     const observer = new ResizeObserver(update);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [format.width]);
+  }, [renderWidth]);
 
   const Template = TEMPLATE_COMPONENTS[formData.templateId as TemplateId] ?? ScheduleATemplate;
   const fontOption = getFontOption(formData.fontId);
@@ -932,13 +934,13 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
         )}
         <div
           className={styles.scaledBox}
-          style={{ height: format.height * scale }}
+          style={{ height: renderHeight * scale }}
         >
           <div
             ref={ref}
             className={styles.exportNode}
             data-output-format={outputFormat}
-            style={{ width: format.width, height: format.height, transform: `scale(${scale})` }}
+            style={{ width: renderWidth, height: renderHeight, transform: `scale(${scale})` }}
             onPointerDown={handlePointerDown}
             onPointerOver={(event) => {
               if ((event.target as HTMLElement).closest('[data-edit-layer="calendar"]')) {
