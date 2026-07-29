@@ -21,6 +21,7 @@ import { getOutputFormatMeta, type OutputFormat } from '../types/outputFormat';
 import ClinicHoursEditor from './ClinicHoursEditor';
 import { deleteCustomBackground, loadCustomBackground, migrateCustomBackground, saveCustomBackground } from '../utils/backgroundStorage';
 import { removeHospitalData, removeHospitalInfo, saveHospitalInfo } from '../utils/storageUtils';
+import { getClinicHoursWithExample } from '../utils/clinicHoursUtils';
 import styles from './ScheduleBuilderPage.module.css';
 
 type SettingsPanel =
@@ -189,7 +190,9 @@ function ScheduleBuilderContent({
           month={formData.month}
           start={formData.vacationStart}
           end={formData.vacationEnd}
+          color={formData.vacationBadgeColor}
           onChange={actions.setVacationRange}
+          onColorChange={actions.setVacationBadgeColor}
         />
       </>
     ),
@@ -197,10 +200,17 @@ function ScheduleBuilderContent({
       <>
         <h2 className={styles.cardTitle}>진료시간</h2>
         <p className={styles.cardHint}>A4와 DID 이미지의 제목 아래에 표시됩니다.</p>
-        <ClinicHoursEditor
-          value={formData.clinicHours ?? { rows: [], lunchStart: '', lunchEnd: '', note: '' }}
-          onChange={actions.setClinicHours}
-        />
+        {outputFormat === 'square' ? (
+          <div className={styles.unsupportedNotice}>
+            <strong>이 이미지 규격에서는 진료시간이 적용되지 않습니다.</strong>
+            <span>진료시간을 표시하려면 A4 또는 DID 규격을 선택해 주세요.</span>
+          </div>
+        ) : (
+          <ClinicHoursEditor
+            value={getClinicHoursWithExample(formData.clinicHours)}
+            onChange={actions.setClinicHours}
+          />
+        )}
       </>
     ),
   };
@@ -272,7 +282,7 @@ function ScheduleBuilderContent({
           <p className={styles.previewEditHint}>
             <span aria-hidden="true">✦</span>
             <strong>날짜별 일정 편집</strong>
-            달력에서 날짜를 눌러 휴진·단축 진료·야간 진료를 설정하세요.
+            달력에서 날짜를 눌러 휴진·공휴일 진료·야간 진료를 설정하세요.
           </p>
         </div>
         <div className={styles.previewActions}>
@@ -300,6 +310,9 @@ function ScheduleBuilderContent({
         {isFormatSectionExpanded && (
           <div id="output-format-options" className={styles.formatSectionContent}>
             <p className={styles.cardHint}>제작할 이미지의 크기와 용도를 선택하세요.</p>
+            <p className={styles.formatNotice}>
+              미리보기는 화면에 맞춰 축소되며, PNG 저장 시 선택한 실제 픽셀 크기로 출력됩니다.
+            </p>
             <OutputFormatSelector value={outputFormat} onChange={setOutputFormat} />
           </div>
         )}
@@ -317,6 +330,11 @@ function ScheduleBuilderContent({
         fontId={(formData.fontId as FontId) ?? DEFAULT_FONT_ID}
         disabled={false}
         outputFormat={outputFormat}
+        requiresClinicHoursConfirmation={outputFormat !== 'square' && !formData.clinicHours?.confirmed}
+        onClinicHoursConfirm={() => actions.setClinicHours({
+          ...getClinicHoursWithExample(formData.clinicHours),
+          confirmed: true,
+        })}
       />
       <button type="button" className={styles.secondaryButton} onClick={() => setCustomModalOpen(true)}>
         맞춤 디자인 요청하기
@@ -386,7 +404,8 @@ function ScheduleBuilderContent({
             hospitalLogoEditor={(
               <LogoUploadField
                 logoUrl={hospital.logoUrl}
-                onChange={(logoUrl) => onHospitalChange({ ...hospital, logoUrl })}
+                logoFileName={hospital.logoFileName}
+                onChange={(logoUrl, logoFileName) => onHospitalChange({ ...hospital, logoUrl, logoFileName })}
               />
             )}
             titleStyleEditor={(
@@ -408,6 +427,7 @@ function ScheduleBuilderContent({
                 settingsPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               });
             }}
+            onHospitalDisplayModeChange={(displayMode) => onHospitalChange({ ...hospital, displayMode })}
           />
         ) : (
           <div className={styles.previewDisabled}>템플릿을 먼저 선택해 주세요.</div>

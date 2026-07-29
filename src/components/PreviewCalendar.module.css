@@ -8,6 +8,7 @@
   border-radius: 22px;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
   font-family: var(--calendar-font-family, 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Roboto, 'Malgun Gothic', sans-serif);
+  font-weight: var(--calendar-font-weight);
 }
 
 .frame {
@@ -32,7 +33,7 @@
 .weekday {
   text-align: center;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: var(--calendar-font-weight, 700);
   color: #111827;
   padding: 16px 0 14px;
 }
@@ -49,12 +50,37 @@
   flex: 1;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-auto-rows: 1fr;
+  grid-template-rows: repeat(var(--calendar-week-count, 6), minmax(0, 1fr));
+  min-height: 0;
+  overflow: hidden;
   gap: 0;
+}
+
+.square:not(.instagram) .grid {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.square:not(.instagram) .cell {
+  gap: 6px;
+  padding: 8px 10px;
+}
+
+.square:not(.instagram) .badge {
+  min-height: 22px;
+  padding: 1px 10px;
+  font-size: 16px;
+}
+
+.square:not(.instagram) .badges {
+  --calendar-badge-gap: 4px;
+  --calendar-badge-bottom: 6px;
+  top: 40px;
 }
 
 .cell {
   display: flex;
+  position: relative;
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
@@ -98,7 +124,7 @@
 
 .day {
   font-size: 28px;
-  font-weight: 500;
+  font-weight: var(--calendar-font-weight, 500);
   line-height: 1;
   color: #111827;
 }
@@ -117,20 +143,119 @@
   align-items: center;
   justify-content: center;
   align-self: center;
-  min-width: 108px;
+  width: min(120px, 100%);
+  min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
   min-height: 28px;
   font-family: var(--calendar-font-family, 'Pretendard Variable', 'Pretendard', sans-serif);
   font-size: 18px;
-  font-weight: 500;
+  font-weight: var(--calendar-font-weight, 500);
   line-height: 1.25;
   font-synthesis: none;
   padding: 3px 14px;
   text-align: center;
   border-radius: 999px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: #fff;
+}
+
+.badges {
+  --calendar-badge-width: 120px;
+  --calendar-badge-gap: 7px;
+  --calendar-badge-bottom: 8px;
+  display: flex;
+  position: absolute;
+  top: 40px;
+  right: 0;
+  bottom: var(--calendar-badge-bottom);
+  left: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--calendar-badge-gap);
+  width: 100%;
+  max-width: 100%;
+  pointer-events: none;
+}
+
+.singleBadge {
+  top: 0 !important;
+  bottom: 0 !important;
+}
+
+.badges > .badge {
+  flex-shrink: 0;
+  width: min(var(--calendar-badge-width), 100%) !important;
+  min-width: min(var(--calendar-badge-width), 100%) !important;
+  max-width: min(var(--calendar-badge-width), 100%) !important;
+  box-sizing: border-box;
+}
+
+.timedBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--calendar-badge-gap) + 4px);
+  width: 100%;
+}
+
+.timedBadge > .badge {
+  width: min(var(--calendar-badge-width), 100%);
+  min-width: min(var(--calendar-badge-width), 100%);
+  max-width: min(var(--calendar-badge-width), 100%);
+  flex-shrink: 0;
+}
+
+.timedBadge > .timeBadge {
+  width: max-content;
+  min-width: var(--calendar-badge-width);
+  max-width: calc(100% - 8px);
+  background: var(--schedule-badge-color, #4779ca);
+  font-weight: var(--calendar-font-weight, 600);
+}
+
+.timedBadge > .timeBadge.badgeTimePlain {
+  background: transparent;
+  color: var(--schedule-badge-color, #4779ca);
+}
+
+.badges > .badge > span {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+.badges > .badge.badgeWithTime {
+  width: min(var(--calendar-badge-width), 100%) !important;
+  min-width: min(var(--calendar-badge-width), 100%) !important;
+  max-width: min(var(--calendar-badge-width), 100%) !important;
+  overflow: visible;
+}
+
+.badges > .badge.badgeWithTime > span {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+}
+
+.badges > .badge.badgeWithTime > span:first-child {
+  flex: 0 0 auto;
+  width: min(var(--calendar-badge-width), 100%) !important;
+  min-width: min(var(--calendar-badge-width), 100%) !important;
+  max-width: min(var(--calendar-badge-width), 100%) !important;
+  padding: 3px 14px;
+  box-sizing: border-box;
+}
+
+.badges > .badge.badgeWithTime > span:last-child {
+  align-self: center;
+  width: max-content !important;
+  min-width: 100% !important;
+  max-width: calc(100% + 24px) !important;
 }
 
 .badgeClosed {
@@ -144,31 +269,46 @@
 .badgeShortened,
 .badgeWithTime {
   min-width: 0;
-  width: max-content;
+  width: min(120px, 100%);
   max-width: 100%;
   padding: 0;
-  gap: 2px;
-  font-size: clamp(9px, 1.35vw, 18px);
+  gap: var(--calendar-badge-gap, 7px);
   background: transparent;
+}
+
+.badgeShortened:not(.badgeWithTime) {
+  background: var(--schedule-badge-color, #1a9c6b);
 }
 
 .badgeShortened > span,
 .badgeWithTime > span {
-  display: block;
-  width: auto;
-  max-width: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
   box-sizing: border-box;
   padding: 3px clamp(7px, 1vw, 14px);
   background: var(--schedule-badge-color, #1a9c6b);
   border-radius: 999px;
-  font-weight: 600;
+  font-weight: var(--calendar-font-weight, 600);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badgeShortened:not(.badgeWithTime) > span {
+  background: transparent;
 }
 
 .badgeShortened > .badgeTimePlain,
 .badgeWithTime > .badgeTimePlain {
   background: transparent;
   color: var(--schedule-badge-color, #1a9c6b);
+  font-weight: var(--calendar-font-weight, 600) !important;
+}
+
+.badgeWithTime > span:first-child {
+  font-weight: var(--calendar-font-weight, 600) !important;
 }
 
 .badgeNight {
@@ -180,8 +320,8 @@
 }
 
 .badge.badgeWithTime {
-  width: max-content;
-  max-width: calc(100% + 16px);
+  width: min(120px, 100%);
+  max-width: 100%;
   background: transparent;
 }
 
@@ -209,9 +349,89 @@
 }
 
 .a4 .badge {
-  min-width: 120px;
+  width: min(140px, 100%);
   min-height: 32px;
   font-size: 20px;
+}
+
+.a4 .badges {
+  --calendar-badge-width: 140px;
+  --calendar-badge-gap: 8px;
+}
+
+.a4:not(.a4Horizontal) .cell {
+  gap: 6px;
+  padding: 8px 10px;
+}
+
+.a4:not(.a4Horizontal) .badge {
+  min-height: 28px;
+  padding: 2px 10px;
+  font-size: 20px;
+}
+
+.a4:not(.a4Horizontal) .badges {
+  --calendar-badge-gap: 5px;
+  --calendar-badge-bottom: 10px;
+  top: 44px;
+}
+
+.instagram .cell {
+  gap: 4px;
+  padding: 6px 8px;
+}
+
+.instagram .day {
+  font-size: 24px;
+}
+
+.instagram .badge {
+  min-height: 22px;
+  padding: 1px 8px;
+  font-size: 16px;
+}
+
+.instagram .badges {
+  --calendar-badge-width: 116px;
+  --calendar-badge-gap: 4px;
+  --calendar-badge-bottom: 7px;
+  top: 34px;
+}
+
+.instagram .timedBadge {
+  gap: 8px;
+}
+
+.a4Horizontal .weekdays {
+  min-height: 48px;
+}
+
+.a4Horizontal .weekday {
+  padding: 10px 0;
+  font-size: 18px;
+}
+
+.a4Horizontal .cell {
+  gap: 6px;
+  padding: 8px 10px;
+}
+
+.a4Horizontal .day {
+  font-size: 26px;
+}
+
+.a4Horizontal .badge {
+  min-height: 26px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  font-size: 18px;
+}
+
+.a4Horizontal .badges {
+  --calendar-badge-width: 130px;
+  --calendar-badge-gap: 4px;
+  --calendar-badge-bottom: 8px;
+  top: 40px;
 }
 
 .didVertical {
@@ -245,10 +465,32 @@
 }
 
 .didVertical .badge {
-  min-width: 210px;
-  min-height: 58px;
-  padding: 7px 24px;
+  width: min(240px, 100%);
+  min-width: 0;
+  min-height: 50px;
+  padding: 4px 14px;
   font-size: 34px;
+  line-height: 1.05;
+}
+
+.didVertical .badges {
+  --calendar-badge-width: 240px;
+  --calendar-badge-gap: 6px;
+  --calendar-badge-bottom: 20px;
+  top: 80px;
+  justify-content: center;
+}
+
+.didVertical .badges:not(.singleBadge) .badge {
+  min-height: 46px;
+  padding: 4px 12px;
+  font-size: 30px;
+}
+
+.didVertical .singleBadge {
+  top: 80px !important;
+  bottom: 20px !important;
+  justify-content: center;
 }
 
 .didHorizontal {
@@ -282,8 +524,16 @@
 }
 
 .didHorizontal .badge {
-  min-width: 200px;
+  width: min(270px, 100%);
+  min-width: 0;
   min-height: 56px;
-  padding: 7px 22px;
-  font-size: 32px;
+  padding: 6px 22px;
+  font-size: 34px;
+}
+
+.didHorizontal .badges {
+  --calendar-badge-width: 270px;
+  --calendar-badge-gap: 10px;
+  --calendar-badge-bottom: 45px;
+  top: 90px;
 }

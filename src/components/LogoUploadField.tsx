@@ -3,13 +3,14 @@ import styles from './LogoUploadField.module.css';
 
 interface LogoUploadFieldProps {
   logoUrl?: string;
-  onChange: (logoUrl: string | undefined) => void;
+  logoFileName?: string;
+  onChange: (logoUrl: string | undefined, logoFileName?: string) => void;
 }
 
 const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024;
 const ACCEPTED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
 
-export default function LogoUploadField({ logoUrl, onChange }: LogoUploadFieldProps) {
+export default function LogoUploadField({ logoUrl, logoFileName, onChange }: LogoUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -26,7 +27,7 @@ export default function LogoUploadField({ logoUrl, onChange }: LogoUploadFieldPr
 
     const reader = new FileReader();
     reader.onload = () => {
-      onChange(typeof reader.result === 'string' ? reader.result : undefined);
+      onChange(typeof reader.result === 'string' ? reader.result : undefined, file.name);
       setError(null);
     };
     reader.onerror = () => setError('로고 파일을 읽지 못했습니다. 다시 시도해 주세요.');
@@ -40,7 +41,7 @@ export default function LogoUploadField({ logoUrl, onChange }: LogoUploadFieldPr
   };
 
   const clearLogo = () => {
-    onChange(undefined);
+    onChange(undefined, undefined);
     setError(null);
     if (inputRef.current) inputRef.current.value = '';
   };
@@ -76,11 +77,11 @@ export default function LogoUploadField({ logoUrl, onChange }: LogoUploadFieldPr
         <div className={styles.preview}>
           <img src={logoUrl} alt="추가한 병원 로고 미리보기" />
           <div className={styles.previewInfo}>
-            <strong>현재 등록된 로고</strong>
-            <span>진료일정 이미지에 표시됩니다.</span>
+            <strong>{logoFileName ?? '업로드한 로고'}</strong>
+            <span>투명 배경의 가로형 로고를 권장합니다.</span>
           </div>
           <div className={styles.actions}>
-            <label className={styles.changeButton} htmlFor="hospital-logo">변경</label>
+            <label className={styles.changeButton} htmlFor="hospital-logo">교체</label>
             <button type="button" className={styles.removeButton} onClick={clearLogo}>삭제</button>
           </div>
         </div>
@@ -92,9 +93,10 @@ export default function LogoUploadField({ logoUrl, onChange }: LogoUploadFieldPr
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <strong>로고 파일 추가</strong>
-          <span>클릭하거나 파일을 여기로 끌어다 놓으세요</span>
+          <strong>로고 업로드</strong>
+          <span>클릭하거나 파일을 여기로 끌어다 놓으세요.</span>
           <small>PNG, JPG, WEBP, SVG · 최대 5MB</small>
+          <small>투명 배경의 가로형 로고를 권장합니다.</small>
         </label>
       )}
       {error && <p className={styles.error}>{error}</p>}

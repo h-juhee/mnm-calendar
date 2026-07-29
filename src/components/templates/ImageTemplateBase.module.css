@@ -106,7 +106,7 @@
   font-size: 96px;
   font-weight: 700;
   line-height: 1.05;
-  letter-spacing: -1.5px;
+  letter-spacing: 0;
   word-break: keep-all;
   white-space: nowrap;
 }
@@ -148,12 +148,115 @@
   transform-origin: top left;
 }
 
+.square:not(.instagram) .calendarArea {
+  width: calc(100% - 60px);
+  height: 840px;
+  flex: 0 0 840px;
+  align-self: center;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.square:not(.instagram) {
+  padding: 45px 62px 30px;
+  gap: 10px;
+}
+
+.square:not(.instagram) .heroHeader {
+  min-height: 155px;
+}
+
+.square:not(.instagram).sixWeekMonth {
+  padding: 40px 62px 28px;
+  gap: 8px;
+}
+
+.square:not(.instagram).sixWeekMonth .heroHeader {
+  min-height: 150px;
+}
+
+.instagram {
+  padding: 0;
+  gap: 0;
+}
+
+.instagram .heroHeader {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+}
+
+.instagram .heroTitleBlock {
+  position: static;
+  width: auto;
+  margin: 0;
+  padding: 0;
+}
+
+.instagram .heroTitle {
+  position: absolute;
+  top: 132px;
+  left: 66px;
+  font-size: 92px;
+  line-height: 1;
+}
+
+.instagram .heroTitleBlock .subtitle {
+  position: absolute;
+  top: 260px;
+  left: 68px;
+  font-size: 28px;
+}
+
+.instagram .heroHospitalTag {
+  position: absolute;
+  top: 40px;
+  right: 38px;
+  width: 330px;
+  height: 72px;
+  justify-content: flex-end;
+}
+
+.instagram .heroHospitalName {
+  font-size: 40px;
+  font-weight: 500;
+}
+
+.instagram .calendarArea {
+  position: absolute;
+  top: 495px;
+  left: 90px;
+  width: 900px;
+  height: 812px;
+  flex: none;
+}
+
 /* Design-team canvases use their native pixel sizes. These variants keep the
    editable header/calendar aligned to those canvases instead of stretching the
    old square composition. */
 .a4 {
-  padding: 92px 72px 64px;
+  padding: 66px 72px 40px;
   gap: 24px;
+}
+
+.a4Horizontal.a4 {
+  padding: 70px 72px 50px;
+  gap: 18px;
+}
+
+.a4Horizontal.a4 .heroHeader {
+  min-height: 330px;
+}
+
+.a4Horizontal.a4.noClinicHours .heroHeader {
+  min-height: 250px;
+}
+
+.a4Horizontal.a4 .calendarArea {
+  flex: 1 1 0;
+  --calendar-base-x: 0px;
+  min-height: 0;
+  margin-bottom: 0;
 }
 
 .a4 .heroHeader {
@@ -203,14 +306,86 @@
 }
 
 .a4 .calendarArea {
-  flex: 0 0 940px;
+  flex: 0 0 1040px;
   margin-right: -8px;
   margin-left: -8px;
   --calendar-base-y: -12px;
 }
 
+.a4Horizontal.a4 {
+  padding: 0;
+  gap: 0;
+}
+
+.a4Horizontal.a4 .heroHeader,
+.a4Horizontal.a4.noClinicHours .heroHeader {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+}
+
+.a4Horizontal.a4 .heroTitleBlock {
+  position: static;
+  width: auto;
+  margin: 0;
+  padding: 0;
+}
+
+.a4Horizontal.a4 .heroTitle {
+  position: absolute;
+  top: 320px;
+  left: 90px;
+  width: 470px;
+  font-size: 142px;
+  line-height: 1.13;
+  white-space: normal;
+}
+
+.a4Horizontal.a4 .heroTitle[data-label-style='english'] {
+  font-size: 72px;
+  line-height: 1.02;
+}
+
+.a4Horizontal.a4 .heroTitleBlock .subtitle {
+  position: absolute;
+  top: 1080px;
+  left: 624px;
+  width: 1055px;
+  font-size: 36px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.a4Horizontal.a4 .heroHospitalTag {
+  position: absolute;
+  top: 165px;
+  left: 90px;
+  width: 490px;
+  height: 100px;
+  justify-content: flex-start;
+  transform: none;
+}
+
+.a4Horizontal.a4 .heroHospitalName {
+  font-size: 62px;
+  font-weight: 500;
+}
+
+.a4Horizontal.a4 .calendarArea {
+  position: absolute;
+  top: 170px;
+  left: 652px;
+  width: 1000px;
+  height: 870px;
+  flex: none;
+  min-height: 0;
+  margin: 0;
+  --calendar-base-x: 0px;
+  --calendar-base-y: 0px;
+}
+
 .didVertical {
-  padding: 150px 92px 100px;
+  padding: 120px 92px 60px;
   gap: 42px;
 }
 
@@ -221,7 +396,7 @@
   grid-template-rows: 220px auto;
   align-content: start;
   min-height: 1400px;
-  transform: translate(25px, 130px);
+  transform: translate(25px, 160px);
 }
 
 .didVertical.noClinicHours .heroHeader {
@@ -260,7 +435,7 @@
 }
 
 .didVertical .calendarArea {
-  flex: 0 0 1750px;
+  flex: 0 0 1850px;
   --calendar-base-y: -95px;
 }
 
@@ -269,7 +444,7 @@
   grid-template-columns: 38% 62%;
   grid-template-rows: 1fr auto;
   gap: 30px 70px;
-  padding: 220px 180px 170px 120px;
+  padding: 30px 180px 30px 120px;
 }
 
 .didHorizontal .heroHeader {
@@ -279,7 +454,7 @@
   justify-content: flex-start;
   min-height: 0;
   box-sizing: border-box;
-  padding-top: 280px;
+  padding-top: 470px;
 }
 
 .didHorizontal .heroTitle {
@@ -289,7 +464,7 @@
 .didHorizontal .heroTitleBlock .subtitle {
   font-size: 64px;
   line-height: 1.3;
-  white-space: normal;
+  white-space: nowrap;
 }
 
 .didHorizontal .heroHospitalTag {
@@ -306,5 +481,5 @@
 .didHorizontal .calendarArea {
   grid-column: 2;
   grid-row: 1 / 3;
-  margin: 22px 26px;
+  margin: 38px 62px 68px;
 }

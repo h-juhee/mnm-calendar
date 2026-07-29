@@ -12,22 +12,36 @@
 
 .item {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   min-width: 0;
   white-space: nowrap;
 }
 
-.item strong {
+.itemMain {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.itemMain strong {
   margin-right: 0.3em;
 }
 
-.item em {
+.itemMain em {
   margin-left: 0.55em;
   color: #fff;
   background: #4779ca;
   border-radius: 999px;
   font-style: normal;
-  font-weight: 700;
+  font-weight: var(--clinic-hours-font-weight, 700);
+}
+
+.itemNote {
+  display: block;
+  color: inherit;
+  font-weight: var(--clinic-hours-font-weight, 500);
+  line-height: 1.35;
 }
 
 .root p {
@@ -51,9 +65,69 @@
   font-size: 23px;
 }
 
+.a4 .itemNote {
+  margin-top: 3px;
+  font-size: 25px;
+}
+
 .a4 p {
   margin-top: 14px;
   font-size: 30px;
+}
+
+.a4Horizontal {
+  top: 675px;
+  left: 90px;
+  width: 470px;
+  font-size: 38px;
+}
+
+.a4Horizontal .grid {
+  grid-template-columns: 1fr;
+  row-gap: 18px;
+}
+
+.a4Horizontal .itemNote {
+  margin-top: 4px;
+  font-size: 23px;
+}
+
+.a4Horizontal p {
+  margin-top: 16px;
+  font-size: 24px;
+}
+
+.a4Horizontal .item em {
+  padding: 5px 12px;
+  font-size: 22px;
+}
+
+.instagram {
+  top: 330px;
+  left: 68px;
+  width: 944px;
+  font-size: 30px;
+}
+
+.instagram .grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  row-gap: 12px;
+  column-gap: 30px;
+}
+
+.instagram .item em {
+  padding: 5px 12px;
+  font-size: 21px;
+}
+
+.instagram .itemNote {
+  margin-top: 3px;
+  font-size: 21px;
+}
+
+.instagram p {
+  margin-top: 10px;
+  font-size: 22px;
 }
 
 .didHorizontal {
@@ -73,6 +147,11 @@
   font-size: 34px;
 }
 
+.didHorizontal .itemNote {
+  margin-top: 4px;
+  font-size: 38px;
+}
+
 .didHorizontal p {
   margin-top: 18px;
   font-size: 42px;
@@ -80,7 +159,7 @@
 
 .didVertical {
   top: 1030px;
-  left: 175px;
+  left: 117px;
   width: 1860px;
   font-size: 54px;
 }
@@ -93,15 +172,20 @@
 .didVertical .item em {
   padding: 8px 18px;
   font-size: 43px;
-  font-weight: 500;
+  font-weight: var(--clinic-hours-font-weight, 500);
 }
 
-.didVertical .item > span {
-  font-weight: 500;
+.didVertical .itemMain > span {
+  font-weight: var(--clinic-hours-font-weight, 500);
 }
 
-.didVertical .item strong {
+.didVertical .itemMain strong {
   margin-right: 0.35em;
+}
+
+.didVertical .itemNote {
+  margin-top: 4px;
+  font-size: 40px;
 }
 
 .didVertical p {

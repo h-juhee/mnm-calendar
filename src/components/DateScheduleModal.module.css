@@ -4,6 +4,21 @@
   margin-bottom: 12px;
 }
 
+.scheduleList { display: flex; flex-direction: column; gap: 14px; }
+.scheduleCard { padding: 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 12px; }
+.scheduleCardHeader { display: flex; align-items: center; gap: 8px; }
+.scheduleCardHeader strong { font-size: 15px; }
+.accordionTrigger { min-width: 0; flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 0; color: var(--color-text); background: transparent; border: 0; cursor: pointer; text-align: left; }
+.accordionTrigger > span:first-child { min-width: 0; display: flex; align-items: baseline; gap: 7px; }
+.accordionTrigger small { overflow: hidden; color: var(--color-text-muted); font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.accordionTrigger svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; transition: transform 160ms ease; }
+.accordionTrigger[aria-expanded='true'] svg { transform: rotate(180deg); }
+.removeScheduleButton { padding: 5px 7px; color: var(--color-text-muted); background: transparent; border: 0; cursor: pointer; font-weight: 600; }
+.removeScheduleButton:hover { color: var(--color-danger); }
+.scheduleCardBody { padding-top: 12px; }
+.addScheduleButton { width: 100%; min-height: 44px; margin-bottom: 14px; color: var(--color-primary); background: var(--color-primary-bg); border: 1px dashed var(--color-primary); border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; }
+.addScheduleButton:disabled { color: var(--color-text-muted); background: var(--color-bg); border-color: var(--color-border); border-style: solid; cursor: not-allowed; }
+
 .typeList {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -14,6 +29,7 @@
 .typeOption {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 10px;
   min-height: 44px;
   box-sizing: border-box;
@@ -23,6 +39,8 @@
   cursor: pointer;
   font-size: 14px;
   color: var(--color-text);
+  font-family: inherit;
+  text-align: left;
 }
 
 .typeOptionWide {
@@ -44,8 +62,12 @@
   border-color: var(--color-primary);
 }
 
-.typeOptionSelected input {
-  accent-color: #fff;
+.vacationSource {
+  margin-left: auto;
+  color: currentColor;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.82;
 }
 
 .endTimeField {
@@ -72,7 +94,7 @@
 .timeTitle {
   color: var(--color-text);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .timeTitle small {
@@ -103,7 +125,7 @@
 .timeSeparator {
   color: var(--color-text);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .srOnly {
@@ -171,6 +193,10 @@
   border-radius: var(--radius-sm);
 }
 
+.input::placeholder {
+  font-size: 12px;
+}
+
 .toggleOption {
   display: flex;
   align-items: center;
@@ -187,11 +213,23 @@
 }
 
 .footer {
+  position: sticky;
+  z-index: 2;
+  right: 0;
+  bottom: -20px;
+  left: 0;
   display: flex;
   gap: 8px;
   justify-content: flex-end;
   flex-wrap: wrap;
+  margin: -76px -20px 0;
+  padding: 14px 20px 20px;
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  border-top: 1px solid var(--color-border);
+  backdrop-filter: blur(8px);
 }
+
+.scrollContent { padding-bottom: 96px; }
 
 .button {
   padding: 10px 16px;
@@ -214,13 +252,7 @@
   background: var(--color-primary-hover);
 }
 
-.buttonDanger {
-  color: var(--color-danger);
-}
-
-.buttonDanger:hover {
-  border-color: var(--color-danger);
-}
+.buttonSecondary { color: var(--color-text-muted); background: var(--color-bg); }
 
 .button:disabled {
   opacity: 0.5;

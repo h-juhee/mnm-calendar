@@ -21,7 +21,11 @@ import {
   resetDesignSettings,
   resetScheduleSettings,
 } from '../utils/resetUtils';
-import { normalizeDesignEditsByFormat, setDesignEditsForFormat } from '../utils/designEditsUtils';
+import {
+  normalizeDesignEditsByFormat,
+  removeAutomaticTitleOverrides,
+  setDesignEditsForFormat,
+} from '../utils/designEditsUtils';
 
 const today = new Date();
 const DEFAULT_YEAR = today.getFullYear();
@@ -47,6 +51,7 @@ function normalizeClinicHours(value: ClinicHours | undefined): ClinicHours {
     lunchEnd: value?.lunchEnd ?? '',
     lunchDisabled: value?.lunchDisabled ?? false,
     hidden: value?.hidden ?? false,
+    confirmed: value?.confirmed ?? false,
     note: value?.note ?? '',
   };
 }
@@ -65,6 +70,7 @@ function createEmptyFormData(
     dateSchedules: [],
     vacationStart: undefined,
     vacationEnd: undefined,
+    vacationBadgeColor: keep?.vacationBadgeColor,
     templateId: keep?.templateId ?? null,
     fontId: keep?.fontId ?? DEFAULT_FONT_ID,
     calendarLabelStyle: keep?.calendarLabelStyle ?? 'korean',
@@ -73,7 +79,7 @@ function createEmptyFormData(
     outputSize: normalizeOutputSizes(keep?.outputSize),
     calendarMustInclude: keep?.calendarMustInclude ?? '',
     clinicHours: normalizeClinicHours(keep?.clinicHours),
-    designEditsByFormat: keep?.designEditsByFormat ?? {},
+    designEditsByFormat: removeAutomaticTitleOverrides(keep?.designEditsByFormat) ?? {},
   };
 }
 
@@ -155,6 +161,10 @@ export function useScheduleBuilder(hospitalId: string) {
     setFormData((prev) => ({ ...prev, vacationStart: start, vacationEnd: end }));
   }, []);
 
+  const setVacationBadgeColor = useCallback((vacationBadgeColor: string | undefined) => {
+    setFormData((prev) => ({ ...prev, vacationBadgeColor }));
+  }, []);
+
   const setTemplateId = useCallback((templateId: TemplateId) => {
     setFormData((prev) => ({ ...prev, templateId }));
   }, []);
@@ -228,6 +238,7 @@ export function useScheduleBuilder(hospitalId: string) {
       setDateSchedule,
       clearDateSchedule,
       setVacationRange,
+      setVacationBadgeColor,
       setTemplateId,
       setCalendarLabelStyle,
       setTitleTextStyle,

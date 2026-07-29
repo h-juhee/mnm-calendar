@@ -22,6 +22,7 @@ import {
 } from '../src/utils/resetUtils';
 import {
   normalizeDesignEditsByFormat,
+  removeAutomaticTitleOverrides,
   setDesignEditsForFormat,
 } from '../src/utils/designEditsUtils';
 
@@ -147,13 +148,13 @@ test('정기 휴진 요일이어도 개별 설정으로 정상 진료로 overrid
   assert.equal(resolved.type, 'open');
 });
 
-// 5. 휴가 기간이 휴진으로 표시되는지
-test('휴가 기간에 포함된 날짜는 휴진으로 계산된다', () => {
+// 5. 휴가 기간이 독립된 휴가 유형으로 표시되는지
+test('휴가 기간에 포함된 날짜는 휴가로 계산된다', () => {
   const formData = baseFormData({ vacationStart: '2026-08-10', vacationEnd: '2026-08-12' });
   const resolved = resolveMonthSchedule(formData);
   ['2026-08-10', '2026-08-11', '2026-08-12'].forEach((date) => {
     const s = resolved.find((r) => r.date === date);
-    assert.equal(s?.type, 'closed');
+    assert.equal(s?.type, 'vacation');
   });
   const outside = resolved.find((r) => r.date === '2026-08-09');
   assert.equal(outside?.type, 'open');
@@ -171,11 +172,11 @@ test('휴가 기간 중 하루를 개별적으로 단축 진료로 바꿀 수 �
     }),
   };
   const resolved = resolveMonthSchedule(formData);
-  assert.equal(resolved.find((r) => r.date === '2026-08-10')?.type, 'closed');
+  assert.equal(resolved.find((r) => r.date === '2026-08-10')?.type, 'vacation');
   const mid = resolved.find((r) => r.date === '2026-08-11');
   assert.equal(mid?.type, 'shortened');
   assert.equal(mid?.endTime, '13:00');
-  assert.equal(resolved.find((r) => r.date === '2026-08-12')?.type, 'closed');
+  assert.equal(resolved.find((r) => r.date === '2026-08-12')?.type, 'vacation');
 });
 
 test('월 경계를 넘는 기존 휴가 범위는 현재 제작 월과 겹치는 구간만 유지한다', () => {
@@ -210,7 +211,7 @@ test('개별 설정을 해제하면 다시 우선순위(휴가/정기휴진) 규
   };
   assert.equal(resolveDateSchedule('2026-08-11', 2, formData).type, 'open');
   formData = { ...formData, dateSchedules: removeDateSchedule(formData.dateSchedules, '2026-08-11') };
-  assert.equal(resolveDateSchedule('2026-08-11', 2, formData).type, 'closed');
+  assert.equal(resolveDateSchedule('2026-08-11', 2, formData).type, 'vacation');
 });
 
 test('우선순위: 개별 설정 > 휴가 > 정기휴진 > 기본 정상진료', () => {
@@ -222,8 +223,8 @@ test('우선순위: 개별 설정 > 휴가 > 정기휴진 > 기본 정상진료'
   });
   // 2026-08-17 은 월요일이자 휴가 기간이지만 개별 설정이 최우선
   assert.equal(resolveDateSchedule('2026-08-17', 1, formData).type, 'morningClosed');
-  // 2026-08-18은 개별 설정 없고 휴가 기간이므로 closed
-  assert.equal(resolveDateSchedule('2026-08-18', 2, formData).type, 'closed');
+  // 2026-08-18은 개별 설정 없고 휴가 기간이므로 vacation
+  assert.equal(resolveDateSchedule('2026-08-18', 2, formData).type, 'vacation');
   // 2026-08-24는 월요일이고 휴가기간 아니므로 정기휴진 규칙으로 closed
   assert.equal(resolveDateSchedule('2026-08-24', 1, formData).type, 'closed');
   // 2026-08-25는 화요일이고 휴가/정기휴진 모두 해당 없으므로 open
@@ -437,6 +438,15 @@ test('규격별 디자인 편집값은 다른 출력 규격의 값을 변경하�
   assert.deepEqual(edits.square, square);
   assert.deepEqual(edits.didHorizontal, horizontal);
   assert.equal(edits.a4, undefined);
+});
+
+test('이전 월의 자동 제목은 제거하고 사용자가 작성한 제목과 디자인 속성은 유지한다', () => {
+  const normalized = removeAutomaticTitleOverrides({
+    square: { title: { text: '07월 진료일정', x: 20, fontSize: 90 } },
+    a4: { title: { text: '여름 휴가 안내', x: 10 } },
+  });
+  assert.deepEqual(normalized?.square?.title, { x: 20, fontSize: 90 });
+  assert.deepEqual(normalized?.a4?.title, { text: '여름 휴가 안내', x: 10 });
 });
 
 test('과거 공통 디자인 편집값은 정사각형 규격으로만 이전된다', () => {

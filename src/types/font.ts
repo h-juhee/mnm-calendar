@@ -1,6 +1,8 @@
 export type FontId =
   | 'pretendard'
+  | 'suit'
   | 'notoSansKr'
+  | 'gmarketSans'
   | 'ibmPlexSansKr'
   | 'gowunDodum'
   | 'gowunBatang'
@@ -17,7 +19,10 @@ export type FontId =
   | 'dovemayoGothic'
   | 'lineSeed'
   | 'yangjin'
-  | 'kccChassam';
+  | 'kccChassam'
+  | 'yeogiOttaeJalnan';
+
+export type FontWeight = 300 | 400 | 500 | 600 | 700 | 800 | 900;
 
 export interface FontOption {
   id: FontId;
@@ -45,11 +50,25 @@ export const FONT_OPTIONS: FontOption[] = [
     family: `'Pretendard Variable', 'Pretendard', ${FALLBACK_CHAIN}`,
   },
   {
+    id: 'suit',
+    name: 'SUIT',
+    family: `'SUIT Variable', 'SUIT', ${FALLBACK_CHAIN}`,
+    cssFamilyName: 'SUIT Variable',
+    fontFaceCss: `@font-face{font-family:'SUIT Variable';src:url('https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.woff2') format('woff2-variations');font-weight:100 900;font-style:normal;font-display:swap}`,
+  },
+  {
     id: 'notoSansKr',
     name: 'Noto Sans KR',
     family: `'Noto Sans KR', ${FALLBACK_CHAIN}`,
     googleFontsParam: 'Noto+Sans+KR:wght@400;700;900',
     cssFamilyName: 'Noto Sans KR',
+  },
+  {
+    id: 'gmarketSans',
+    name: 'Gmarket Sans',
+    family: `'Gmarket Sans', ${FALLBACK_CHAIN}`,
+    cssFamilyName: 'Gmarket Sans',
+    fontFaceCss: `@font-face{font-family:'Gmarket Sans';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansLight.woff') format('woff');font-weight:300;font-style:normal;font-display:swap}@font-face{font-family:'Gmarket Sans';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff') format('woff');font-weight:400 600;font-style:normal;font-display:swap}@font-face{font-family:'Gmarket Sans';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansBold.woff') format('woff');font-weight:700 900;font-style:normal;font-display:swap}`,
   },
   {
     id: 'ibmPlexSansKr',
@@ -169,6 +188,13 @@ export const FONT_OPTIONS: FontOption[] = [
     family: `'KCCChassam', ${FALLBACK_CHAIN}`,
     cssFamilyName: 'KCCChassam',
     fontFaceCss: `@font-face{font-family:'KCCChassam';src:url('https://cdn.jsdelivr.net/gh/fontbee/font@main/Copyright/KCCChassam.woff2') format('woff2');font-weight:400 900;font-display:swap}`,
+  },
+  {
+    id: 'yeogiOttaeJalnan',
+    name: '여기어때 잘난체',
+    family: `'YeogiOttaeJalnan', ${FALLBACK_CHAIN}`,
+    cssFamilyName: 'YeogiOttaeJalnan',
+    fontFaceCss: `@font-face{font-family:'YeogiOttaeJalnan';src:url('https://cdn.jsdelivr.net/gh/woffz/b1@main/YeogiOttaeJalnan/YeogiOttaeJalnan.woff') format('woff');font-weight:400 900;font-style:normal;font-display:swap}`,
   },
 ];
 

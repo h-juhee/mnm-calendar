@@ -1,8 +1,9 @@
-import type { FontId } from './font';
+import type { FontId, FontWeight } from './font';
 import type { OutputFormat } from './outputFormat';
 
 export type ScheduleType =
   | 'closed'
+  | 'vacation'
   | 'morningClosed'
   | 'afternoonClosed'
   | 'seminarClosed'
@@ -22,6 +23,7 @@ export interface LayerEdit {
   y?: number;
   fontSize?: number;
   fontId?: FontId;
+  fontWeight?: FontWeight;
   color?: string;
   outlineColor?: string;
   text?: string;
@@ -30,15 +32,20 @@ export interface LayerEdit {
 
 export type DesignEdits = Partial<Record<EditableLayerId, LayerEdit>>;
 
-export interface DateSchedule {
-  date: string; // YYYY-MM-DD
+export interface DateScheduleEntry {
   type: ScheduleType;
   /** 일정 라벨에만 적용하는 선택 색상. 비워두면 유형별 기본색을 사용합니다. */
   badgeColor?: string;
   startTime?: string; // HH:mm, shortened schedule start time
   endTime?: string; // HH:mm, shortened 유형일 때만 사용
-  showTimeBadge?: boolean; // 단축 진료 시간 배지 배경 표시 여부
+  showTimeBadge?: boolean; // 공휴일 진료 시간 배지 배경 표시 여부
   label?: string;
+}
+
+export interface DateSchedule extends DateScheduleEntry {
+  date: string; // YYYY-MM-DD
+  /** 같은 날짜에 추가로 표시할 일정입니다. 첫 일정과 합쳐 최대 3개까지 사용합니다. */
+  additionalSchedules?: DateScheduleEntry[];
 }
 
 export interface HospitalInfo {
@@ -46,6 +53,8 @@ export interface HospitalInfo {
   name: string;
   directorName?: string;
   logoUrl?: string;
+  logoFileName?: string;
+  displayMode?: 'name' | 'logo';
   primaryColor: string;
   /** UUID 기반 저장 체계로 생성되거나 이전된 병원 정보의 버전입니다. */
   storageVersion?: 2;
@@ -61,6 +70,8 @@ export interface ScheduleFormData {
   dateSchedules: DateSchedule[]; // 사용자가 개별적으로 지정한 날짜만 포함
   vacationStart?: string;
   vacationEnd?: string;
+  /** 우측 휴가 설정에서 지정하는 휴가 뱃지 색상입니다. */
+  vacationBadgeColor?: string;
   templateId: TemplateId | null;
   /** 진료일정 이미지에 적용할 폰트. 과거에 저장된 데이터에는 없을 수 있어 선택 필드입니다. */
   fontId?: FontId;
@@ -82,6 +93,10 @@ export interface ClinicHoursRow {
   startTime: string;
   endTime: string;
   badgeLabel?: string;
+  /** 진료 구분 배지의 사용자 지정 배경색입니다. */
+  badgeColor?: string;
+  /** 해당 요일 묶음 아래에 표시하는 휴게시간·저녁진료 등의 안내 문구입니다. */
+  note?: string;
 }
 
 export interface ClinicHours {
@@ -90,6 +105,8 @@ export interface ClinicHours {
   lunchEnd: string;
   lunchDisabled?: boolean;
   hidden?: boolean;
+  /** 예시값을 포함한 현재 진료시간을 사용자가 실제 운영시간으로 확인했는지 여부입니다. */
+  confirmed?: boolean;
   note: string;
 }
 
@@ -147,10 +164,11 @@ export const SCHEDULE_TYPE_META: Record<
   { label: string; shortLabel: string; icon: string }
 > = {
   closed: { label: '휴진', shortLabel: '휴진', icon: '✕' },
+  vacation: { label: '휴가', shortLabel: '휴가', icon: '✕' },
   morningClosed: { label: '오전 진료', shortLabel: '오전진료', icon: '◐' },
   afternoonClosed: { label: '오후 진료', shortLabel: '오후진료', icon: '◑' },
   seminarClosed: { label: '세미나 휴진', shortLabel: '세미나휴진', icon: '' },
-  shortened: { label: '단축 진료', shortLabel: '단축진료', icon: '◷' },
+  shortened: { label: '공휴일 진료', shortLabel: '공휴일 진료', icon: '◷' },
   night: { label: '야간 진료', shortLabel: '야간진료', icon: '☾' },
   saturday: { label: '토요일 진료', shortLabel: '토요일진료', icon: '●' },
   custom: { label: '직접 입력', shortLabel: '직접입력', icon: '' },
@@ -160,6 +178,7 @@ export const SCHEDULE_TYPE_META: Record<
 /** 달력 라벨에 사용자 지정 색상이 없을 때 일정 유형별로 표시하는 기본색입니다. */
 export const SCHEDULE_TYPE_DEFAULT_BADGE_COLOR: Record<ScheduleType, string> = {
   closed: '#dd4b4b',
+  vacation: '#dd4b4b',
   morningClosed: '#4779ca',
   afternoonClosed: '#4779ca',
   seminarClosed: '#dd4b4b',

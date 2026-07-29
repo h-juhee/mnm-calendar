@@ -17,6 +17,7 @@ export function resetScheduleSettings(formData: ScheduleFormData): ScheduleFormD
     dateSchedules: [],
     vacationStart: undefined,
     vacationEnd: undefined,
+    vacationBadgeColor: undefined,
     clinicHours: { ...EMPTY_CLINIC_HOURS },
   };
 }

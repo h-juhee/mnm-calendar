@@ -12,7 +12,7 @@
 .previewInfo strong { font-size: 14px; font-weight: 800; }
 .previewInfo span { color: var(--color-text-muted); font-size: 12px; line-height: 1.45; }
 .actions { grid-column: 2; display: flex; gap: 8px; flex-wrap: wrap; }
-.changeButton, .removeButton { min-height: 38px; display: inline-flex; align-items: center; justify-content: center; padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 700; background: #fff; border: 1px solid; border-radius: 7px; cursor: pointer; }
+.changeButton, .removeButton { min-height: 38px; display: inline-flex; align-items: center; justify-content: center; padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 600; background: #fff; border: 1px solid; border-radius: 7px; cursor: pointer; }
 .changeButton { color: var(--color-primary); border-color: var(--color-primary); }
 .removeButton { color: var(--color-danger); background: color-mix(in srgb, var(--color-danger) 5%, #fff); border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-border)); }
 .error { font-size: 13px; color: var(--color-danger); }

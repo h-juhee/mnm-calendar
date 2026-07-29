@@ -7,7 +7,9 @@ interface VacationRangeFieldProps {
   month: number;
   start?: string;
   end?: string;
+  color?: string;
   onChange: (start: string | undefined, end: string | undefined) => void;
+  onColorChange: (color: string | undefined) => void;
 }
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -21,7 +23,7 @@ function formatRangeDate(value: string) {
   return `${year}.${month}.${day}`;
 }
 
-export default function VacationRangeField({ year, month, start, end, onChange }: VacationRangeFieldProps) {
+export default function VacationRangeField({ year, month, start, end, color, onChange, onColorChange }: VacationRangeFieldProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [hoveredDate, setHoveredDate] = useState<string>();
   const fieldRef = useRef<HTMLDivElement>(null);
@@ -114,7 +116,7 @@ export default function VacationRangeField({ year, month, start, end, onChange }
   return (
     <div className={styles.wrapper} ref={fieldRef}>
       <label className={styles.label} htmlFor="vacation-range">
-        휴가 기간
+        기간
       </label>
       <div className={styles.row}>
         <button
@@ -144,6 +146,27 @@ export default function VacationRangeField({ year, month, start, end, onChange }
           ? `선택한 기간이 ${year}년 ${month}월 달력에 휴가로 표시됩니다.`
           : `${year}년 ${month}월 안에서 시작일과 종료일을 선택하세요.`}
       </p>
+      <div className={styles.colorField}>
+        <label className={styles.label} htmlFor="vacation-badge-color">
+          휴가 라벨 색상
+        </label>
+        <div className={styles.colorControls}>
+          <input
+            id="vacation-badge-color"
+            type="color"
+            className={styles.colorInput}
+            value={color ?? '#dd4b4b'}
+            onChange={(event) => onColorChange(event.target.value)}
+            aria-label="휴가 라벨 색상 선택"
+          />
+          <span className={styles.colorHint}>휴가 기간 전체에 적용됩니다.</span>
+          {color && (
+            <button type="button" className={styles.colorReset} onClick={() => onColorChange(undefined)}>
+              기본색
+            </button>
+          )}
+        </div>
+      </div>
 
       {isOpen && createPortal(
         <>

@@ -46,16 +46,28 @@ export default function ImageTemplateBase({
   selectedLayer,
   customBackgroundUrl,
 }: ImageTemplateBaseProps) {
+  const layoutClass = outputFormat === 'instagram'
+    ? styles.square
+    : outputFormat === 'a4Horizontal'
+      ? styles.a4
+      : '';
   const hasClinicHours = hasRenderableClinicHours(clinicHours) || reserveClinicHoursSpace;
+  const hospitalDisplayMode = hospital.displayMode ?? (hospital.logoUrl ? 'logo' : 'name');
   const titleText = designEdits.title?.text ?? getCalendarTitle(month, calendarLabelStyle);
   const subtitleText = designEdits.subtitle?.text ?? getCalendarSubtitle(calendarLabelStyle);
+  const subtitleColor = designEdits.subtitle?.color
+    ?? (outputFormat === 'a4Horizontal' ? '#000000' : textColor);
   const editableStyle = (id: keyof typeof designEdits): CSSProperties => {
     const edit = designEdits[id];
+    const editX = outputFormat === 'a4Horizontal' && id === 'subtitle'
+      ? 0
+      : edit?.x ?? 0;
     return {
-      transform: `translate(${edit?.x ?? 0}px, ${edit?.y ?? 0}px) scale(${edit?.scale ?? 1})`,
+      transform: `translate(${editX}px, ${edit?.y ?? 0}px) scale(${edit?.scale ?? 1})`,
       transformOrigin: 'top left',
       fontSize: edit?.fontSize,
       fontFamily: edit?.fontId ? getFontOption(edit.fontId).family : undefined,
+      fontWeight: edit?.fontWeight,
       color: edit?.color,
     };
   };
@@ -67,7 +79,7 @@ export default function ImageTemplateBase({
 
   return (
     <div
-      className={`${styles.root} ${styles[outputFormat]} ${hasClinicHours ? styles.hasClinicHours : styles.noClinicHours} ${calendarMatrix.length === 6 ? styles.sixWeekMonth : ''}`}
+      className={`${styles.root} ${styles[outputFormat]} ${layoutClass} ${hasClinicHours ? styles.hasClinicHours : styles.noClinicHours} ${calendarMatrix.length === 6 ? styles.sixWeekMonth : ''}`}
       style={{
         backgroundImage: customBackgroundUrl ? undefined : `url(${backgroundUrls[outputFormat]})`,
         '--export-font-family': fontFamily,
@@ -99,13 +111,15 @@ export default function ImageTemplateBase({
             >
               {titleText}
             </span>
-            <span className={styles.subtitle} {...layerProps('subtitle')} style={{ ...editableStyle('subtitle'), color: designEdits.subtitle?.color ?? textColor }}>
+            <span className={styles.subtitle} {...layerProps('subtitle')} style={{ ...editableStyle('subtitle'), color: subtitleColor }}>
               {subtitleText}
             </span>
           </div>
           <div className={styles.heroHospitalTag} data-edit-layer="hospital" data-selected={selectedLayer === 'hospital' || undefined} style={editableStyle('hospital')}>
-            {hospital.logoUrl ? (
+            {hospitalDisplayMode === 'logo' ? (
+              hospital.logoUrl ? (
               <img className={styles.heroLogo} src={hospital.logoUrl} alt={`${hospital.name} 로고`} />
+              ) : null
             ) : (
               <span className={styles.heroHospitalName} style={{ color: designEdits.hospital?.color ?? textColor, fontSize: designEdits.hospital?.fontSize }}>
                 {designEdits.hospital?.text ?? hospital.name}
@@ -116,8 +130,10 @@ export default function ImageTemplateBase({
       ) : (
         <>
           <div className={styles.hospitalRow} data-edit-layer="hospital" data-selected={selectedLayer === 'hospital' || undefined} style={editableStyle('hospital')}>
-            {hospital.logoUrl ? (
+            {hospitalDisplayMode === 'logo' ? (
+              hospital.logoUrl ? (
               <img className={styles.logo} src={hospital.logoUrl} alt={`${hospital.name} 로고`} />
+              ) : null
             ) : (
               <span className={styles.hospitalName} style={{ color: designEdits.hospital?.color ?? textColor, fontSize: designEdits.hospital?.fontSize }}>
                 {designEdits.hospital?.text ?? hospital.name}
@@ -129,7 +145,7 @@ export default function ImageTemplateBase({
             <span className={styles.monthTitle} {...layerProps('title')} style={{ ...editableStyle('title'), color: designEdits.title?.color ?? titleColor }}>
               {titleText}
             </span>
-            <span className={styles.subtitle} {...layerProps('subtitle')} style={{ ...editableStyle('subtitle'), color: designEdits.subtitle?.color ?? textColor }}>
+            <span className={styles.subtitle} {...layerProps('subtitle')} style={{ ...editableStyle('subtitle'), color: subtitleColor }}>
               {subtitleText}
             </span>
           </div>

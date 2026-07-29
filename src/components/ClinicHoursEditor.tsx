@@ -4,9 +4,11 @@ import Modal from './Modal';
 import styles from './ClinicHoursEditor.module.css';
 
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const DEFAULT_START = '09:30';
 const DEFAULT_END = '18:30';
 const NOTE_MAX_LENGTH = 40;
+const ROW_NOTE_MAX_LENGTH = 60;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 interface ClinicHoursEditorProps {
@@ -21,12 +23,16 @@ function createRow(): ClinicHoursRow {
     startTime: DEFAULT_START,
     endTime: DEFAULT_END,
     badgeLabel: '',
+    badgeColor: undefined,
+    note: '',
   };
 }
 
 function rowHasUserInput(row: ClinicHoursRow) {
   return row.days.length > 0
     || Boolean(row.badgeLabel?.trim())
+    || Boolean(row.badgeColor)
+    || Boolean(row.note?.trim())
     || row.startTime !== DEFAULT_START
     || row.endTime !== DEFAULT_END;
 }
@@ -43,9 +49,10 @@ interface TimeInputProps {
   onChange: (value: string) => void;
   ariaLabel?: string;
   disabled?: boolean;
+  placeholder?: string;
 }
 
-function TimeInput({ value, onChange, ariaLabel, disabled }: TimeInputProps) {
+function TimeInput({ value, onChange, ariaLabel, disabled, placeholder = '09:30' }: TimeInputProps) {
   return (
     <input
       type="text"
@@ -54,7 +61,7 @@ function TimeInput({ value, onChange, ariaLabel, disabled }: TimeInputProps) {
       disabled={disabled}
       inputMode="numeric"
       maxLength={5}
-      placeholder="09:30"
+      placeholder={placeholder}
       onChange={(event) => onChange(event.target.value.replace(/[^\d:]/g, '').slice(0, 5))}
       onBlur={(event) => onChange(normalizeTimeInput(event.target.value))}
     />
@@ -89,17 +96,18 @@ export default function ClinicHoursEditor({ value, onChange }: ClinicHoursEditor
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [touchedRows, setTouchedRows] = useState<Set<string>>(() => new Set());
   const [lunchTouched, setLunchTouched] = useState(false);
+  const changeValue = (next: ClinicHours) => onChange({ ...next, confirmed: false });
 
   const updateRow = (id: string, patch: Partial<ClinicHoursRow>) => {
     setTouchedRows((current) => new Set(current).add(id));
-    onChange({
+    changeValue({
       ...value,
       rows: value.rows.map((row) => (row.id === id ? { ...row, ...patch } : row)),
     });
   };
 
   const removeRow = (id: string) => {
-    onChange({ ...value, rows: value.rows.filter((row) => row.id !== id) });
+    changeValue({ ...value, rows: value.rows.filter((row) => row.id !== id) });
     setDeleteTargetId(null);
   };
 
@@ -117,21 +125,17 @@ export default function ClinicHoursEditor({ value, onChange }: ClinicHoursEditor
 
   return (
     <div className={styles.wrap}>
-      <label className={styles.visibilityOption}>
-        <input
-          type="checkbox"
-          checked={Boolean(value.hidden)}
-          onChange={(event) => onChange({ ...value, hidden: event.target.checked })}
-        />
-        <span>
-          <strong>진료시간 표시 안 함</strong>
-          <small>대제목과 달력만 표시하고 진료시간 영역은 숨깁니다.</small>
-        </span>
-      </label>
-
+      {!value.confirmed && (
+        <div className={styles.exampleNotice} role="status">
+          <strong>예시 진료시간 · 수정 필요</strong>
+          <span>예시 진료시간입니다. 실제 운영시간에 맞게 수정해 주세요.</span>
+        </div>
+      )}
       <div className={styles.fields} hidden={Boolean(value.hidden)}>
       {value.rows.map((row, index) => {
         const errors = rowErrors(row, value.rows);
+        const weekdaysSelected = [1, 2, 3, 4, 5].every((day) => row.days.includes(day));
+        const weekendSelected = [0, 6].every((day) => row.days.includes(day));
         return (
           <div className={styles.rowCard} key={row.id}>
             <div className={styles.rowHeader}>
@@ -144,9 +148,38 @@ export default function ClinicHoursEditor({ value, onChange }: ClinicHoursEditor
                 삭제
               </button>
             </div>
-            <p className={styles.dayHint}>해당 시간이 적용되는 요일을 선택하세요.</p>
+            <div className={styles.dayToolbar}>
+              <span>요일</span>
+              <div>
+                <button
+                  type="button"
+                  aria-pressed={weekdaysSelected}
+                  className={weekdaysSelected ? styles.dayQuickActive : undefined}
+                  onClick={() => updateRow(row.id, {
+                    days: weekdaysSelected
+                      ? row.days.filter((day) => ![1, 2, 3, 4, 5].includes(day))
+                      : [...new Set([...row.days, 1, 2, 3, 4, 5])].sort(),
+                  })}
+                >
+                  평일 전체
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={weekendSelected}
+                  className={weekendSelected ? styles.dayQuickActive : undefined}
+                  onClick={() => updateRow(row.id, {
+                    days: weekendSelected
+                      ? row.days.filter((day) => ![0, 6].includes(day))
+                      : [...new Set([...row.days, 0, 6])].sort(),
+                  })}
+                >
+                  주말
+                </button>
+              </div>
+            </div>
             <div className={styles.days} aria-label={`진료시간 ${index + 1} 요일`}>
-              {DAY_LABELS.map((label, day) => {
+              {DAY_ORDER.map((day) => {
+                const label = DAY_LABELS[day];
                 const selected = row.days.includes(day);
                 return (
                   <button
@@ -173,7 +206,7 @@ export default function ClinicHoursEditor({ value, onChange }: ClinicHoursEditor
                 <TimeInput value={row.endTime} onChange={(endTime) => updateRow(row.id, { endTime })} />
               </label>
               <label className={styles.badgeField}>
-                표시 문구 · 선택
+                진료 구분 배지 (선택 사항)
                 <input
                   type="text"
                   maxLength={10}
@@ -181,7 +214,37 @@ export default function ClinicHoursEditor({ value, onChange }: ClinicHoursEditor
                   placeholder="예: 야간진료"
                   onChange={(event) => updateRow(row.id, { badgeLabel: event.target.value })}
                 />
-                <small>진료시간 옆에 함께 표시됩니다.</small>
+              </label>
+              <div className={styles.badgeColorField}>
+                <div className={styles.badgeColorControls}>
+                  <label className={styles.colorPickerButton}>
+                    <input
+                      type="color"
+                      className={styles.colorInput}
+                      value={row.badgeColor ?? '#4779ca'}
+                      onChange={(event) => updateRow(row.id, { badgeColor: event.target.value })}
+                      aria-label={`진료시간 ${index + 1} 배지 색상`}
+                    />
+                    <span>배지 색상 변경</span>
+                  </label>
+                  <button
+                    type="button"
+                    disabled={!row.badgeColor}
+                    onClick={() => updateRow(row.id, { badgeColor: undefined })}
+                  >
+                    기본 색상 복원
+                  </button>
+                </div>
+              </div>
+              <label className={styles.rowNoteField}>
+                휴게시간·추가 안내 (선택 사항)
+                <input
+                  type="text"
+                  maxLength={ROW_NOTE_MAX_LENGTH}
+                  value={row.note ?? ''}
+                  placeholder="예: 휴게시간 13:00 ~ 14:00 / 18:00 ~ 18:30"
+                  onChange={(event) => updateRow(row.id, { note: event.target.value })}
+                />
               </label>
             </div>
             {touchedRows.has(row.id) && errors.length > 0 && (
@@ -196,7 +259,7 @@ export default function ClinicHoursEditor({ value, onChange }: ClinicHoursEditor
       <button
         type="button"
         className={`${styles.addButton} ${value.rows.length > 0 ? styles.addButtonSecondary : ''}`}
-        onClick={() => onChange({ ...value, rows: [...value.rows, createRow()] })}
+        onClick={() => changeValue({ ...value, rows: [...value.rows, createRow()] })}
       >
         {value.rows.length > 0 ? '+ 다른 진료시간 추가' : '+ 진료시간 추가'}
       </button>
@@ -210,42 +273,42 @@ export default function ClinicHoursEditor({ value, onChange }: ClinicHoursEditor
               checked={Boolean(value.lunchDisabled)}
               onChange={(event) => {
                 setLunchTouched(true);
-                onChange({ ...value, lunchDisabled: event.target.checked });
+                changeValue({ ...value, lunchDisabled: event.target.checked });
               }}
             />
             점심시간 없음
           </label>
         </div>
-        <div className={styles.lunchFields}>
+        {!value.lunchDisabled && <div className={styles.lunchFields}>
           <TimeInput
-            disabled={value.lunchDisabled}
             ariaLabel="점심시간 시작"
+            placeholder="시작 시간"
             value={value.lunchStart}
             onChange={(lunchStart) => {
               setLunchTouched(true);
-              onChange({ ...value, lunchStart });
+              changeValue({ ...value, lunchStart });
             }}
           />
           <span>~</span>
           <TimeInput
-            disabled={value.lunchDisabled}
             ariaLabel="점심시간 종료"
+            placeholder="종료 시간"
             value={value.lunchEnd}
             onChange={(lunchEnd) => {
               setLunchTouched(true);
-              onChange({ ...value, lunchEnd });
+              changeValue({ ...value, lunchEnd });
             }}
           />
-        </div>
+        </div>}
         {lunchTouched && lunchError && <p className={styles.inlineError}>{lunchError}</p>}
         <label className={styles.noteField}>
-          <span>추가 안내 · 선택</span>
+          <span>공통 안내 (선택 사항)</span>
           <input
             type="text"
             maxLength={NOTE_MAX_LENGTH}
             value={value.note}
-            placeholder="예: 토요일은 점심시간 없이 진료합니다."
-            onChange={(event) => onChange({ ...value, note: event.target.value })}
+            placeholder="예: 공휴일 진료는 별도 문의해 주세요."
+            onChange={(event) => changeValue({ ...value, note: event.target.value })}
           />
           <small className={styles.counter}>{value.note.length}/{NOTE_MAX_LENGTH}</small>
         </label>
@@ -264,6 +327,29 @@ export default function ClinicHoursEditor({ value, onChange }: ClinicHoursEditor
         </Modal>
       )}
       </div>
+
+      <div className={styles.displaySettings}>
+        <span>표시 설정</span>
+        <label className={styles.visibilityOption}>
+          <input
+            type="checkbox"
+            checked={Boolean(value.hidden)}
+            onChange={(event) => changeValue({ ...value, hidden: event.target.checked })}
+          />
+          <strong>진료시간 숨기기</strong>
+        </label>
+      </div>
+      <label className={styles.confirmOption}>
+        <input
+          type="checkbox"
+          checked={Boolean(value.confirmed)}
+          onChange={(event) => onChange({ ...value, confirmed: event.target.checked })}
+        />
+        <span>
+          <strong>진료시간 확인 완료</strong>
+          <small>실제 운영시간과 일치하는지 확인했습니다.</small>
+        </span>
+      </label>
     </div>
   );
 }

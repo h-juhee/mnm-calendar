@@ -26,7 +26,7 @@ export function getCalendarTitle(month: number, style: CalendarLabelStyle = 'kor
   if (style === 'english') return `${ENGLISH_MONTH_NAMES[month - 1]} CLINIC SCHEDULE`;
   if (style === 'hanja') return `${HANJA_MONTH_NAMES[month - 1]} 診療日程`;
   if (style === 'japanese') return `${month}月 診療スケジュール`;
-  return `${String(month).padStart(2, '0')}월 진료일정`;
+  return `${month}월 진료일정`;
 }
 
 export function getCalendarSubtitle(style: CalendarLabelStyle = 'korean'): string {
@@ -119,13 +119,13 @@ function isWithinRange(date: string, start?: string, end?: string): boolean {
 export function resolveDateSchedule(
   dateKey: string,
   weekday: number,
-  formData: Pick<ScheduleFormData, 'dateSchedules' | 'recurringClosedDays' | 'vacationStart' | 'vacationEnd'>,
+  formData: Pick<ScheduleFormData, 'dateSchedules' | 'recurringClosedDays' | 'vacationStart' | 'vacationEnd' | 'vacationBadgeColor'>,
 ): DateSchedule {
   const explicit = formData.dateSchedules.find((s) => s.date === dateKey);
   if (explicit) return explicit;
 
   if (isWithinRange(dateKey, formData.vacationStart, formData.vacationEnd)) {
-    return { date: dateKey, type: 'closed', label: '휴가' };
+    return { date: dateKey, type: 'vacation', badgeColor: formData.vacationBadgeColor };
   }
 
   const holiday = getKoreanHolidays(Number(dateKey.slice(0, 4))).find((item) => item.date === dateKey);
@@ -177,7 +177,7 @@ export function formatMonthTitle(year: number, month: number): string {
 }
 
 export function scheduleTypeIsClosedLike(type: ScheduleType): boolean {
-  return type === 'closed' || type === 'seminarClosed';
+  return type === 'closed' || type === 'vacation' || type === 'seminarClosed';
 }
 
 /** 이전 달(연도 경계 포함)의 연/월을 계산합니다. */

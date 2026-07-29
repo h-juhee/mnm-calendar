@@ -3,7 +3,9 @@ import type { TemplateProps } from './templateTypes';
 
 const BACKGROUND_URLS = {
   square: '/templates/schedule_B_bg.png?v=2',
+  instagram: '/templates/formats/a4_B.png',
   a4: '/templates/formats/a4_B.png',
+  a4Horizontal: '/templates/formats/did_horizontal_B.png',
   didHorizontal: '/templates/formats/did_horizontal_B.png',
   didVertical: '/templates/formats/did_vertical_B.png',
 };

@@ -22,6 +22,7 @@ interface PreviewCalendarProps {
 
 const BADGE_CLASS: Record<string, string> = {
   closed: styles.badgeClosed,
+  vacation: styles.badgeClosed,
   morningClosed: styles.badgeHalf,
   afternoonClosed: styles.badgeHalf,
   seminarClosed: styles.badgeClosed,
@@ -45,9 +46,14 @@ export default function PreviewCalendar({
   selected,
 }: PreviewCalendarProps) {
   const weekdayLabels = getWeekdayLabels(labelStyle);
+  const layoutClass = outputFormat === 'instagram'
+    ? styles.square
+    : outputFormat === 'a4Horizontal'
+      ? styles.a4
+      : '';
   return (
     <div
-      className={`${styles.wrap} ${styles[outputFormat]} ${className ?? ''}`}
+      className={`${styles.wrap} ${styles[outputFormat]} ${layoutClass} ${className ?? ''}`}
       data-edit-layer="calendar"
       data-selected={selected || undefined}
       style={{
@@ -56,6 +62,8 @@ export default function PreviewCalendar({
         '--calendar-edit-y': `${edit?.y ?? 0}px`,
         '--calendar-edit-scale': edit?.scale ?? 1,
         '--calendar-font-family': edit?.fontId ? getFontOption(edit.fontId).family : undefined,
+        '--calendar-font-weight': edit?.fontWeight,
+        '--calendar-week-count': calendarMatrix.length,
       } as CSSProperties}
     >
       <div className={styles.frame}>
@@ -73,22 +81,23 @@ export default function PreviewCalendar({
             }
             const schedule = resolvedByDate.get(cell.date);
             const isExplicitDateSchedule = explicitDateKeys?.has(cell.date) ?? false;
-            const meta = schedule && (schedule.type !== 'open' || isExplicitDateSchedule)
-              ? SCHEDULE_TYPE_META[schedule.type]
-              : null;
-            const displayLabel = schedule?.label ?? meta?.shortLabel;
-            const scheduleStart = schedule?.startTime ?? '09:00';
-            const scheduleTime = schedule?.endTime
-              && scheduleStart < schedule.endTime
-              ? `${scheduleStart}~${schedule.endTime}`
-              : '';
-            const timeBadgeClass = schedule?.showTimeBadge === false ? styles.badgeTimePlain : undefined;
-            const badgeStyle = schedule
-              ? ({
-                  '--schedule-badge-color': schedule.badgeColor
-                    ?? SCHEDULE_TYPE_DEFAULT_BADGE_COLOR[schedule.type],
-                } as CSSProperties)
-              : undefined;
+            let occupiedScheduleRows = 0;
+            const schedules = schedule
+              ? [schedule, ...(schedule.additionalSchedules ?? [])].filter((entry) => {
+                  const isVisible = entry.type !== 'open' || isExplicitDateSchedule;
+                  if (!isVisible) return false;
+
+                  const scheduleStart = entry.startTime ?? '09:00';
+                  const hasTimeRow = Boolean(
+                    entry.endTime && scheduleStart < entry.endTime,
+                  );
+                  const rowCount = hasTimeRow ? 2 : 1;
+                  if (occupiedScheduleRows + rowCount > 3) return false;
+
+                  occupiedScheduleRows += rowCount;
+                  return true;
+                })
+              : [];
             const weekday = idx % 7;
             const dayClassName = [
               styles.day,
@@ -101,13 +110,47 @@ export default function PreviewCalendar({
             const content = (
               <>
                 <span className={dayClassName}>{cell.day}</span>
-                {meta && (
-                  <span
-                    className={`${styles.badge} ${BADGE_CLASS[schedule!.type] ?? ''} ${scheduleTime ? styles.badgeWithTime : ''}`}
-                    style={badgeStyle}
-                  >
-                    <span>{displayLabel}</span>
-                    {scheduleTime && <span className={timeBadgeClass}>{scheduleTime}</span>}
+                {schedules.length > 0 && (
+                  <span className={`${styles.badges} ${occupiedScheduleRows === 1 ? styles.singleBadge : ''}`}>
+                    {schedules.map((entry, scheduleIndex) => {
+                      const meta = entry.type !== 'open' || isExplicitDateSchedule
+                        ? SCHEDULE_TYPE_META[entry.type]
+                        : null;
+                      if (!meta) return null;
+                      const scheduleStart = entry.startTime ?? '09:00';
+                      const scheduleTime = entry.endTime && scheduleStart < entry.endTime
+                        ? `${scheduleStart}~${entry.endTime}`
+                        : '';
+                      const badgeClassName = `${styles.badge} ${BADGE_CLASS[entry.type] ?? ''}`;
+                      const badgeStyle = {
+                        '--schedule-badge-color': entry.badgeColor
+                          ?? SCHEDULE_TYPE_DEFAULT_BADGE_COLOR[entry.type],
+                      } as CSSProperties;
+                      if (scheduleTime) {
+                        return (
+                          <span key={`${entry.type}-${scheduleIndex}`} className={styles.timedBadge}>
+                            <span className={badgeClassName} style={badgeStyle}>
+                              {entry.label ?? meta.shortLabel}
+                            </span>
+                            <span
+                              className={`${styles.badge} ${styles.timeBadge} ${entry.showTimeBadge === false ? styles.badgeTimePlain : ''}`}
+                              style={badgeStyle}
+                            >
+                              {scheduleTime}
+                            </span>
+                          </span>
+                        );
+                      }
+                      return (
+                        <span
+                          key={`${entry.type}-${scheduleIndex}`}
+                          className={badgeClassName}
+                          style={badgeStyle}
+                        >
+                          {entry.label ?? meta.shortLabel}
+                        </span>
+                      );
+                    })}
                   </span>
                 )}
               </>
