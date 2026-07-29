@@ -39,6 +39,7 @@ export interface DateScheduleEntry {
   startTime?: string; // HH:mm, shortened schedule start time
   endTime?: string; // HH:mm, shortened 유형일 때만 사용
   showTimeBadge?: boolean; // 공휴일 진료 시간 배지 배경 표시 여부
+  hideBadge?: boolean;
   label?: string;
 }
 

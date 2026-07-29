@@ -6,6 +6,7 @@ import { SCHEDULE_TYPE_DEFAULT_BADGE_COLOR, SCHEDULE_TYPE_META } from '../types/
 import styles from './PreviewCalendar.module.css';
 import type { OutputFormat } from '../types/outputFormat';
 import { getFontOption } from '../types/font';
+import { getKoreanHolidays } from '../utils/holidayProvider';
 
 interface PreviewCalendarProps {
   calendarMatrix: CalendarCell[][];
@@ -81,9 +82,21 @@ export default function PreviewCalendar({
             }
             const schedule = resolvedByDate.get(cell.date);
             const isExplicitDateSchedule = explicitDateKeys?.has(cell.date) ?? false;
+            const isAutomaticHolidayDate = getKoreanHolidays(Number(cell.date.slice(0, 4)))
+              .some((holiday) => holiday.date === cell.date);
             let occupiedScheduleRows = 0;
             const schedules = schedule
               ? [schedule, ...(schedule.additionalSchedules ?? [])].filter((entry) => {
+                  if (
+                    entry.hideBadge
+                    || (
+                      isAutomaticHolidayDate
+                      && entry.type === 'open'
+                      && !entry.startTime
+                      && !entry.endTime
+                      && !entry.label
+                    )
+                  ) return false;
                   const isVisible = entry.type !== 'open' || isExplicitDateSchedule;
                   if (!isVisible) return false;
 

@@ -20,6 +20,7 @@ function normalizeEntry(entry: DateScheduleEntry): DateScheduleEntry {
     startTime: entry.startTime,
     endTime: entry.endTime,
     showTimeBadge: entry.showTimeBadge !== false,
+    hideBadge: entry.hideBadge,
     label: entry.label,
   };
 }
@@ -41,14 +42,13 @@ function getTimeError(entry: DateScheduleEntry): string | null {
 interface EntryEditorProps {
   entry: DateScheduleEntry;
   index: number;
-  canRemove: boolean;
   expanded: boolean;
   onToggle: () => void;
   onChange: (entry: DateScheduleEntry) => void;
   onRemove: () => void;
 }
 
-function EntryEditor({ entry, index, canRemove, expanded, onToggle, onChange, onRemove }: EntryEditorProps) {
+function EntryEditor({ entry, index, expanded, onToggle, onChange, onRemove }: EntryEditorProps) {
   const displayedBadgeColor = entry.badgeColor || SCHEDULE_TYPE_DEFAULT_BADGE_COLOR[entry.type];
   const timeError = getTimeError(entry);
   const summary = [
@@ -65,17 +65,15 @@ function EntryEditor({ entry, index, canRemove, expanded, onToggle, onChange, on
             <path d="m5 7.5 5 5 5-5" />
           </svg>
         </button>
-        {canRemove && (
-          <button
-            type="button"
-            className={styles.removeScheduleButton}
-            onClick={() => {
-              if (window.confirm(`일정 ${index + 1}을 삭제할까요?`)) onRemove();
-            }}
-          >
-            삭제
-          </button>
-        )}
+        <button
+          type="button"
+          className={styles.removeScheduleButton}
+          onClick={() => {
+            if (window.confirm(`일정 ${index + 1}을 삭제할까요?`)) onRemove();
+          }}
+        >
+          삭제
+        </button>
       </div>
       {expanded && <div className={styles.scheduleCardBody}>
       <div className={styles.typeList} role="radiogroup" aria-label={`일정 ${index + 1} 유형`}>
@@ -96,7 +94,7 @@ function EntryEditor({ entry, index, canRemove, expanded, onToggle, onChange, on
               entry.type === type ? styles.typeOptionSelected : '',
               type === 'custom' ? styles.typeOptionWide : '',
             ].filter(Boolean).join(' ')}
-            onClick={() => onChange({ ...entry, type })}
+            onClick={() => onChange({ ...entry, type, hideBadge: undefined })}
           >
             {SCHEDULE_TYPE_META[type].label}
           </button>
@@ -212,10 +210,10 @@ export default function DateScheduleModal({
     setEntries((current) => current.map((item, itemIndex) => itemIndex === index ? entry : item));
   };
 
-  const handleSave = () => {
-    if (timeErrors.some(Boolean)) return;
-    const [first, ...additionalSchedules] = entries;
-    onSave({
+  const buildSchedule = (nextEntries: DateScheduleEntry[]): DateSchedule | null => {
+    const [first, ...additionalSchedules] = nextEntries;
+    if (!first) return null;
+    return {
       date: dateKey,
       ...first,
       label: first.type === 'custom' ? first.label?.trim() || undefined : undefined,
@@ -225,7 +223,22 @@ export default function DateScheduleModal({
             label: entry.type === 'custom' ? entry.label?.trim() || undefined : undefined,
           }))
         : undefined,
-    });
+    };
+  };
+
+  const handleSave = () => {
+    if (timeErrors.some(Boolean)) return;
+    if (entries.length === 0) {
+      if (isAutomaticHoliday) {
+        onSave({ date: dateKey, type: 'open', hideBadge: true });
+      } else {
+        onClear();
+      }
+      onClose();
+      return;
+    }
+    const schedule = buildSchedule(entries);
+    if (schedule) onSave(schedule);
     onClose();
   };
 
@@ -239,12 +252,23 @@ export default function DateScheduleModal({
             key={index}
             entry={entry}
             index={index}
-            canRemove={entries.length > 1}
             expanded={expandedIndex === index}
             onToggle={() => setExpandedIndex((current) => current === index ? -1 : index)}
             onChange={(next) => updateEntry(index, next)}
             onRemove={() => {
-              setEntries((current) => current.filter((_, itemIndex) => itemIndex !== index));
+              if (entries.length === 1) {
+                if (isAutomaticHoliday) {
+                  onSave({ date: dateKey, type: 'open', hideBadge: true });
+                } else {
+                  onClear();
+                }
+                onClose();
+                return;
+              }
+              const remainingEntries = entries.filter((_, itemIndex) => itemIndex !== index);
+              setEntries(remainingEntries);
+              const schedule = buildSchedule(remainingEntries);
+              if (schedule) onSave(schedule);
               setExpandedIndex((current) => current > index ? current - 1 : Math.min(current, entries.length - 2));
             }}
           />
@@ -266,18 +290,6 @@ export default function DateScheduleModal({
       </div>
       <div className={styles.footer}>
         <button type="button" className={styles.button} onClick={onClose}>취소</button>
-        {isAutomaticHoliday && (
-          <button
-            type="button"
-            className={`${styles.button} ${styles.buttonSecondary}`}
-            onClick={() => {
-              onSave({ date: dateKey, type: 'open' });
-              onClose();
-            }}
-          >
-            공휴일 표시 제외
-          </button>
-        )}
         <button
           type="button"
           className={`${styles.button} ${styles.buttonSecondary}`}
@@ -286,7 +298,9 @@ export default function DateScheduleModal({
         >
           기본 일정 불러오기
         </button>
-        <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} disabled={timeErrors.some(Boolean)} onClick={handleSave}>저장</button>
+        <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} disabled={timeErrors.some(Boolean)} onClick={handleSave}>
+          저장
+        </button>
       </div>
     </Modal>
   );
