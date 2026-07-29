@@ -92,6 +92,7 @@ const DEFAULT_FONT_SIZES: Record<OutputFormat, Record<VisibleLayerId, number>> =
 const MAX_BACKGROUND_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_BACKGROUND_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const MAX_DESIGN_HISTORY = 50;
+const MAX_FONT_SIZE = 500;
 const CANVAS_EDIT_HINT_KEY = 'mnn-calendar:canvas-edit-hint-seen';
 const CALENDAR_DRAG_HINT_KEY = 'mnn-calendar:calendar-drag-hint-seen';
 const DEFAULT_TITLE_OUTLINE_COLORS: Record<TemplateId, string> = {
@@ -126,6 +127,69 @@ function isTextEditingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return target.isContentEditable
     || Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
+}
+
+function normalizeHexColor(value: string): string | null {
+  const hex = value.trim().replace(/^#/, '');
+  if (/^[0-9a-fA-F]{6}$/.test(hex)) return `#${hex.toUpperCase()}`;
+  if (/^[0-9a-fA-F]{3}$/.test(hex)) {
+    return `#${hex.split('').map((character) => character.repeat(2)).join('').toUpperCase()}`;
+  }
+  return null;
+}
+
+interface HexColorInputProps {
+  value: string;
+  onCommit: (value: string) => void;
+  pickerLabel: string;
+  codeLabel: string;
+}
+
+function HexColorInput({ value, onCommit, pickerLabel, codeLabel }: HexColorInputProps) {
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => setDraft(value), [value]);
+
+  const commit = () => {
+    const normalized = normalizeHexColor(draft);
+    if (!normalized) {
+      setDraft(value);
+      return;
+    }
+    setDraft(normalized);
+    if (normalized.toLowerCase() !== value.toLowerCase()) onCommit(normalized);
+  };
+
+  return (
+    <div
+      className={styles.colorInputGroup}
+      onClick={(event) => {
+        if ((event.target as HTMLElement).closest('input')) return;
+        event.currentTarget.querySelector<HTMLInputElement>('input[type="color"]')?.click();
+      }}
+    >
+      <input
+        type="color"
+        value={normalizeHexColor(value) ?? '#000000'}
+        onChange={(event) => onCommit(event.target.value.toUpperCase())}
+        aria-label={pickerLabel}
+      />
+      <input
+        type="text"
+        maxLength={7}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          commit();
+          event.currentTarget.blur();
+        }}
+        aria-label={codeLabel}
+      />
+    </div>
+  );
 }
 
 const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(function SchedulePreview(
@@ -339,9 +403,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
   const selectedLabel = LAYER_LABELS[selectedLayer];
   const defaultFontSize = DEFAULT_FONT_SIZES[outputFormat][selectedLayer];
   const minimumFontSize = 12;
-  const maximumFontSize = selectedLayer === 'clinicHours'
-    ? 80
-    : Math.max(80, Math.round(defaultFontSize * 1.5));
+  const maximumFontSize = MAX_FONT_SIZE;
   const selectedText = selectedLayer === 'title'
     ? selectedEdit.text ?? getCalendarTitle(formData.month, formData.calendarLabelStyle)
     : selectedLayer === 'subtitle'
@@ -425,6 +487,10 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     const initialScale = initial.scale ?? 1;
     const logicalWidth = rect.width / scale / initialScale;
     const logicalHeight = rect.height / scale / initialScale;
+    const isResizableText = id !== 'calendar'
+      && !(id === 'hospital' && hospital.displayMode === 'logo');
+    const baseFontSize = initial.fontSize ?? DEFAULT_FONT_SIZES[outputFormat][id];
+    const maxFontSize = MAX_FONT_SIZE;
     const onMove = (moveEvent: PointerEvent) => {
       didChange = true;
       if (isResize) {
@@ -433,6 +499,17 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
         const widthRatio = (logicalWidth + dx) / logicalWidth;
         const heightRatio = (logicalHeight + dy) / logicalHeight;
         const nextScale = Math.min(3.5, Math.max(0.2, initialScale * Math.max(widthRatio, heightRatio)));
+        if (isResizableText) {
+          const nextFontSize = Math.min(
+            maxFontSize,
+            Math.max(12, Math.round(baseFontSize * nextScale)),
+          );
+          applyDesignEdits({
+            ...designEdits,
+            [id]: { ...initial, fontSize: nextFontSize, scale: 1 },
+          });
+          return;
+        }
         applyDesignEdits({
           ...designEdits,
           [id]: { ...initial, scale: Math.round(nextScale * 100) / 100 },
@@ -764,46 +841,22 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
                         )}
                         <div className={styles.colorField}>
                           <span>글자 색상</span>
-                          <div
-                            className={styles.colorInputGroup}
-                            onClick={(event) => {
-                              if ((event.target as HTMLElement).closest('input')) return;
-                              event.currentTarget.querySelector<HTMLInputElement>('input[type="color"]')?.click();
-                            }}
-                          >
-                            <input
-                              type="color"
-                              value={selectedEdit.color ?? '#111827'}
-                              onChange={(event) => updateSelected({ color: event.target.value })}
-                              aria-label="글자 색상 선택"
-                            />
-                            <input
-                              type="text"
-                              maxLength={7}
-                              value={selectedEdit.color ?? '#111827'}
-                              onChange={(event) => updateSelected({ color: event.target.value })}
-                              aria-label="글자 색상 코드"
-                            />
-                          </div>
+                          <HexColorInput
+                            value={selectedEdit.color ?? '#111827'}
+                            onCommit={(color) => updateSelected({ color })}
+                            pickerLabel="글자 색상 선택"
+                            codeLabel="글자 색상 코드"
+                          />
                         </div>
                         {selectedLayer === 'title' && formData.titleTextStyle !== 'filled' && (
                           <div className={styles.colorField}>
                             <span>테두리 색상</span>
-                            <div className={styles.colorInputGroup}>
-                              <input
-                                type="color"
-                                value={selectedEdit.outlineColor ?? DEFAULT_TITLE_OUTLINE_COLORS[formData.templateId as TemplateId] ?? '#1e3a5f'}
-                                onChange={(event) => updateSelected({ outlineColor: event.target.value })}
-                                aria-label="테두리 색상 선택"
-                              />
-                              <input
-                                type="text"
-                                maxLength={7}
-                                value={selectedEdit.outlineColor ?? DEFAULT_TITLE_OUTLINE_COLORS[formData.templateId as TemplateId] ?? '#1e3a5f'}
-                                onChange={(event) => updateSelected({ outlineColor: event.target.value })}
-                                aria-label="테두리 색상 코드"
-                              />
-                            </div>
+                            <HexColorInput
+                              value={selectedEdit.outlineColor ?? DEFAULT_TITLE_OUTLINE_COLORS[formData.templateId as TemplateId] ?? '#1e3a5f'}
+                              onCommit={(outlineColor) => updateSelected({ outlineColor })}
+                              pickerLabel="테두리 색상 선택"
+                              codeLabel="테두리 색상 코드"
+                            />
                           </div>
                         )}
                       </>

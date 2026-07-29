@@ -26,6 +26,7 @@ import {
   removeAutomaticTitleOverrides,
   setDesignEditsForFormat,
 } from '../utils/designEditsUtils';
+import { createExampleClinicHours } from '../utils/clinicHoursUtils';
 
 const today = new Date();
 const DEFAULT_YEAR = today.getFullYear();
@@ -45,14 +46,15 @@ function normalizeTemplateId(value: unknown): TemplateId | null {
 }
 
 function normalizeClinicHours(value: ClinicHours | undefined): ClinicHours {
+  if (!value) return createExampleClinicHours();
   return {
-    rows: Array.isArray(value?.rows) ? value.rows : [],
-    lunchStart: value?.lunchStart ?? '',
-    lunchEnd: value?.lunchEnd ?? '',
-    lunchDisabled: value?.lunchDisabled ?? false,
-    hidden: value?.hidden ?? false,
-    confirmed: value?.confirmed ?? false,
-    note: value?.note ?? '',
+    rows: Array.isArray(value.rows) ? value.rows : [],
+    lunchStart: value.lunchStart ?? '',
+    lunchEnd: value.lunchEnd ?? '',
+    lunchDisabled: value.lunchDisabled ?? false,
+    hidden: value.hidden ?? false,
+    confirmed: value.confirmed ?? false,
+    note: value.note ?? '',
   };
 }
 

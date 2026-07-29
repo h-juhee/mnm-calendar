@@ -18,7 +18,11 @@ export default function OutputFormatSelector({ value, onChange }: OutputFormatSe
           onClick={() => onChange(format.id)}
         >
           <strong>{format.label}</strong>
-          <span>{format.width} × {format.height}px</span>
+          <span>
+            {format.physicalWidthMm && format.physicalHeightMm
+              ? `${format.physicalWidthMm} × ${format.physicalHeightMm}mm`
+              : `${format.width} × ${format.height}px`}
+          </span>
         </button>
       ))}
     </div>

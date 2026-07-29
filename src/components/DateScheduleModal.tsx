@@ -182,12 +182,21 @@ interface DateScheduleModalProps {
   dateKey: string;
   currentSchedule: DateSchedule;
   hasOverride: boolean;
+  isAutomaticHoliday?: boolean;
   onSave: (schedule: DateSchedule) => void;
   onClear: () => void;
   onClose: () => void;
 }
 
-export default function DateScheduleModal({ dateKey, currentSchedule, hasOverride, onSave, onClear, onClose }: DateScheduleModalProps) {
+export default function DateScheduleModal({
+  dateKey,
+  currentSchedule,
+  hasOverride,
+  isAutomaticHoliday = false,
+  onSave,
+  onClear,
+  onClose,
+}: DateScheduleModalProps) {
   const initialFirst = currentSchedule.type === 'closed' && currentSchedule.label === '휴가'
     ? { ...normalizeEntry(currentSchedule), type: 'vacation' as const }
     : normalizeEntry(currentSchedule);
@@ -257,6 +266,18 @@ export default function DateScheduleModal({ dateKey, currentSchedule, hasOverrid
       </div>
       <div className={styles.footer}>
         <button type="button" className={styles.button} onClick={onClose}>취소</button>
+        {isAutomaticHoliday && (
+          <button
+            type="button"
+            className={`${styles.button} ${styles.buttonSecondary}`}
+            onClick={() => {
+              onSave({ date: dateKey, type: 'open' });
+              onClose();
+            }}
+          >
+            공휴일 표시 제외
+          </button>
+        )}
         <button
           type="button"
           className={`${styles.button} ${styles.buttonSecondary}`}

@@ -18,7 +18,7 @@ export function createExampleClinicHours(): ClinicHours {
 }
 
 export function getClinicHoursWithExample(value?: ClinicHours): ClinicHours {
-  return hasRenderableClinicHours(value) || value?.hidden ? value! : createExampleClinicHours();
+  return value ?? createExampleClinicHours();
 }
 
 export function isValidClinicHoursRow(row: ClinicHoursRow): boolean {

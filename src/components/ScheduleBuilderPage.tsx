@@ -439,6 +439,11 @@ function ScheduleBuilderContent({
           dateKey={selectedDateKey}
           currentSchedule={selectedResolvedSchedule}
           hasOverride={selectedHasOverride}
+          isAutomaticHoliday={
+            !selectedHasOverride
+            && selectedResolvedSchedule.type === 'closed'
+            && Boolean(selectedResolvedSchedule.label)
+          }
           onSave={actions.setDateSchedule}
           onClear={() => actions.clearDateSchedule(selectedDateKey)}
           onClose={() => setSelectedDateKey(null)}
