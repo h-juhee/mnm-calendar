@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { DateSchedule, DateScheduleEntry, ScheduleType } from '../types/schedule';
 import { SCHEDULE_TYPE_DEFAULT_BADGE_COLOR, SCHEDULE_TYPE_META } from '../types/schedule';
+import HexColorInput from './HexColorInput';
 import Modal from './Modal';
 import styles from './DateScheduleModal.module.css';
 
@@ -156,12 +157,11 @@ function EntryEditor({ entry, index, expanded, onToggle, onChange, onRemove }: E
       <div className={styles.colorField}>
         <span className={styles.label}>달력 표시 색상</span>
         <div className={styles.colorControls}>
-          <input
-            type="color"
-            className={styles.colorInput}
+          <HexColorInput
             value={displayedBadgeColor}
-            onChange={(event) => onChange({ ...entry, badgeColor: event.target.value })}
-            aria-label={`일정 ${index + 1} 라벨 색상`}
+            onChange={(badgeColor) => onChange({ ...entry, badgeColor })}
+            pickerLabel={`일정 ${index + 1} 라벨 색상`}
+            codeLabel={`일정 ${index + 1} 라벨 색상 코드`}
           />
           <span className={styles.colorHint}>미선택 시 기본 색상이 적용됩니다.</span>
           {entry.badgeColor && (

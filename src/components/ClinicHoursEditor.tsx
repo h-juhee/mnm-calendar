@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ClinicHours, ClinicHoursRow } from '../types/schedule';
+import HexColorInput from './HexColorInput';
 import Modal from './Modal';
 import styles from './ClinicHoursEditor.module.css';
 
@@ -216,17 +217,13 @@ export default function ClinicHoursEditor({ value, onChange }: ClinicHoursEditor
                 />
               </label>
               <div className={styles.badgeColorField}>
+                <HexColorInput
+                  value={row.badgeColor ?? '#4779ca'}
+                  onChange={(badgeColor) => updateRow(row.id, { badgeColor })}
+                  pickerLabel={`진료시간 ${index + 1} 배지 색상`}
+                  codeLabel={`진료시간 ${index + 1} 배지 색상 코드`}
+                />
                 <div className={styles.badgeColorControls}>
-                  <label className={styles.colorPickerButton}>
-                    <input
-                      type="color"
-                      className={styles.colorInput}
-                      value={row.badgeColor ?? '#4779ca'}
-                      onChange={(event) => updateRow(row.id, { badgeColor: event.target.value })}
-                      aria-label={`진료시간 ${index + 1} 배지 색상`}
-                    />
-                    <span>배지 색상 변경</span>
-                  </label>
                   <button
                     type="button"
                     disabled={!row.badgeColor}

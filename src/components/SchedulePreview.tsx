@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from 'react';
 import { flushSync } from 'react-dom';
+import HexColorInput from './HexColorInput';
 import type { CalendarCell } from '../utils/scheduleUtils';
 import { getCalendarSubtitle, getCalendarTitle } from '../utils/scheduleUtils';
 import type {
@@ -127,69 +128,6 @@ function isTextEditingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return target.isContentEditable
     || Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
-}
-
-function normalizeHexColor(value: string): string | null {
-  const hex = value.trim().replace(/^#/, '');
-  if (/^[0-9a-fA-F]{6}$/.test(hex)) return `#${hex.toUpperCase()}`;
-  if (/^[0-9a-fA-F]{3}$/.test(hex)) {
-    return `#${hex.split('').map((character) => character.repeat(2)).join('').toUpperCase()}`;
-  }
-  return null;
-}
-
-interface HexColorInputProps {
-  value: string;
-  onCommit: (value: string) => void;
-  pickerLabel: string;
-  codeLabel: string;
-}
-
-function HexColorInput({ value, onCommit, pickerLabel, codeLabel }: HexColorInputProps) {
-  const [draft, setDraft] = useState(value);
-
-  useEffect(() => setDraft(value), [value]);
-
-  const commit = () => {
-    const normalized = normalizeHexColor(draft);
-    if (!normalized) {
-      setDraft(value);
-      return;
-    }
-    setDraft(normalized);
-    if (normalized.toLowerCase() !== value.toLowerCase()) onCommit(normalized);
-  };
-
-  return (
-    <div
-      className={styles.colorInputGroup}
-      onClick={(event) => {
-        if ((event.target as HTMLElement).closest('input')) return;
-        event.currentTarget.querySelector<HTMLInputElement>('input[type="color"]')?.click();
-      }}
-    >
-      <input
-        type="color"
-        value={normalizeHexColor(value) ?? '#000000'}
-        onChange={(event) => onCommit(event.target.value.toUpperCase())}
-        aria-label={pickerLabel}
-      />
-      <input
-        type="text"
-        maxLength={7}
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key !== 'Enter') return;
-          event.preventDefault();
-          commit();
-          event.currentTarget.blur();
-        }}
-        aria-label={codeLabel}
-      />
-    </div>
-  );
 }
 
 const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(function SchedulePreview(
@@ -845,7 +783,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
                           <span>글자 색상</span>
                           <HexColorInput
                             value={selectedEdit.color ?? '#111827'}
-                            onCommit={(color) => updateSelected({ color })}
+                            onChange={(color) => updateSelected({ color })}
                             pickerLabel="글자 색상 선택"
                             codeLabel="글자 색상 코드"
                           />
@@ -855,7 +793,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
                             <span>테두리 색상</span>
                             <HexColorInput
                               value={selectedEdit.outlineColor ?? DEFAULT_TITLE_OUTLINE_COLORS[formData.templateId as TemplateId] ?? '#1e3a5f'}
-                              onCommit={(outlineColor) => updateSelected({ outlineColor })}
+                              onChange={(outlineColor) => updateSelected({ outlineColor })}
                               pickerLabel="테두리 색상 선택"
                               codeLabel="테두리 색상 코드"
                             />

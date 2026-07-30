@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
+import HexColorInput from './HexColorInput';
 import styles from './VacationRangeField.module.css';
 
 interface VacationRangeFieldProps {
@@ -151,13 +152,12 @@ export default function VacationRangeField({ year, month, start, end, color, onC
           휴가 라벨 색상
         </label>
         <div className={styles.colorControls}>
-          <input
+          <HexColorInput
             id="vacation-badge-color"
-            type="color"
-            className={styles.colorInput}
             value={color ?? '#dd4b4b'}
-            onChange={(event) => onColorChange(event.target.value)}
-            aria-label="휴가 라벨 색상 선택"
+            onChange={onColorChange}
+            pickerLabel="휴가 라벨 색상 선택"
+            codeLabel="휴가 라벨 색상 코드"
           />
           <span className={styles.colorHint}>휴가 기간 전체에 적용됩니다.</span>
           {color && (
