@@ -9,11 +9,6 @@
 .visibilityOption strong { font-size: 12px; }
 .displaySettings { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 4px 0; border-top: 1px solid var(--color-border); }
 .displaySettings > span { color: var(--color-text-muted); font-size: 11px; font-weight: 600; }
-.confirmOption { display: flex; align-items: flex-start; gap: 9px; padding: 13px 14px; color: var(--color-text); background: #fff; border: 1px solid var(--color-border); border-radius: 10px; cursor: pointer; }
-.confirmOption input { width: 17px; height: 17px; margin: 1px 0 0; accent-color: var(--color-primary); }
-.confirmOption span { display: flex; flex-direction: column; gap: 3px; }
-.confirmOption strong { font-size: 12px; font-weight: 600; }
-.confirmOption small { color: var(--color-text-muted); font-size: 11px; }
 .rowCard { padding: 20px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 12px; }
 .rowHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
 .rowHeader strong { font-size: 17px; font-weight: 800; line-height: 1.35; }

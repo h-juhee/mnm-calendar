@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ClinicHours, ClinicHoursRow } from '../types/schedule';
+import { deriveClinicHoursConfirmed } from '../utils/clinicHoursUtils';
 import HexColorInput from './HexColorInput';
 import Modal from './Modal';
 import styles from './ClinicHoursEditor.module.css';
@@ -97,7 +98,7 @@ export default function ClinicHoursEditor({ value, onChange }: ClinicHoursEditor
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [touchedRows, setTouchedRows] = useState<Set<string>>(() => new Set());
   const [lunchTouched, setLunchTouched] = useState(false);
-  const changeValue = (next: ClinicHours) => onChange({ ...next, confirmed: false });
+  const changeValue = (next: ClinicHours) => onChange({ ...next, confirmed: deriveClinicHoursConfirmed(next) });
 
   const updateRow = (id: string, patch: Partial<ClinicHoursRow>) => {
     setTouchedRows((current) => new Set(current).add(id));
@@ -336,17 +337,6 @@ export default function ClinicHoursEditor({ value, onChange }: ClinicHoursEditor
           <strong>진료시간 숨기기</strong>
         </label>
       </div>
-      <label className={styles.confirmOption}>
-        <input
-          type="checkbox"
-          checked={Boolean(value.confirmed)}
-          onChange={(event) => onChange({ ...value, confirmed: event.target.checked })}
-        />
-        <span>
-          <strong>진료시간 확인 완료</strong>
-          <small>실제 운영시간과 일치하는지 확인했습니다.</small>
-        </span>
-      </label>
     </div>
   );
 }

@@ -49,3 +49,37 @@ export function hasRenderableClinicHours(value?: ClinicHours): boolean {
     || hasValidLunchHours(value)
     || Boolean(value?.note.trim());
 }
+
+function normalizeRowForComparison(row: ClinicHoursRow) {
+  return {
+    days: [...row.days].sort((a, b) => a - b),
+    startTime: row.startTime,
+    endTime: row.endTime,
+    badgeLabel: row.badgeLabel?.trim() || '',
+    badgeColor: row.badgeColor ?? '',
+    note: row.note?.trim() || '',
+  };
+}
+
+function normalizeClinicHoursForComparison(value: ClinicHours) {
+  return {
+    rows: value.rows.map(normalizeRowForComparison),
+    lunchStart: value.lunchStart || '',
+    lunchEnd: value.lunchEnd || '',
+    lunchDisabled: Boolean(value.lunchDisabled),
+    hidden: Boolean(value.hidden),
+    note: value.note?.trim() || '',
+  };
+}
+
+export function isUnchangedExampleClinicHours(value?: ClinicHours): boolean {
+  if (!value) return true;
+  return JSON.stringify(normalizeClinicHoursForComparison(value))
+    === JSON.stringify(normalizeClinicHoursForComparison(createExampleClinicHours()));
+}
+
+// 예시 진료시간과 다른 값이 하나라도 입력되면 별도 체크 없이 "확인됨"으로 간주한다.
+// 한 번 명시적으로 확인(다운로드 모달 등)한 값은 이후에도 계속 확인된 상태로 유지한다.
+export function deriveClinicHoursConfirmed(value: ClinicHours): boolean {
+  return Boolean(value.confirmed) || !isUnchangedExampleClinicHours(value);
+}
