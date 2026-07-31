@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DateSchedule, DateScheduleEntry, ScheduleType } from '../types/schedule';
 import { SCHEDULE_TYPE_DEFAULT_BADGE_COLOR, SCHEDULE_TYPE_META } from '../types/schedule';
 import type { OutputFormat } from '../types/outputFormat';
@@ -42,7 +42,7 @@ function normalizeEntry(entry: DateScheduleEntry): DateScheduleEntry {
     showTimeBadge: entry.showTimeBadge !== false,
     fillBadge: entry.fillBadge !== false,
     labelTextColor: entry.labelTextColor,
-    labelFontSize: entry.labelFontSize,
+    labelFontSizeByFormat: entry.labelFontSizeByFormat,
     labelFontWeight: entry.labelFontWeight,
     hideBadge: entry.hideBadge,
     label: entry.label,
@@ -67,6 +67,7 @@ interface EntryEditorProps {
   entry: DateScheduleEntry;
   index: number;
   expanded: boolean;
+  outputFormat: OutputFormat;
   defaultLabelFontSize: number;
   isDragging: boolean;
   onToggle: () => void;
@@ -81,6 +82,7 @@ function EntryEditor({
   entry,
   index,
   expanded,
+  outputFormat,
   defaultLabelFontSize,
   isDragging,
   onToggle,
@@ -91,7 +93,27 @@ function EntryEditor({
   onDragEnd,
 }: EntryEditorProps) {
   const displayedBadgeColor = entry.badgeColor || SCHEDULE_TYPE_DEFAULT_BADGE_COLOR[entry.type];
-  const displayedLabelFontSize = entry.labelFontSize ?? defaultLabelFontSize;
+  const currentFormatFontSize = entry.labelFontSizeByFormat?.[outputFormat];
+  const displayedLabelFontSize = currentFormatFontSize ?? defaultLabelFontSize;
+  const [fontSizeDraft, setFontSizeDraft] = useState(String(displayedLabelFontSize));
+  useEffect(() => setFontSizeDraft(String(displayedLabelFontSize)), [displayedLabelFontSize]);
+
+  const commitFontSize = () => {
+    const raw = fontSizeDraft.trim();
+    const nextMap = { ...entry.labelFontSizeByFormat };
+    if (raw === '') {
+      delete nextMap[outputFormat];
+    } else {
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed)) {
+        setFontSizeDraft(String(displayedLabelFontSize));
+        return;
+      }
+      nextMap[outputFormat] = Math.min(80, Math.max(10, Math.round(parsed)));
+    }
+    onChange({ ...entry, labelFontSizeByFormat: Object.keys(nextMap).length ? nextMap : undefined });
+  };
+
   const timeError = getTimeError(entry);
   const summary = [
     entry.type === 'custom' && entry.label?.trim() ? entry.label.trim() : SCHEDULE_TYPE_META[entry.type].label,
@@ -265,16 +287,28 @@ function EntryEditor({
               className={`${styles.input} ${styles.colorRowInput}`}
               min={10}
               max={80}
-              value={displayedLabelFontSize}
+              value={fontSizeDraft}
               aria-label={`일정 ${index + 1} 라벨 글자 크기`}
-              onChange={(event) => {
-                const raw = event.target.value;
-                onChange({ ...entry, labelFontSize: raw === '' ? undefined : Number(raw) });
+              onChange={(event) => setFontSizeDraft(event.target.value)}
+              onBlur={commitFontSize}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                commitFontSize();
+                event.currentTarget.blur();
               }}
             />
             <span>px</span>
-            {entry.labelFontSize != null && (
-              <button type="button" className={styles.colorReset} onClick={() => onChange({ ...entry, labelFontSize: undefined })}>
+            {currentFormatFontSize != null && (
+              <button
+                type="button"
+                className={styles.colorReset}
+                onClick={() => {
+                  const nextMap = { ...entry.labelFontSizeByFormat };
+                  delete nextMap[outputFormat];
+                  onChange({ ...entry, labelFontSizeByFormat: Object.keys(nextMap).length ? nextMap : undefined });
+                }}
+              >
                 기본 크기
               </button>
             )}
@@ -437,6 +471,7 @@ export default function DateScheduleModal({
             entry={entry}
             index={index}
             expanded={expandedIndex === index}
+            outputFormat={outputFormat}
             defaultLabelFontSize={defaultLabelFontSize}
             isDragging={draggedIndex === index}
             onToggle={() => setExpandedIndex((current) => current === index ? -1 : index)}

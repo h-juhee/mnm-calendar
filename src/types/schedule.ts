@@ -42,8 +42,8 @@ export interface DateScheduleEntry {
   fillBadge?: boolean; // 일정 라벨 배지 배경 채우기 여부 (기본 true, false면 배경 없이 텍스트만 표시)
   /** 배지를 채웠을 때(fillBadge !== false) 글자색 오버라이드. 비워두면 흰색. 배지를 채우지 않을 때는 badgeColor가 글자색으로 쓰입니다. */
   labelTextColor?: string;
-  /** 일정 라벨 글자 크기(px) 직접 지정. 비워두면 디자인 설정에서 정한 기본 크기를 따릅니다. */
-  labelFontSize?: number;
+  /** 일정 라벨 글자 크기(px) 직접 지정. 출력 규격마다 기본 크기가 달라서 규격별로 따로 저장합니다. 비워두면 해당 규격의 기본 크기를 따릅니다. */
+  labelFontSizeByFormat?: Partial<Record<OutputFormat, number>>;
   /** 일정 라벨 글자 두께 직접 지정. 비워두면 기본 두께(600, semibold)를 따릅니다. */
   labelFontWeight?: FontWeight;
   hideBadge?: boolean;

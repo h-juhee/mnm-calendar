@@ -136,9 +136,10 @@ export default function PreviewCalendar({
                         : '';
                       const badgeClassName = `${styles.badge} ${BADGE_CLASS[entry.type] ?? ''} ${entry.fillBadge === false ? styles.badgePlain : ''}`;
                       const badgeColorVar = entry.badgeColor ?? SCHEDULE_TYPE_DEFAULT_BADGE_COLOR[entry.type];
+                      const labelFontSize = entry.labelFontSizeByFormat?.[outputFormat];
                       const labelStyle = {
                         '--schedule-badge-color': badgeColorVar,
-                        ...(entry.labelFontSize ? { fontSize: `${entry.labelFontSize}px` } : {}),
+                        ...(labelFontSize ? { fontSize: `${labelFontSize}px` } : {}),
                         ...(entry.labelFontWeight ? { fontWeight: entry.labelFontWeight } : {}),
                         ...(entry.fillBadge !== false && entry.labelTextColor ? { color: entry.labelTextColor } : {}),
                       } as CSSProperties;
