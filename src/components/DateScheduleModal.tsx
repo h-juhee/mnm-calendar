@@ -3,6 +3,7 @@ import type { DateSchedule, DateScheduleEntry, ScheduleType } from '../types/sch
 import { SCHEDULE_TYPE_DEFAULT_BADGE_COLOR, SCHEDULE_TYPE_META } from '../types/schedule';
 import type { OutputFormat } from '../types/outputFormat';
 import type { FontWeight } from '../types/font';
+import DateRangePickerModal from './DateRangePickerModal';
 import HexColorInput from './HexColorInput';
 import Modal from './Modal';
 import styles from './DateScheduleModal.module.css';
@@ -13,7 +14,7 @@ const MAX_SCHEDULES = 3;
 
 /** 출력 규격별 일정 라벨 배지 기본 글자 크기(px). PreviewCalendar.module.css의 .badge font-size와 맞춰 둡니다. */
 const DEFAULT_LABEL_FONT_SIZE: Record<OutputFormat, number> = {
-  square: 16,
+  square: 17,
   instagram: 16,
   a4: 20,
   a4Horizontal: 18,
@@ -53,6 +54,33 @@ function createEntry(): DateScheduleEntry {
   return { type: 'custom', showTimeBadge: true, fillBadge: true };
 }
 
+interface EntryRange {
+  enabled: boolean;
+  end: string;
+  merge: boolean;
+}
+
+function createEntryRange(dateKey: string): EntryRange {
+  return { enabled: false, end: dateKey, merge: true };
+}
+
+function moveItem<T>(list: T[], sourceIndex: number, targetIndex: number): T[] {
+  const next = [...list];
+  const [moved] = next.splice(sourceIndex, 1);
+  next.splice(targetIndex, 0, moved);
+  return next;
+}
+
+function createEntryId(): string {
+  return typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+}
+
+/** entry가 이 날짜 자신을 origin으로 하는 시리즈라면 기존 id를 이어서 쓰고, 아니라면(다른 날짜에서 전파되었거나 시리즈가 없으면) 새 id를 만듭니다. */
+function deriveEntryId(entry: DateScheduleEntry, dateKey: string): string {
+  const prefix = `${dateKey}#`;
+  return entry.seriesId && entry.seriesId.startsWith(prefix) ? entry.seriesId.slice(prefix.length) : createEntryId();
+}
+
 function addDaysToKey(dateKey: string, amount: number): string {
   const [year, month, day] = dateKey.split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day + amount));
@@ -87,6 +115,10 @@ interface EntryEditorProps {
   outputFormat: OutputFormat;
   defaultLabelFontSize: number;
   isDragging: boolean;
+  dateKey: string;
+  maxRangeEnd: string;
+  range: EntryRange;
+  onRangeChange: (range: EntryRange) => void;
   onToggle: () => void;
   onChange: (entry: DateScheduleEntry) => void;
   onRemove: () => void;
@@ -102,6 +134,10 @@ function EntryEditor({
   outputFormat,
   defaultLabelFontSize,
   isDragging,
+  dateKey,
+  maxRangeEnd,
+  range,
+  onRangeChange,
   onToggle,
   onChange,
   onRemove,
@@ -109,6 +145,9 @@ function EntryEditor({
   onDragOver,
   onDragEnd,
 }: EntryEditorProps) {
+  const [, month, day] = dateKey.split('-');
+  const [, rangeEndMonth, rangeEndDay] = range.end.split('-');
+  const [rangePickerOpen, setRangePickerOpen] = useState(false);
   const displayedBadgeColor = entry.badgeColor || SCHEDULE_TYPE_DEFAULT_BADGE_COLOR[entry.type];
   const currentFormatFontSize = entry.labelFontSizeByFormat?.[outputFormat];
   const displayedLabelFontSize = currentFormatFontSize ?? defaultLabelFontSize;
@@ -173,6 +212,46 @@ function EntryEditor({
         </button>
       </div>
       {expanded && <div className={styles.scheduleCardBody}>
+      <div className={styles.rangeToggle}>
+        <span className={styles.rangeToggleLabel}>표시 방식</span>
+        <div className={styles.displayModeGroup} role="radiogroup" aria-label={`일정 ${index + 1} 표시 방식`}>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!range.enabled}
+            className={[styles.displayModeOption, !range.enabled ? styles.displayModeOptionSelected : ''].filter(Boolean).join(' ')}
+            onClick={() => onRangeChange({ ...range, enabled: false, end: dateKey, merge: true })}
+          >
+            개별로 표시
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={range.enabled}
+            className={[styles.displayModeOption, range.enabled ? styles.displayModeOptionSelected : ''].filter(Boolean).join(' ')}
+            onClick={() => setRangePickerOpen(true)}
+          >
+            이어서 표시
+            {range.enabled && (
+              <small className={styles.displayModeSummary}>
+                ({Number(month)}/{Number(day)} ~ {Number(rangeEndMonth)}/{Number(rangeEndDay)})
+              </small>
+            )}
+          </button>
+        </div>
+      </div>
+      {rangePickerOpen && (
+        <DateRangePickerModal
+          startDate={dateKey}
+          initialEnd={range.enabled ? range.end : dateKey}
+          maxDate={maxRangeEnd}
+          onConfirm={(end) => {
+            onRangeChange({ ...range, enabled: true, end, merge: true });
+            setRangePickerOpen(false);
+          }}
+          onClose={() => setRangePickerOpen(false)}
+        />
+      )}
       <div className={styles.typeList} role="radiogroup" aria-label={`일정 ${index + 1} 유형`}>
         {entry.type === 'vacation' && (
           <div className={`${styles.typeOption} ${styles.typeOptionSelected} ${styles.typeOptionWide}`} role="radio" aria-checked="true">
@@ -367,8 +446,13 @@ interface DateScheduleModalProps {
   hasOverride: boolean;
   isAutomaticHoliday?: boolean;
   outputFormat: OutputFormat;
+  /** 같은 달의 다른 날짜에 이미 적용된 일정을 조회하기 위해 사용합니다. "여러 날짜에 한 번에 적용"이 다른 날짜의 기존 일정을 덮어쓰지 않고 덧붙이도록 하는 데 필요합니다. */
+  resolvedByDate: Map<string, DateSchedule>;
+  /** 사용자가 실제로 지정한(정기 휴진 등 기본값이 아닌) 날짜 목록입니다. 기본값만 있는 날짜는 병합 대상에서 제외하기 위해 사용합니다. */
+  explicitDateKeys: ReadonlySet<string>;
   onSave: (schedule: DateSchedule) => void;
   onClear: () => void;
+  onClearDate: (dateKey: string) => void;
   onClose: () => void;
 }
 
@@ -378,18 +462,33 @@ export default function DateScheduleModal({
   hasOverride,
   isAutomaticHoliday = false,
   outputFormat,
+  resolvedByDate,
+  explicitDateKeys,
   onSave,
   onClear,
+  onClearDate,
   onClose,
 }: DateScheduleModalProps) {
   const defaultLabelFontSize = DEFAULT_LABEL_FONT_SIZE[outputFormat];
   const initialFirst = currentSchedule.type === 'closed' && currentSchedule.label === '휴가'
     ? { ...normalizeEntry(currentSchedule), type: 'vacation' as const }
     : normalizeEntry(currentSchedule);
-  const [entries, setEntries] = useState<DateScheduleEntry[]>([
+  const rawAdditional = (currentSchedule.additionalSchedules ?? []).slice(0, MAX_SCHEDULES - 1);
+  const initialEntries = [
     initialFirst,
-    ...(currentSchedule.additionalSchedules ?? []).slice(0, MAX_SCHEDULES - 1).map(normalizeEntry),
-  ]);
+    ...rawAdditional.map(normalizeEntry),
+  ];
+  const initialEntryRanges: EntryRange[] = [
+    currentSchedule.rangeEnd ? { enabled: true, end: currentSchedule.rangeEnd, merge: !currentSchedule.noMerge } : createEntryRange(dateKey),
+    ...rawAdditional.map((entry) => entry.rangeEnd ? { enabled: true, end: entry.rangeEnd, merge: !entry.noMerge } : createEntryRange(dateKey)),
+  ];
+  const initialEntryIds: string[] = [
+    deriveEntryId(currentSchedule, dateKey),
+    ...rawAdditional.map((entry) => deriveEntryId(entry, dateKey)),
+  ];
+  const [entries, setEntries] = useState<DateScheduleEntry[]>(initialEntries);
+  const [entryRanges, setEntryRanges] = useState<EntryRange[]>(initialEntryRanges);
+  const [entryIds, setEntryIds] = useState<string[]>(initialEntryIds);
   const [expandedIndex, setExpandedIndex] = useState(0);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   // 드래그 중 실제로 옮겨진 위치를 동기적으로 추적합니다(React state는 이벤트 사이에 갱신이 지연될 수 있어 ref로 별도 관리).
@@ -399,21 +498,20 @@ export default function DateScheduleModal({
   const [year, month, day] = dateKey.split('-');
   const lastDayOfMonth = new Date(Number(year), Number(month), 0).getDate();
   const maxRangeEnd = `${year}-${month}-${String(lastDayOfMonth).padStart(2, '0')}`;
-  const [rangeEnabled, setRangeEnabled] = useState(false);
-  const [rangeEnd, setRangeEnd] = useState(dateKey);
 
   const updateEntry = (index: number, entry: DateScheduleEntry) => {
     setEntries((current) => current.map((item, itemIndex) => itemIndex === index ? entry : item));
   };
 
+  const updateEntryRange = (index: number, range: EntryRange) => {
+    setEntryRanges((current) => current.map((item, itemIndex) => itemIndex === index ? range : item));
+  };
+
   const reorderEntries = (sourceIndex: number, targetIndex: number) => {
     if (sourceIndex === targetIndex) return;
-    setEntries((current) => {
-      const next = [...current];
-      const [moved] = next.splice(sourceIndex, 1);
-      next.splice(targetIndex, 0, moved);
-      return next;
-    });
+    setEntries((current) => moveItem(current, sourceIndex, targetIndex));
+    setEntryRanges((current) => moveItem(current, sourceIndex, targetIndex));
+    setEntryIds((current) => moveItem(current, sourceIndex, targetIndex));
   };
 
   const handleDragStart = (index: number) => {
@@ -464,6 +562,26 @@ export default function DateScheduleModal({
     };
   };
 
+  /** 다른 날짜(origin이 아닌)에 이미 있는 일정 목록을 가져옵니다. 정기 휴진 등 기본값만 적용된 날짜는 실제로 지정된 일정이 아니므로 빈 배열을 반환합니다. */
+  const getExistingEntriesForDate = (date: string): DateScheduleEntry[] => {
+    if (!explicitDateKeys.has(date)) return [];
+    const existing = resolvedByDate.get(date);
+    return existing ? [existing, ...(existing.additionalSchedules ?? [])] : [];
+  };
+
+  /** list에서 seriesId가 일치하는 항목을 제거하고, included면 entry를 이 시리즈로 표시해 덧붙입니다(최대 개수 초과 시 덧붙이지 않음). */
+  const reconcileSeries = (
+    list: DateScheduleEntry[],
+    seriesId: string,
+    included: boolean,
+    entry: DateScheduleEntry,
+  ): DateScheduleEntry[] => {
+    const withoutSeries = list.filter((item) => item.seriesId !== seriesId);
+    if (!included) return withoutSeries;
+    if (withoutSeries.length >= MAX_SCHEDULES) return withoutSeries;
+    return [...withoutSeries, { ...entry, seriesId, rangeEnd: undefined }];
+  };
+
   const handleSave = () => {
     if (timeErrors.some(Boolean)) return;
     if (entries.length === 0) {
@@ -475,9 +593,43 @@ export default function DateScheduleModal({
       onClose();
       return;
     }
-    const applyDates = rangeEnabled ? enumerateDateRange(dateKey, rangeEnd) : [dateKey];
-    applyDates.forEach((date) => {
-      const schedule = buildSchedule(entries, date);
+
+    const updatesByDate = new Map<string, DateScheduleEntry[]>();
+
+    // origin 날짜(이 모달이 열린 날짜)는 항상 현재 편집된 entries로 전체 교체합니다.
+    updatesByDate.set(dateKey, entries.map((entry, index) => {
+      const range = entryRanges[index];
+      return {
+        ...entry,
+        seriesId: `${dateKey}#${entryIds[index]}`,
+        rangeEnd: range?.enabled ? range.end : undefined,
+        noMerge: range?.enabled && !range.merge ? true : undefined,
+      };
+    }));
+
+    // 각 항목의 범위를 다른 날짜에 반영합니다. 이미 그 날짜에 있는(다른 시리즈의) 일정은 보존하고, 이 시리즈만 갱신/제거합니다.
+    entries.forEach((entry, index) => {
+      const seriesId = `${dateKey}#${entryIds[index]}`;
+      const range = entryRanges[index];
+      const newDates = range?.enabled ? enumerateDateRange(dateKey, range.end) : [dateKey];
+      const oldRange = index < initialEntryRanges.length ? initialEntryRanges[index] : undefined;
+      const oldDates = oldRange ? (oldRange.enabled ? enumerateDateRange(dateKey, oldRange.end) : [dateKey]) : [];
+      const affectedDates = new Set([...newDates, ...oldDates]);
+      affectedDates.delete(dateKey);
+      const propagatedEntry = { ...entry, noMerge: range?.enabled && !range.merge ? true : undefined };
+      affectedDates.forEach((date) => {
+        const baseList = updatesByDate.get(date) ?? getExistingEntriesForDate(date);
+        const included = newDates.includes(date);
+        updatesByDate.set(date, reconcileSeries(baseList, seriesId, included, propagatedEntry));
+      });
+    });
+
+    updatesByDate.forEach((list, date) => {
+      if (list.length === 0) {
+        onClearDate(date);
+        return;
+      }
+      const schedule = buildSchedule(list, date);
       if (schedule) onSave(schedule);
     });
     onClose();
@@ -487,31 +639,6 @@ export default function DateScheduleModal({
     <Modal title="날짜 일정 설정" onClose={onClose} panelClassName={styles.modalPanel}>
       <div className={styles.scrollContent}>
       <p className={styles.dateLabel}>{year}년 {Number(month)}월 {Number(day)}일</p>
-      <label className={styles.toggleOption}>
-        <input
-          type="checkbox"
-          checked={rangeEnabled}
-          onChange={(event) => {
-            setRangeEnabled(event.target.checked);
-            if (!event.target.checked) setRangeEnd(dateKey);
-          }}
-        />
-        여러 날짜에 한 번에 적용
-      </label>
-      {rangeEnabled && (
-        <div className={styles.rangeField}>
-          <span>{Number(day)}일부터</span>
-          <input
-            type="date"
-            className={styles.input}
-            min={dateKey}
-            max={maxRangeEnd}
-            value={rangeEnd}
-            onChange={(event) => setRangeEnd(event.target.value || dateKey)}
-          />
-          <span>까지 같은 일정 적용</span>
-        </div>
-      )}
       {entries.length > 1 && <p className={styles.reorderHint}>⠿ 을 잡고 위아래로 끌면 표시 순서를 바꿀 수 있어요.</p>}
       <div className={styles.scheduleList}>
         {entries.map((entry, index) => (
@@ -523,6 +650,10 @@ export default function DateScheduleModal({
             outputFormat={outputFormat}
             defaultLabelFontSize={defaultLabelFontSize}
             isDragging={draggedIndex === index}
+            dateKey={dateKey}
+            maxRangeEnd={maxRangeEnd}
+            range={entryRanges[index]}
+            onRangeChange={(range) => updateEntryRange(index, range)}
             onToggle={() => setExpandedIndex((current) => current === index ? -1 : index)}
             onChange={(next) => updateEntry(index, next)}
             onDragStart={() => handleDragStart(index)}
@@ -538,10 +669,43 @@ export default function DateScheduleModal({
                 onClose();
                 return;
               }
-              const remainingEntries = entries.filter((_, itemIndex) => itemIndex !== index);
-              setEntries(remainingEntries);
+              const remainingRanges = entryRanges.filter((_, itemIndex) => itemIndex !== index);
+              const remainingIds = entryIds.filter((_, itemIndex) => itemIndex !== index);
+              const remainingEntries = entries
+                .filter((_, itemIndex) => itemIndex !== index)
+                .map((remainingEntry, itemIndex) => {
+                  const range = remainingRanges[itemIndex];
+                  return {
+                    ...remainingEntry,
+                    seriesId: `${dateKey}#${remainingIds[itemIndex]}`,
+                    rangeEnd: range?.enabled ? range.end : undefined,
+                    noMerge: range?.enabled && !range.merge ? true : undefined,
+                  };
+                });
+              setEntries(entries.filter((_, itemIndex) => itemIndex !== index));
+              setEntryRanges(remainingRanges);
+              setEntryIds(remainingIds);
               const schedule = buildSchedule(remainingEntries);
               if (schedule) onSave(schedule);
+
+              // 삭제한 항목이 다른 날짜로 전파되어 있었다면 그 흔적도 정리합니다.
+              const removedSeriesId = `${dateKey}#${entryIds[index]}`;
+              const removedOldRange = index < initialEntryRanges.length ? initialEntryRanges[index] : undefined;
+              const removedOldDates = removedOldRange
+                ? (removedOldRange.enabled ? enumerateDateRange(dateKey, removedOldRange.end) : [dateKey])
+                : [];
+              removedOldDates.filter((date) => date !== dateKey).forEach((date) => {
+                const existingList = getExistingEntriesForDate(date);
+                const nextList = existingList.filter((item) => item.seriesId !== removedSeriesId);
+                if (nextList.length === existingList.length) return;
+                if (nextList.length === 0) {
+                  onClearDate(date);
+                } else {
+                  const cleanedSchedule = buildSchedule(nextList, date);
+                  if (cleanedSchedule) onSave(cleanedSchedule);
+                }
+              });
+
               setExpandedIndex((current) => current > index ? current - 1 : Math.min(current, entries.length - 2));
             }}
           />
@@ -553,6 +717,8 @@ export default function DateScheduleModal({
         disabled={entries.length >= MAX_SCHEDULES}
         onClick={() => {
           setEntries((current) => [...current, createEntry()]);
+          setEntryRanges((current) => [...current, createEntryRange(dateKey)]);
+          setEntryIds((current) => [...current, createEntryId()]);
           setExpandedIndex(entries.length);
         }}
       >

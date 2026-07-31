@@ -1,12 +1,13 @@
 import { useState, type RefObject } from 'react';
 import type { FontId } from '../types/font';
-import { buildExportFilename, exportNodeAsPng } from '../utils/exportUtils';
+import { buildExportFilename, exportNodeAsPdf, exportNodeAsPng } from '../utils/exportUtils';
 import { ensureFontLoaded } from '../utils/fontLoader';
 import styles from './ExportImageButton.module.css';
-import type { OutputFormat } from '../types/outputFormat';
+import { getOutputFormatMeta, type OutputFormat } from '../types/outputFormat';
 import Modal from './Modal';
 
 type ExportStatus = 'idle' | 'loading' | 'done' | 'error';
+type ExportKind = 'png' | 'pdf';
 
 interface ExportImageButtonProps {
   nodeRef: RefObject<HTMLDivElement | null>;
@@ -32,20 +33,34 @@ export default function ExportImageButton({
   requiresClinicHoursConfirmation = false,
   onClinicHoursConfirm,
 }: ExportImageButtonProps) {
-  const [status, setStatus] = useState<ExportStatus>('idle');
+  const [pngStatus, setPngStatus] = useState<ExportStatus>('idle');
+  const [pdfStatus, setPdfStatus] = useState<ExportStatus>('idle');
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [confirmationChecked, setConfirmationChecked] = useState(false);
+  const [pendingKind, setPendingKind] = useState<ExportKind>('png');
 
-  const download = async () => {
+  /** 실제 인쇄 크기(mm)가 있는 규격(A4 등)에서만 PDF 저장을 제공합니다. */
+  const canExportPdf = Boolean(getOutputFormatMeta(outputFormat).physicalWidthMm);
+
+  const runDownload = async (kind: ExportKind) => {
     if (!nodeRef.current || disabled) return;
+    const setStatus = kind === 'png' ? setPngStatus : setPdfStatus;
     setStatus('loading');
     try {
       await ensureFontLoaded(fontId);
-      await exportNodeAsPng(
-        nodeRef.current,
-        buildExportFilename(hospitalName, year, month, outputFormat),
-        outputFormat,
-      );
+      if (kind === 'png') {
+        await exportNodeAsPng(
+          nodeRef.current,
+          buildExportFilename(hospitalName, year, month, outputFormat, 'png'),
+          outputFormat,
+        );
+      } else {
+        await exportNodeAsPdf(
+          nodeRef.current,
+          buildExportFilename(hospitalName, year, month, outputFormat, 'pdf'),
+          outputFormat,
+        );
+      }
       setStatus('done');
       setTimeout(() => setStatus('idle'), 2500);
     } catch {
@@ -53,24 +68,23 @@ export default function ExportImageButton({
     }
   };
 
-  const handleClick = () => {
+  const handleClick = (kind: ExportKind) => {
     if (requiresClinicHoursConfirmation) {
+      setPendingKind(kind);
       setConfirmationChecked(false);
       setConfirmationOpen(true);
       return;
     }
-    void download();
+    void runDownload(kind);
   };
 
-  const label = disabled
-    ? '휴진일 등 일정을 입력하면 다운로드할 수 있어요'
-    : status === 'loading'
-      ? '이미지 생성 중…'
-      : status === 'done'
-        ? '다운로드 완료 ✓'
-        : status === 'error'
-          ? '다운로드 실패 · 다시 시도'
-          : '이미지 다운로드';
+  const labelFor = (kind: ExportKind, status: ExportStatus) => {
+    if (disabled) return '휴진일 등 일정을 입력하면 다운로드할 수 있어요';
+    if (status === 'loading') return kind === 'png' ? '이미지 생성 중…' : 'PDF 생성 중…';
+    if (status === 'done') return '다운로드 완료 ✓';
+    if (status === 'error') return '다운로드 실패 · 다시 시도';
+    return kind === 'png' ? '이미지 다운로드' : 'PDF로 저장';
+  };
 
   return (
     <>
@@ -79,16 +93,33 @@ export default function ExportImageButton({
       className={
         disabled
           ? `${styles.button} ${styles.buttonWaiting}`
-          : status === 'error'
+          : pngStatus === 'error'
             ? `${styles.button} ${styles.buttonError}`
             : styles.button
       }
-      onClick={handleClick}
-      disabled={disabled || status === 'loading'}
-      aria-busy={status === 'loading'}
+      onClick={() => handleClick('png')}
+      disabled={disabled || pngStatus === 'loading'}
+      aria-busy={pngStatus === 'loading'}
     >
-      {label}
+      {labelFor('png', pngStatus)}
     </button>
+    {canExportPdf && (
+      <button
+        type="button"
+        className={
+          disabled
+            ? `${styles.button} ${styles.buttonSecondary} ${styles.buttonWaiting}`
+            : pdfStatus === 'error'
+              ? `${styles.button} ${styles.buttonSecondary} ${styles.buttonError}`
+              : `${styles.button} ${styles.buttonSecondary}`
+        }
+        onClick={() => handleClick('pdf')}
+        disabled={disabled || pdfStatus === 'loading'}
+        aria-busy={pdfStatus === 'loading'}
+      >
+        {labelFor('pdf', pdfStatus)}
+      </button>
+    )}
     {confirmationOpen && (
       <Modal title="진료시간 확인" onClose={() => setConfirmationOpen(false)}>
         <div className={styles.confirmContent}>
@@ -113,7 +144,7 @@ export default function ExportImageButton({
               onClick={() => {
                 onClinicHoursConfirm?.();
                 setConfirmationOpen(false);
-                void download();
+                void runDownload(pendingKind);
               }}
             >
               확인 후 다운로드

@@ -10,6 +10,63 @@
   color: var(--color-text-muted);
 }
 
+.rangeToggle {
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.rangeToggleLabel {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.displayModeGroup {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.displayModeOption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text);
+  font-family: inherit;
+  text-align: center;
+  background: var(--color-surface);
+}
+
+.displayModeOption:hover {
+  border-color: var(--color-primary);
+}
+
+.displayModeOptionSelected {
+  color: #fff;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  font-weight: 600;
+}
+
+.displayModeSummary {
+  color: currentColor;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
 .scheduleList { display: flex; flex-direction: column; gap: 14px; }
 .scheduleCard { padding: 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 12px; transition: opacity 120ms ease; }
 .scheduleCardDragging { opacity: 0.45; }
@@ -255,9 +312,50 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 8px 0 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
   font-size: 13px;
   color: var(--color-text-muted);
+}
+
+.rangeDateField {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.rangeDateField input[type='date'] {
+  padding-right: 34px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rangeDateField input[type='date']::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.rangeDateField input[type='date']::-webkit-clear-button,
+.rangeDateField input[type='date']::-webkit-inner-spin-button {
+  display: none;
+}
+
+.rangeDateIcon {
+  position: absolute;
+  right: 10px;
+  width: 16px;
+  height: 16px;
+  color: var(--color-primary);
+  pointer-events: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
 }
 
 .rangeField .input {

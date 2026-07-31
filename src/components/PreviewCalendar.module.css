@@ -47,6 +47,7 @@
 }
 
 .grid {
+  position: relative;
   flex: 1;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -54,6 +55,10 @@
   min-height: 0;
   overflow: hidden;
   gap: 0;
+  /* 겹치는 일정이 각자 줄을 이어갈 때 쓰는 좌표입니다. --calendar-track-slot은 배지 한 줄의 높이만, 줄 사이 간격은 --calendar-badge-gap(각 규격의 .badges와 동일한 값)이 담당합니다. */
+  --calendar-track-top: 40px;
+  --calendar-track-slot: 26px;
+  --calendar-badge-gap: 4px;
 }
 
 .square:not(.instagram) .grid {
@@ -184,6 +189,18 @@
 .singleBadge {
   top: 0 !important;
   bottom: 0 !important;
+}
+
+/** 겹치는 다른 일정과 줄을 맞춰야 하는 날짜용 배치입니다. 가운데 정렬 대신 위에서부터 고정된 줄 순서로 쌓아서, 이어붙는 막대(.mergedBadgeCell)의 위치 계산과 맞아떨어지게 합니다. */
+.trackBadges {
+  justify-content: flex-start;
+}
+
+/** 각 줄의 실제 높이를 --calendar-track-slot과 정확히 맞춰서, 배지 내용에 따라 높이가 달라져 이어붙는 막대(.mergedBadgeCell)와 어긋나는 일이 없게 합니다. 줄 사이 간격은 .badges의 flex gap(--calendar-badge-gap)에서 그대로 나옵니다. */
+.trackBadges > .badge {
+  height: var(--calendar-track-slot);
+  min-height: var(--calendar-track-slot);
+  box-sizing: border-box;
 }
 
 .badges > .badge {
@@ -389,6 +406,12 @@
   top: 44px;
 }
 
+.a4:not(.a4Horizontal) .grid {
+  --calendar-track-top: 44px;
+  --calendar-track-slot: 31px;
+  --calendar-badge-gap: 5px;
+}
+
 .instagram .cell {
   gap: 4px;
   padding: 6px 8px;
@@ -409,6 +432,12 @@
   --calendar-badge-gap: 4px;
   --calendar-badge-bottom: 7px;
   top: 34px;
+}
+
+.instagram .grid {
+  --calendar-track-top: 34px;
+  --calendar-track-slot: 24px;
+  --calendar-badge-gap: 4px;
 }
 
 .instagram .timedBadge {
@@ -445,6 +474,12 @@
   --calendar-badge-gap: 4px;
   --calendar-badge-bottom: 8px;
   top: 40px;
+}
+
+.a4Horizontal .grid {
+  --calendar-track-top: 40px;
+  --calendar-track-slot: 29px;
+  --calendar-badge-gap: 4px;
 }
 
 .didVertical {
@@ -506,6 +541,12 @@
   justify-content: center;
 }
 
+.didVertical .grid {
+  --calendar-track-top: 80px;
+  --calendar-track-slot: 46px;
+  --calendar-badge-gap: 6px;
+}
+
 .didHorizontal {
   padding: 16px;
   border-radius: 42px;
@@ -551,11 +592,19 @@
   top: 90px;
 }
 
+.didHorizontal .grid {
+  --calendar-track-top: 90px;
+  --calendar-track-slot: 56px;
+  --calendar-badge-gap: 10px;
+}
+
 .mergedBadgeCell {
-  position: relative;
+  position: absolute;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+  padding: 0 10px;
   pointer-events: none;
 }
 

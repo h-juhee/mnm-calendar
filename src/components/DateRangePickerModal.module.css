@@ -1,0 +1,118 @@
+.modalPanel {
+  max-width: 360px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.weekday {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding-bottom: 6px;
+}
+
+.sun {
+  color: #e0433f;
+}
+
+.sat {
+  color: var(--color-primary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cell {
+  aspect-ratio: 1;
+}
+
+.day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.day:hover:not(.dayDisabled) {
+  background: var(--color-bg);
+}
+
+.dayDisabled {
+  color: var(--color-text-muted);
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.dayInRange {
+  background: var(--color-primary-bg);
+  border-radius: 0;
+}
+
+.dayStart {
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 8px 0 0 8px;
+  font-weight: 700;
+}
+
+.dayEnd {
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 0 8px 8px 0;
+  font-weight: 700;
+}
+
+.summary {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  padding-top: 4px;
+}
+
+.footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.button {
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.buttonPrimary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}

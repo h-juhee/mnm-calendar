@@ -65,9 +65,34 @@ export async function exportNodeAsPng(node: HTMLElement, filename: string, outpu
   link.remove();
 }
 
-export function buildExportFilename(hospitalName: string, year: number, month: number, outputFormat: OutputFormat = 'square'): string {
+/** 실제 인쇄 크기(mm)에 맞춰 PDF로 저장합니다. physicalWidthMm/physicalHeightMm이 없는 규격(화면·소셜미디어용)에는 사용하지 않습니다. */
+export async function exportNodeAsPdf(node: HTMLElement, filename: string, outputFormat: OutputFormat): Promise<void> {
+  const format = getOutputFormatMeta(outputFormat);
+  const widthMm = format.physicalWidthMm;
+  const heightMm = format.physicalHeightMm;
+  if (!widthMm || !heightMm) {
+    throw new Error(`${outputFormat} 규격은 실제 인쇄 크기 정보가 없어 PDF로 저장할 수 없습니다.`);
+  }
+  const dataUrl = await renderNodeAsPng(node, outputFormat);
+  const { jsPDF } = await import('jspdf');
+  const pdf = new jsPDF({
+    orientation: widthMm >= heightMm ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: [widthMm, heightMm],
+  });
+  pdf.addImage(dataUrl, 'PNG', 0, 0, widthMm, heightMm);
+  pdf.save(filename);
+}
+
+export function buildExportFilename(
+  hospitalName: string,
+  year: number,
+  month: number,
+  outputFormat: OutputFormat = 'square',
+  extension: 'png' | 'pdf' = 'png',
+): string {
   const pad = String(month).padStart(2, '0');
   const safeName = hospitalName.replace(/[\\/:*?"<>|]/g, '');
   const suffix = outputFormat === 'square' ? '1080x1080' : getOutputFormatMeta(outputFormat).label.replace(/\s/g, '_');
-  return `${safeName}_${year}년_${pad}월_진료일정_${suffix}.png`;
+  return `${safeName}_${year}년_${pad}월_진료일정_${suffix}.${extension}`;
 }

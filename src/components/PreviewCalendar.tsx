@@ -42,16 +42,20 @@ interface CellInfo {
   isExplicitDateSchedule: boolean;
   isAutomaticHolidayDate: boolean;
   dayClassName: string;
-  /** 같은 주에서 바로 옆 날짜와 배지를 하나로 이어붙일 수 있는지 판단하는 값입니다. 일정이 정확히 1개이고 시각적으로 동일할 때만 값이 있습니다. */
-  mergeKey: string | null;
 }
 
 interface MergeRun {
   rowIndex: number;
   startCol: number;
   span: number;
+  /** 하루에 최대 3개까지 있는 일정 중 몇 번째 줄(0~2)에 이어붙는지입니다. 겹치는 다른 일정과 서로 다른 줄에 나란히 표시하기 위해 사용합니다. */
+  track: number;
   entry: DateScheduleEntry;
+  /** 이 구간에 걸친 날짜 전부가 다른 겹치는 일정 없이 이 일정 하나뿐인지입니다. true면 고정된 줄 위치 대신 칸 가운데에 표시합니다. */
+  isSolo: boolean;
 }
+
+const MAX_TRACKS = 3;
 
 function getMergeKey(entry: DateScheduleEntry, outputFormat: OutputFormat): string {
   return JSON.stringify([
@@ -68,15 +72,59 @@ function getMergeKey(entry: DateScheduleEntry, outputFormat: OutputFormat): stri
   ]);
 }
 
+/** 이어붙이기 판단에 쓰는 일정의 정체성입니다. "여러 날짜에 한 번에 적용"으로 생긴 일정은 seriesId로, 그 외에는 겉모습이 같은지로 같은 일정인지 판단합니다. */
+function getEntryIdentity(entry: DateScheduleEntry, outputFormat: OutputFormat): string {
+  return entry.seriesId ? `series:${entry.seriesId}` : `visual:${getMergeKey(entry, outputFormat)}`;
+}
+
+/** 같은 주 안에서 각 날짜의 일정을 줄(track) 0~2에 배치합니다. 전날과 같은 일정(같은 정체성)은 같은 줄을 이어가고, 새 일정은 비어 있는 가장 위 줄부터 채웁니다. */
+function assignTracks(cellInfos: CellInfo[], weekCount: number, outputFormat: OutputFormat): (DateScheduleEntry | null)[][] {
+  const trackGrid: (DateScheduleEntry | null)[][] = cellInfos.map(() => Array(MAX_TRACKS).fill(null));
+  for (let row = 0; row < weekCount; row += 1) {
+    let activeIdentities: (string | null)[] = Array(MAX_TRACKS).fill(null);
+    for (let col = 0; col < 7; col += 1) {
+      const idx = row * 7 + col;
+      const todays = cellInfos[idx].schedules;
+      const identities = todays.map((entry) => getEntryIdentity(entry, outputFormat));
+      const consumed = new Array(todays.length).fill(false);
+      const rowTracks: (DateScheduleEntry | null)[] = Array(MAX_TRACKS).fill(null);
+      const nextActive: (string | null)[] = Array(MAX_TRACKS).fill(null);
+
+      for (let track = 0; track < MAX_TRACKS; track += 1) {
+        const activeId = activeIdentities[track];
+        if (!activeId) continue;
+        const matchIndex = identities.findIndex((id, i) => !consumed[i] && id === activeId);
+        if (matchIndex === -1) continue;
+        rowTracks[track] = todays[matchIndex];
+        consumed[matchIndex] = true;
+        nextActive[track] = activeId;
+      }
+
+      let nextFreeTrack = 0;
+      for (let i = 0; i < todays.length; i += 1) {
+        if (consumed[i]) continue;
+        while (nextFreeTrack < MAX_TRACKS && rowTracks[nextFreeTrack] !== null) nextFreeTrack += 1;
+        if (nextFreeTrack >= MAX_TRACKS) break;
+        rowTracks[nextFreeTrack] = todays[i];
+        nextActive[nextFreeTrack] = identities[i];
+        nextFreeTrack += 1;
+      }
+
+      trackGrid[idx] = rowTracks;
+      activeIdentities = nextActive;
+    }
+  }
+  return trackGrid;
+}
+
 function buildCellInfo(
   cell: CalendarCell,
   weekday: number,
   resolvedByDate: Map<string, DateSchedule>,
   explicitDateKeys: ReadonlySet<string> | undefined,
-  outputFormat: OutputFormat,
 ): CellInfo {
   if (!cell.inCurrentMonth || !cell.date) {
-    return { cell, schedules: [], isExplicitDateSchedule: false, isAutomaticHolidayDate: false, dayClassName: '', mergeKey: null };
+    return { cell, schedules: [], isExplicitDateSchedule: false, isAutomaticHolidayDate: false, dayClassName: '' };
   }
   const schedule = resolvedByDate.get(cell.date);
   const isExplicitDateSchedule = explicitDateKeys?.has(cell.date) ?? false;
@@ -116,28 +164,42 @@ function buildCellInfo(
   ]
     .filter(Boolean)
     .join(' ');
-  const mergeKey = schedules.length === 1 ? getMergeKey(schedules[0], outputFormat) : null;
 
-  return { cell, schedules, isExplicitDateSchedule, isAutomaticHolidayDate, dayClassName, mergeKey };
+  return { cell, schedules, isExplicitDateSchedule, isAutomaticHolidayDate, dayClassName };
 }
 
-function computeMergeRuns(cellInfos: CellInfo[], weekCount: number): MergeRun[] {
+/** track별로 같은 정체성이 이어지는 구간(2일 이상)을 찾아 하나로 이어붙일 구간 목록을 만듭니다. noMerge가 켜진 일정은 이어붙이지 않습니다. */
+function computeMergeRuns(trackGrid: (DateScheduleEntry | null)[][], weekCount: number, outputFormat: OutputFormat): MergeRun[] {
   const runs: MergeRun[] = [];
   for (let rowIndex = 0; rowIndex < weekCount; rowIndex += 1) {
-    let col = 0;
-    while (col < 7) {
-      const info = cellInfos[rowIndex * 7 + col];
-      if (!info.mergeKey) {
-        col += 1;
-        continue;
+    for (let track = 0; track < MAX_TRACKS; track += 1) {
+      let col = 0;
+      while (col < 7) {
+        const entry = trackGrid[rowIndex * 7 + col][track];
+        if (!entry || entry.noMerge) {
+          col += 1;
+          continue;
+        }
+        const identity = getEntryIdentity(entry, outputFormat);
+        let end = col + 1;
+        while (end < 7) {
+          const nextEntry = trackGrid[rowIndex * 7 + end][track];
+          if (!nextEntry || nextEntry.noMerge || getEntryIdentity(nextEntry, outputFormat) !== identity) break;
+          end += 1;
+        }
+        const span = end - col;
+        if (span >= 2) {
+          let isSolo = true;
+          for (let c = col; c < end; c += 1) {
+            if (trackGrid[rowIndex * 7 + c].filter(Boolean).length > 1) {
+              isSolo = false;
+              break;
+            }
+          }
+          runs.push({ rowIndex, startCol: col, span, track, entry, isSolo });
+        }
+        col = end;
       }
-      let end = col + 1;
-      while (end < 7 && cellInfos[rowIndex * 7 + end].mergeKey === info.mergeKey) end += 1;
-      const span = end - col;
-      if (span >= 2) {
-        runs.push({ rowIndex, startCol: col, span, entry: info.schedules[0] });
-      }
-      col = end;
     }
   }
   return runs;
@@ -212,11 +274,23 @@ export default function PreviewCalendar({
       ? styles.a4
       : '';
   const weekCount = calendarMatrix.length;
-  const cellInfos = calendarMatrix.flat().map((cell, idx) => buildCellInfo(cell, idx % 7, resolvedByDate, explicitDateKeys, outputFormat));
-  const mergeRuns = computeMergeRuns(cellInfos, weekCount);
-  const mergedFlatIndexes = new Set(
-    mergeRuns.flatMap((run) => Array.from({ length: run.span }, (_, i) => run.rowIndex * 7 + run.startCol + i)),
-  );
+  const cellInfos = calendarMatrix.flat().map((cell, idx) => buildCellInfo(cell, idx % 7, resolvedByDate, explicitDateKeys));
+  const trackGrid = assignTracks(cellInfos, weekCount, outputFormat);
+  const mergeRuns = computeMergeRuns(trackGrid, weekCount, outputFormat);
+  // 이어붙는 구간(2일 이상)에 포함된 (날짜, 줄) 조합입니다. 이 자리는 개별 배지 대신 아래쪽의 이어붙은 막대로 표시합니다.
+  const coveredSlots = new Set<string>();
+  mergeRuns.forEach((run) => {
+    for (let i = 0; i < run.span; i += 1) {
+      coveredSlots.add(`${run.rowIndex * 7 + run.startCol + i}:${run.track}`);
+    }
+  });
+  // 겹치는 다른 날짜와 나란히 줄을 맞춰야 하는 날짜입니다. 이런 날짜는 가운데 정렬 대신 고정된 줄 순서로 표시합니다.
+  const trackModeCells = new Set<number>();
+  trackGrid.forEach((tracks, idx) => {
+    if (tracks.some((entry, track) => entry && coveredSlots.has(`${idx}:${track}`))) {
+      trackModeCells.add(idx);
+    }
+  });
 
   return (
     <div
@@ -244,23 +318,31 @@ export default function PreviewCalendar({
         <div className={styles.grid}>
           {cellInfos.map((info, idx) => {
             const { cell } = info;
+            const gridPosition = { gridColumn: (idx % 7) + 1, gridRow: Math.floor(idx / 7) + 1 } as CSSProperties;
             if (!cell.inCurrentMonth || !cell.date) {
-              return <div key={`adjacent-${idx}`} className={`${styles.cell} ${styles.cellAdjacent}`} />;
+              return <div key={`adjacent-${idx}`} className={`${styles.cell} ${styles.cellAdjacent}`} style={gridPosition} />;
             }
-            const { schedules, isExplicitDateSchedule, dayClassName } = info;
-            const showOwnBadges = schedules.length > 0 && !mergedFlatIndexes.has(idx);
+            const { schedules, dayClassName } = info;
+            const inTrackMode = trackModeCells.has(idx);
 
             const content = (
               <>
                 <span className={dayClassName}>{cell.day}</span>
-                {showOwnBadges && (
-                  <span className={`${styles.badges} ${schedules.length === 1 ? styles.singleBadge : ''}`}>
-                    {schedules.map((entry, scheduleIndex) => {
-                      const isVisible = entry.type !== 'open' || isExplicitDateSchedule;
-                      if (!isVisible) return null;
-                      return renderScheduleBadge(entry, `${entry.type}-${scheduleIndex}`, outputFormat);
+                {inTrackMode ? (
+                  <span className={`${styles.badges} ${styles.trackBadges}`}>
+                    {trackGrid[idx].map((entry, track) => {
+                      if (!entry || coveredSlots.has(`${idx}:${track}`)) {
+                        return <span key={`track-${track}`} className={styles.badge} style={{ visibility: 'hidden' }} />;
+                      }
+                      return renderScheduleBadge(entry, `track-${track}`, outputFormat);
                     })}
                   </span>
+                ) : (
+                  schedules.length > 0 && (
+                    <span className={`${styles.badges} ${schedules.length === 1 ? styles.singleBadge : ''}`}>
+                      {schedules.map((entry, scheduleIndex) => renderScheduleBadge(entry, `${entry.type}-${scheduleIndex}`, outputFormat))}
+                    </span>
+                  )
                 )}
               </>
             );
@@ -270,22 +352,33 @@ export default function PreviewCalendar({
                 key={cell.date}
                 type="button"
                 className={`${styles.cell} ${styles.cellInteractive}`}
+                style={gridPosition}
                 onClick={() => onDateClick(cell.date!)}
                 aria-label={`${cell.day}일 일정 설정`}
               >
                 {content}
               </button>
             ) : (
-              <div key={cell.date} className={styles.cell}>{content}</div>
+              <div key={cell.date} className={styles.cell} style={gridPosition}>{content}</div>
             );
           })}
           {mergeRuns.map((run) => (
             <div
-              key={`merge-${run.rowIndex}-${run.startCol}`}
+              key={`merge-${run.rowIndex}-${run.startCol}-${run.track}`}
               className={styles.mergedBadgeCell}
-              style={{ gridColumn: `${run.startCol + 1} / span ${run.span}`, gridRow: run.rowIndex + 1 }}
+              style={run.isSolo ? {
+                left: `${(run.startCol / 7) * 100}%`,
+                width: `${(run.span / 7) * 100}%`,
+                top: `${(run.rowIndex / weekCount) * 100}%`,
+                height: `${(1 / weekCount) * 100}%`,
+              } : {
+                left: `${(run.startCol / 7) * 100}%`,
+                width: `${(run.span / 7) * 100}%`,
+                top: `calc(${(run.rowIndex / weekCount) * 100}% + var(--calendar-track-top) + ${run.track} * (var(--calendar-track-slot) + var(--calendar-badge-gap)))`,
+                height: 'var(--calendar-track-slot)',
+              }}
             >
-              {renderScheduleBadge(run.entry, `merge-${run.rowIndex}-${run.startCol}`, outputFormat, styles.badgeSpan)}
+              {renderScheduleBadge(run.entry, `merge-${run.rowIndex}-${run.startCol}-${run.track}`, outputFormat, styles.badgeSpan)}
             </div>
           ))}
         </div>

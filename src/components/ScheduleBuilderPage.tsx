@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { HospitalInfo } from '../types/schedule';
 import { TEMPLATES } from '../types/schedule';
 import { DEFAULT_FONT_ID, type FontId } from '../types/font';
@@ -162,6 +162,10 @@ function ScheduleBuilderContent({
   const selectedHasOverride = selectedDateKey
     ? formData.dateSchedules.some((schedule) => schedule.date === selectedDateKey)
     : false;
+  const explicitDateKeys = useMemo(
+    () => new Set(formData.dateSchedules.map((schedule) => schedule.date)),
+    [formData.dateSchedules],
+  );
   const selectedTemplate = formData.templateId
     ? TEMPLATES.find((template) => template.id === formData.templateId)
     : undefined;
@@ -445,8 +449,11 @@ function ScheduleBuilderContent({
             && selectedResolvedSchedule.type === 'closed'
             && Boolean(selectedResolvedSchedule.label)
           }
+          resolvedByDate={resolvedByDate}
+          explicitDateKeys={explicitDateKeys}
           onSave={actions.setDateSchedule}
           onClear={() => actions.clearDateSchedule(selectedDateKey)}
+          onClearDate={actions.clearDateSchedule}
           onClose={() => setSelectedDateKey(null)}
         />
       )}
