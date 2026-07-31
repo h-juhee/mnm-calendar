@@ -149,7 +149,7 @@
 }
 
 .square:not(.instagram) .calendarArea {
-  width: calc(100% - 60px);
+  width: 100%;
   height: 840px;
   flex: 0 0 840px;
   align-self: center;
@@ -225,8 +225,8 @@
 .instagram .calendarArea {
   position: absolute;
   top: 495px;
-  left: 90px;
-  width: 900px;
+  left: 66px;
+  width: 948px;
   height: 812px;
   flex: none;
 }
@@ -307,8 +307,8 @@
 
 .a4 .calendarArea {
   flex: 0 0 1040px;
-  margin-right: -8px;
-  margin-left: -8px;
+  margin-right: 12px;
+  margin-left: 12px;
   --calendar-base-y: -12px;
 }
 
