@@ -4,8 +4,15 @@
   margin-bottom: 12px;
 }
 
+.reorderHint {
+  margin: -6px 0 12px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
 .scheduleList { display: flex; flex-direction: column; gap: 14px; }
-.scheduleCard { padding: 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 12px; }
+.scheduleCard { padding: 14px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 12px; transition: opacity 120ms ease; }
+.scheduleCardDragging { opacity: 0.45; }
 .scheduleCardHeader { display: flex; align-items: center; gap: 8px; }
 .scheduleCardHeader strong { font-size: 15px; }
 .accordionTrigger { min-width: 0; flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 0; color: var(--color-text); background: transparent; border: 0; cursor: pointer; text-align: left; }
@@ -15,8 +22,26 @@
 .accordionTrigger[aria-expanded='true'] svg { transform: rotate(180deg); }
 .removeScheduleButton { flex: 0 0 auto; padding: 5px 7px; color: var(--color-text-muted); background: transparent; border: 0; cursor: pointer; font-weight: 600; white-space: nowrap; }
 .removeScheduleButton:hover { color: var(--color-danger); }
+
+.dragHandle {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 26px;
+  color: var(--color-text-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
 .scheduleCardBody { padding-top: 12px; }
-.addScheduleButton { width: 100%; min-height: 44px; margin-bottom: 14px; color: var(--color-primary); background: var(--color-primary-bg); border: 1px dashed var(--color-primary); border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; }
+.addScheduleButton { width: 100%; min-height: 44px; margin-top: 14px; margin-bottom: 14px; color: var(--color-primary); background: var(--color-primary-bg); border: 1px dashed var(--color-primary); border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; }
 .addScheduleButton:disabled { color: var(--color-text-muted); background: var(--color-bg); border-color: var(--color-border); border-style: solid; cursor: not-allowed; }
 
 .typeList {
@@ -158,20 +183,50 @@
   color: var(--color-text-muted);
 }
 
-.colorReset {
-  padding: 6px 8px;
-  font-size: 12px;
+.colorRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.colorRowLabel {
+  flex: 0 0 56px;
   color: var(--color-text-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.colorRow > .colorRowInput {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+.colorRow > input[type='number'].colorRowInput {
+  flex: 0 1 90px;
+}
+
+.colorReset {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 0;
   cursor: pointer;
+  white-space: nowrap;
+}
+
+.colorReset:hover {
+  color: var(--color-primary);
 }
 
 .label {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: var(--color-text);
 }
 
 .input {

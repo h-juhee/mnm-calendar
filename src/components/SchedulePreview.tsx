@@ -660,7 +660,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
                         />
                       </div>
                     )}
-                    {!isLogoLayer && selectedLayer !== 'hospital' && (
+                    {!isLogoLayer && selectedLayer !== 'hospital' && selectedLayer !== 'calendar' && (
                       <label className={styles.field}>
                         <span>글자 굵기</span>
                         <select
@@ -670,9 +670,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
                             updateSelected({ fontWeight: value ? Number(value) as FontWeight : undefined });
                           }}
                         >
-                          <option value="">
-                            {selectedLayer === 'calendar' ? '기본값 (Medium)' : '기본값'}
-                          </option>
+                          <option value="">기본값</option>
                           <option value="400">Regular</option>
                           <option value="500">Medium</option>
                           <option value="600">SemiBold</option>

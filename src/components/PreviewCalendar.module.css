@@ -150,7 +150,7 @@
   min-height: 28px;
   font-family: var(--calendar-font-family, 'Pretendard Variable', 'Pretendard', sans-serif);
   font-size: 18px;
-  font-weight: var(--calendar-font-weight, 500);
+  font-weight: var(--calendar-font-weight, 600);
   line-height: 1.25;
   font-synthesis: none;
   padding: 3px 14px;
@@ -317,6 +317,15 @@
 
 .badgeSaturday {
   background: var(--schedule-badge-color, #65b6d8);
+}
+
+.badge.badgePlain {
+  background: transparent;
+  color: var(--schedule-badge-color, #4779ca);
+}
+
+.badge.badgePlain > span {
+  background: transparent;
 }
 
 .badge.badgeWithTime {

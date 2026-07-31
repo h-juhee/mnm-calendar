@@ -439,6 +439,7 @@ function ScheduleBuilderContent({
           dateKey={selectedDateKey}
           currentSchedule={selectedResolvedSchedule}
           hasOverride={selectedHasOverride}
+          outputFormat={outputFormat}
           isAutomaticHoliday={
             !selectedHasOverride
             && selectedResolvedSchedule.type === 'closed'

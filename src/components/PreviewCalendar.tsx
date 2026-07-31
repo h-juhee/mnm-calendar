@@ -134,20 +134,26 @@ export default function PreviewCalendar({
                       const scheduleTime = entry.endTime && scheduleStart < entry.endTime
                         ? `${scheduleStart}~${entry.endTime}`
                         : '';
-                      const badgeClassName = `${styles.badge} ${BADGE_CLASS[entry.type] ?? ''}`;
-                      const badgeStyle = {
-                        '--schedule-badge-color': entry.badgeColor
-                          ?? SCHEDULE_TYPE_DEFAULT_BADGE_COLOR[entry.type],
+                      const badgeClassName = `${styles.badge} ${BADGE_CLASS[entry.type] ?? ''} ${entry.fillBadge === false ? styles.badgePlain : ''}`;
+                      const badgeColorVar = entry.badgeColor ?? SCHEDULE_TYPE_DEFAULT_BADGE_COLOR[entry.type];
+                      const labelStyle = {
+                        '--schedule-badge-color': badgeColorVar,
+                        ...(entry.labelFontSize ? { fontSize: `${entry.labelFontSize}px` } : {}),
+                        ...(entry.labelFontWeight ? { fontWeight: entry.labelFontWeight } : {}),
+                        ...(entry.fillBadge !== false && entry.labelTextColor ? { color: entry.labelTextColor } : {}),
+                      } as CSSProperties;
+                      const timeStyle = {
+                        '--schedule-badge-color': badgeColorVar,
                       } as CSSProperties;
                       if (scheduleTime) {
                         return (
                           <span key={`${entry.type}-${scheduleIndex}`} className={styles.timedBadge}>
-                            <span className={badgeClassName} style={badgeStyle}>
+                            <span className={badgeClassName} style={labelStyle}>
                               {entry.label ?? meta.shortLabel}
                             </span>
                             <span
                               className={`${styles.badge} ${styles.timeBadge} ${entry.showTimeBadge === false ? styles.badgeTimePlain : ''}`}
-                              style={badgeStyle}
+                              style={timeStyle}
                             >
                               {scheduleTime}
                             </span>
@@ -158,7 +164,7 @@ export default function PreviewCalendar({
                         <span
                           key={`${entry.type}-${scheduleIndex}`}
                           className={badgeClassName}
-                          style={badgeStyle}
+                          style={labelStyle}
                         >
                           {entry.label ?? meta.shortLabel}
                         </span>
