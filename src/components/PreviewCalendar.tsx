@@ -114,8 +114,8 @@ export default function PreviewCalendar({
             const weekday = idx % 7;
             const dayClassName = [
               styles.day,
-              weekday === 0 ? styles.dayClosed : '',
-              weekday === 6 ? styles.daySaturday : '',
+              weekday === 0 || isAutomaticHolidayDate ? styles.dayClosed : '',
+              weekday === 6 && !isAutomaticHolidayDate ? styles.daySaturday : '',
             ]
               .filter(Boolean)
               .join(' ');
