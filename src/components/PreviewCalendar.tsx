@@ -285,9 +285,7 @@ export default function PreviewCalendar({
               className={styles.mergedBadgeCell}
               style={{ gridColumn: `${run.startCol + 1} / span ${run.span}`, gridRow: run.rowIndex + 1 }}
             >
-              <span className={`${styles.badges} ${styles.singleBadge}`}>
-                {renderScheduleBadge(run.entry, `merge-${run.rowIndex}-${run.startCol}`, outputFormat, styles.badgeSpan)}
-              </span>
+              {renderScheduleBadge(run.entry, `merge-${run.rowIndex}-${run.startCol}`, outputFormat, styles.badgeSpan)}
             </div>
           ))}
         </div>
