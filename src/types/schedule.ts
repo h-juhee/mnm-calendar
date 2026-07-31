@@ -10,6 +10,7 @@ export type ScheduleType =
   | 'shortened'
   | 'night'
   | 'saturday'
+  | 'sunday'
   | 'custom'
   | 'open';
 
@@ -179,6 +180,7 @@ export const SCHEDULE_TYPE_META: Record<
   shortened: { label: '공휴일 진료', shortLabel: '공휴일 진료', icon: '◷' },
   night: { label: '야간 진료', shortLabel: '야간진료', icon: '☾' },
   saturday: { label: '토요일 진료', shortLabel: '토요일진료', icon: '●' },
+  sunday: { label: '일요일 진료', shortLabel: '일요일진료', icon: '●' },
   custom: { label: '직접 입력', shortLabel: '직접입력', icon: '' },
   open: { label: '정상 진료', shortLabel: '정상진료', icon: '○' },
 };
@@ -192,7 +194,8 @@ export const SCHEDULE_TYPE_DEFAULT_BADGE_COLOR: Record<ScheduleType, string> = {
   seminarClosed: '#dd4b4b',
   shortened: '#1a9c6b',
   night: '#4779ca',
-  saturday: '#65b6d8',
+  saturday: '#6cb3d6',
+  sunday: '#6cb3d6',
   custom: '#4779ca',
   open: '#4779ca',
 };

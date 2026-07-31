@@ -316,7 +316,11 @@
 }
 
 .badgeSaturday {
-  background: var(--schedule-badge-color, #65b6d8);
+  background: var(--schedule-badge-color, #6cb3d6);
+}
+
+.badgeSunday {
+  background: var(--schedule-badge-color, #6cb3d6);
 }
 
 .badge.badgePlain {

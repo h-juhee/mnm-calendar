@@ -7,7 +7,7 @@ import HexColorInput from './HexColorInput';
 import Modal from './Modal';
 import styles from './DateScheduleModal.module.css';
 
-const TYPE_ORDER: ScheduleType[] = ['closed', 'morningClosed', 'afternoonClosed', 'seminarClosed', 'shortened', 'night', 'saturday', 'open', 'custom'];
+const TYPE_ORDER: ScheduleType[] = ['closed', 'morningClosed', 'afternoonClosed', 'seminarClosed', 'shortened', 'night', 'saturday', 'sunday', 'open', 'custom'];
 const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 const MAX_SCHEDULES = 3;
 
