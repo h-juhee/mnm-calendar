@@ -251,6 +251,20 @@
   cursor: pointer;
 }
 
+.rangeField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 12px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.rangeField .input {
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
 @media (max-width: 420px) {
   .timeRange {
     gap: 7px;

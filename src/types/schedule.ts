@@ -170,19 +170,19 @@ export const TEMPLATES: TemplateMeta[] = [
 
 export const SCHEDULE_TYPE_META: Record<
   ScheduleType,
-  { label: string; shortLabel: string; icon: string }
+  { label: string; shortLabel: string; }
 > = {
-  closed: { label: '휴진', shortLabel: '휴진', icon: '✕' },
-  vacation: { label: '휴가', shortLabel: '휴가', icon: '✕' },
-  morningClosed: { label: '오전 진료', shortLabel: '오전진료', icon: '◐' },
-  afternoonClosed: { label: '오후 진료', shortLabel: '오후진료', icon: '◑' },
-  seminarClosed: { label: '세미나 휴진', shortLabel: '세미나휴진', icon: '' },
-  shortened: { label: '공휴일 진료', shortLabel: '공휴일 진료', icon: '◷' },
-  night: { label: '야간 진료', shortLabel: '야간진료', icon: '☾' },
-  saturday: { label: '토요일 진료', shortLabel: '토요일진료', icon: '●' },
-  sunday: { label: '일요일 진료', shortLabel: '일요일진료', icon: '●' },
-  custom: { label: '직접 입력', shortLabel: '직접입력', icon: '' },
-  open: { label: '정상 진료', shortLabel: '정상진료', icon: '○' },
+  closed: { label: '휴진', shortLabel: '휴진', },
+  vacation: { label: '휴가', shortLabel: '휴가',  },
+  morningClosed: { label: '오전 진료', shortLabel: '오전진료',},
+  afternoonClosed: { label: '오후 진료', shortLabel: '오후진료' },
+  seminarClosed: { label: '세미나 휴진', shortLabel: '세미나휴진' },
+  shortened: { label: '공휴일 진료', shortLabel: '공휴일 진료',  },
+  night: { label: '야간 진료', shortLabel: '야간진료', },
+  saturday: { label: '토요일 진료', shortLabel: '토요일진료',  },
+  sunday: { label: '일요일 진료', shortLabel: '일요일진료', },
+  custom: { label: '직접 입력', shortLabel: '직접입력',  },
+  open: { label: '정상 진료', shortLabel: '정상진료', },
 };
 
 /** 달력 라벨에 사용자 지정 색상이 없을 때 일정 유형별로 표시하는 기본색입니다. */
@@ -197,5 +197,5 @@ export const SCHEDULE_TYPE_DEFAULT_BADGE_COLOR: Record<ScheduleType, string> = {
   saturday: '#6cb3d6',
   sunday: '#6cb3d6',
   custom: '#4779ca',
-  open: '#4779ca',
+  open: '#68BA8C',
 };

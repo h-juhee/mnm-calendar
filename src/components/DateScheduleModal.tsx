@@ -53,6 +53,23 @@ function createEntry(): DateScheduleEntry {
   return { type: 'custom', showTimeBadge: true, fillBadge: true };
 }
 
+function addDaysToKey(dateKey: string, amount: number): string {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + amount));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+function enumerateDateRange(start: string, end: string): string[] {
+  if (end <= start) return [start];
+  const dates: string[] = [];
+  let cursor = start;
+  while (cursor <= end) {
+    dates.push(cursor);
+    cursor = addDaysToKey(cursor, 1);
+  }
+  return dates;
+}
+
 function getTimeError(entry: DateScheduleEntry): string | null {
   const start = entry.startTime ?? '';
   const end = entry.endTime ?? '';
@@ -380,6 +397,10 @@ export default function DateScheduleModal({
   const dragStartIndexRef = useRef<number | null>(null);
   const timeErrors = useMemo(() => entries.map(getTimeError), [entries]);
   const [year, month, day] = dateKey.split('-');
+  const lastDayOfMonth = new Date(Number(year), Number(month), 0).getDate();
+  const maxRangeEnd = `${year}-${month}-${String(lastDayOfMonth).padStart(2, '0')}`;
+  const [rangeEnabled, setRangeEnabled] = useState(false);
+  const [rangeEnd, setRangeEnd] = useState(dateKey);
 
   const updateEntry = (index: number, entry: DateScheduleEntry) => {
     setEntries((current) => current.map((item, itemIndex) => itemIndex === index ? entry : item));
@@ -427,11 +448,11 @@ export default function DateScheduleModal({
     setDraggedIndex(null);
   };
 
-  const buildSchedule = (nextEntries: DateScheduleEntry[]): DateSchedule | null => {
+  const buildSchedule = (nextEntries: DateScheduleEntry[], targetDateKey: string = dateKey): DateSchedule | null => {
     const [first, ...additionalSchedules] = nextEntries;
     if (!first) return null;
     return {
-      date: dateKey,
+      date: targetDateKey,
       ...first,
       label: first.type === 'custom' ? first.label?.trim() || undefined : undefined,
       additionalSchedules: additionalSchedules.length
@@ -454,8 +475,11 @@ export default function DateScheduleModal({
       onClose();
       return;
     }
-    const schedule = buildSchedule(entries);
-    if (schedule) onSave(schedule);
+    const applyDates = rangeEnabled ? enumerateDateRange(dateKey, rangeEnd) : [dateKey];
+    applyDates.forEach((date) => {
+      const schedule = buildSchedule(entries, date);
+      if (schedule) onSave(schedule);
+    });
     onClose();
   };
 
@@ -463,6 +487,31 @@ export default function DateScheduleModal({
     <Modal title="날짜 일정 설정" onClose={onClose} panelClassName={styles.modalPanel}>
       <div className={styles.scrollContent}>
       <p className={styles.dateLabel}>{year}년 {Number(month)}월 {Number(day)}일</p>
+      <label className={styles.toggleOption}>
+        <input
+          type="checkbox"
+          checked={rangeEnabled}
+          onChange={(event) => {
+            setRangeEnabled(event.target.checked);
+            if (!event.target.checked) setRangeEnd(dateKey);
+          }}
+        />
+        여러 날짜에 한 번에 적용
+      </label>
+      {rangeEnabled && (
+        <div className={styles.rangeField}>
+          <span>{Number(day)}일부터</span>
+          <input
+            type="date"
+            className={styles.input}
+            min={dateKey}
+            max={maxRangeEnd}
+            value={rangeEnd}
+            onChange={(event) => setRangeEnd(event.target.value || dateKey)}
+          />
+          <span>까지 같은 일정 적용</span>
+        </div>
+      )}
       {entries.length > 1 && <p className={styles.reorderHint}>⠿ 을 잡고 위아래로 끌면 표시 순서를 바꿀 수 있어요.</p>}
       <div className={styles.scheduleList}>
         {entries.map((entry, index) => (
