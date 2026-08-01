@@ -51,8 +51,6 @@ interface MergeRun {
   /** 하루에 최대 3개까지 있는 일정 중 몇 번째 줄(0~2)에 이어붙는지입니다. 겹치는 다른 일정과 서로 다른 줄에 나란히 표시하기 위해 사용합니다. */
   track: number;
   entry: DateScheduleEntry;
-  /** 이 구간에 걸친 날짜 전부가 다른 겹치는 일정 없이 이 일정 하나뿐인지입니다. true면 고정된 줄 위치 대신 칸 가운데에 표시합니다. */
-  isSolo: boolean;
 }
 
 const MAX_TRACKS = 3;
@@ -72,9 +70,13 @@ function getMergeKey(entry: DateScheduleEntry, outputFormat: OutputFormat): stri
   ]);
 }
 
-/** 이어붙이기 판단에 쓰는 일정의 정체성입니다. "여러 날짜에 한 번에 적용"으로 생긴 일정은 seriesId로, 그 외에는 겉모습이 같은지로 같은 일정인지 판단합니다. */
+/**
+ * 이어붙이기 판단에 쓰는 일정의 정체성입니다. seriesId가 아니라 겉모습(라벨·색상·시간 등)이 같은지로 판단합니다.
+ * seriesId로만 비교하면 "여러 날짜에 한 번에 적용"으로 옆 날짜까지 넘어온 일정과, 그 날짜에 따로 입력한
+ * 내용이 우연히 같은 일정이 서로 다른 것으로 취급되어 하나로 이어붙지 않고 중복으로 표시되는 문제가 있었습니다.
+ */
 function getEntryIdentity(entry: DateScheduleEntry, outputFormat: OutputFormat): string {
-  return entry.seriesId ? `series:${entry.seriesId}` : `visual:${getMergeKey(entry, outputFormat)}`;
+  return getMergeKey(entry, outputFormat);
 }
 
 /** 같은 주 안에서 각 날짜의 일정을 줄(track) 0~2에 배치합니다. 전날과 같은 일정(같은 정체성)은 같은 줄을 이어가고, 새 일정은 비어 있는 가장 위 줄부터 채웁니다. */
@@ -189,14 +191,7 @@ function computeMergeRuns(trackGrid: (DateScheduleEntry | null)[][], weekCount: 
         }
         const span = end - col;
         if (span >= 2) {
-          let isSolo = true;
-          for (let c = col; c < end; c += 1) {
-            if (trackGrid[rowIndex * 7 + c].filter(Boolean).length > 1) {
-              isSolo = false;
-              break;
-            }
-          }
-          runs.push({ rowIndex, startCol: col, span, track, entry, isSolo });
+          runs.push({ rowIndex, startCol: col, span, track, entry });
         }
         col = end;
       }
@@ -366,12 +361,7 @@ export default function PreviewCalendar({
             <div
               key={`merge-${run.rowIndex}-${run.startCol}-${run.track}`}
               className={styles.mergedBadgeCell}
-              style={run.isSolo ? {
-                left: `${(run.startCol / 7) * 100}%`,
-                width: `${(run.span / 7) * 100}%`,
-                top: `${(run.rowIndex / weekCount) * 100}%`,
-                height: `${(1 / weekCount) * 100}%`,
-              } : {
+              style={{
                 left: `${(run.startCol / 7) * 100}%`,
                 width: `${(run.span / 7) * 100}%`,
                 top: `calc(${(run.rowIndex / weekCount) * 100}% + var(--calendar-track-top) + ${run.track} * (var(--calendar-track-slot) + var(--calendar-badge-gap)))`,

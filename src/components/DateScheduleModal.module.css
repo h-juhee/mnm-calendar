@@ -97,6 +97,12 @@
 .dragHandle:active {
   cursor: grabbing;
 }
+
+.duplicateWarning {
+  margin: 8px 0 0 30px;
+  font-size: 12px;
+  color: var(--color-danger);
+}
 .scheduleCardBody { padding-top: 12px; }
 .addScheduleButton { width: 100%; min-height: 44px; margin-top: 14px; margin-bottom: 14px; color: var(--color-primary); background: var(--color-primary-bg); border: 1px dashed var(--color-primary); border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; }
 .addScheduleButton:disabled { color: var(--color-text-muted); background: var(--color-bg); border-color: var(--color-border); border-style: solid; cursor: not-allowed; }

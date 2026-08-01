@@ -254,7 +254,8 @@ test('일정 유형별 색상 선택기의 기본색이 달력 라벨 기본색�
   assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.closed, '#dd4b4b');
   assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.seminarClosed, '#dd4b4b');
   assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.shortened, '#1a9c6b');
-  assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.saturday, '#65b6d8');
+  assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.saturday, '#6cb3d6');
+  assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.sunday, '#6cb3d6');
 });
 
 test('buildExportFilename은 파일명에 사용할 수 없는 문자를 제거하고 규격대로 생성한다', () => {

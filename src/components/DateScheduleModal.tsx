@@ -47,11 +47,30 @@ function normalizeEntry(entry: DateScheduleEntry): DateScheduleEntry {
     labelFontWeight: entry.labelFontWeight,
     hideBadge: entry.hideBadge,
     label: entry.label,
+    // 옆 날짜와 같은 시리즈(이어서 표시로 넘어온 항목)인지 판단하는 데 필요해 유지합니다. 저장 시에는 항상 새로 계산한 값으로 덮어씁니다.
+    seriesId: entry.seriesId,
   };
 }
 
 function createEntry(): DateScheduleEntry {
   return { type: 'custom', showTimeBadge: true, fillBadge: true };
+}
+
+/** 이 날짜에서 실제로 화면에 보이는 결과가 같은 일정인지 판단하는 서명입니다. 범위(이어서 표시) 설정은 이 날짜 자체의 표시에는 영향을 주지 않으므로 제외합니다. */
+function getEntrySignature(entry: DateScheduleEntry): string {
+  return JSON.stringify({
+    type: entry.type,
+    label: entry.type === 'custom' ? (entry.label?.trim() ?? '') : '',
+    badgeColor: entry.badgeColor ?? '',
+    labelTextColor: entry.labelTextColor ?? '',
+    fillBadge: entry.fillBadge !== false,
+    labelFontSizeByFormat: entry.labelFontSizeByFormat ?? {},
+    labelFontWeight: entry.labelFontWeight ?? '',
+    showTimeBadge: entry.showTimeBadge !== false,
+    startTime: entry.startTime ?? '',
+    endTime: entry.endTime ?? '',
+    hideBadge: entry.hideBadge ?? false,
+  });
 }
 
 interface EntryRange {
@@ -115,6 +134,9 @@ interface EntryEditorProps {
   outputFormat: OutputFormat;
   defaultLabelFontSize: number;
   isDragging: boolean;
+  isDuplicate: boolean;
+  /** 해당 날짜에 이미 이 항목과 무관한 다른 일정이 최대 개수(3개)만큼 채워져 있는지 확인합니다. "이어서 표시" 범위 선택 시 어느 날짜가 채워지지 않을지 미리 알려주는 데 사용합니다. */
+  isDateFull: (date: string) => boolean;
   dateKey: string;
   maxRangeEnd: string;
   range: EntryRange;
@@ -134,6 +156,8 @@ function EntryEditor({
   outputFormat,
   defaultLabelFontSize,
   isDragging,
+  isDuplicate,
+  isDateFull,
   dateKey,
   maxRangeEnd,
   range,
@@ -211,6 +235,11 @@ function EntryEditor({
           삭제
         </button>
       </div>
+      {isDuplicate && (
+        <p className={styles.duplicateWarning}>
+          다른 일정(또는 바로 옆 날짜의 일정)과 내용이 완전히 같아요. 달력에 같은 일정이 중복으로 표시됩니다. 내용을 다르게 바꾸거나 하나를 삭제해 주세요.
+        </p>
+      )}
       {expanded && <div className={styles.scheduleCardBody}>
       <div className={styles.rangeToggle}>
         <span className={styles.rangeToggleLabel}>표시 방식</span>
@@ -245,6 +274,7 @@ function EntryEditor({
           startDate={dateKey}
           initialEnd={range.enabled ? range.end : dateKey}
           maxDate={maxRangeEnd}
+          isDateFull={isDateFull}
           onConfirm={(end) => {
             onRangeChange({ ...range, enabled: true, end, merge: true });
             setRangePickerOpen(false);
@@ -495,6 +525,49 @@ export default function DateScheduleModal({
   const draggedIndexRef = useRef<number | null>(null);
   const dragStartIndexRef = useRef<number | null>(null);
   const timeErrors = useMemo(() => entries.map(getTimeError), [entries]);
+
+  /** 다른 날짜(origin이 아닌)에 이미 있는 일정 목록을 가져옵니다. 정기 휴진 등 기본값만 적용된 날짜는 실제로 지정된 일정이 아니므로 빈 배열을 반환합니다. */
+  const getExistingEntriesForDate = (date: string): DateScheduleEntry[] => {
+    if (!explicitDateKeys.has(date)) return [];
+    const existing = resolvedByDate.get(date);
+    return existing ? [existing, ...(existing.additionalSchedules ?? [])] : [];
+  };
+
+  const duplicateIndexes = useMemo(() => {
+    const getNeighborEntries = (date: string): DateScheduleEntry[] => {
+      if (!explicitDateKeys.has(date)) return [];
+      const existing = resolvedByDate.get(date);
+      return existing ? [existing, ...(existing.additionalSchedules ?? [])] : [];
+    };
+    const seenAt = new Map<string, number>();
+    const duplicates = new Set<number>();
+    const prevDateKey = addDaysToKey(dateKey, -1);
+    const nextDateKey = addDaysToKey(dateKey, 1);
+    entries.forEach((entry, index) => {
+      const signature = getEntrySignature(entry);
+      const firstIndex = seenAt.get(signature);
+      if (firstIndex === undefined) {
+        seenAt.set(signature, index);
+      } else {
+        duplicates.add(firstIndex);
+        duplicates.add(index);
+      }
+
+      // 바로 옆 날짜에 이미 같은 계열이 아닌(다른 시리즈) 일정이 완전히 같은 내용으로 들어가 있는지 확인합니다.
+      // "이어서 표시"로 이 항목 자신이 넘어간 경우는 원래 같은 계열이므로 제외합니다.
+      const prospectiveSeriesId = `${dateKey}#${entryIds[index]}`;
+      [prevDateKey, nextDateKey].forEach((neighborDateKey) => {
+        const collidesWithNeighbor = getNeighborEntries(neighborDateKey).some((neighborEntry) => {
+          const sameSeries = Boolean(neighborEntry.seriesId)
+            && (neighborEntry.seriesId === entry.seriesId || neighborEntry.seriesId === prospectiveSeriesId);
+          if (sameSeries) return false;
+          return getEntrySignature(neighborEntry) === signature;
+        });
+        if (collidesWithNeighbor) duplicates.add(index);
+      });
+    });
+    return duplicates;
+  }, [entries, dateKey, entryIds, resolvedByDate, explicitDateKeys]);
   const [year, month, day] = dateKey.split('-');
   const lastDayOfMonth = new Date(Number(year), Number(month), 0).getDate();
   const maxRangeEnd = `${year}-${month}-${String(lastDayOfMonth).padStart(2, '0')}`;
@@ -562,11 +635,10 @@ export default function DateScheduleModal({
     };
   };
 
-  /** 다른 날짜(origin이 아닌)에 이미 있는 일정 목록을 가져옵니다. 정기 휴진 등 기본값만 적용된 날짜는 실제로 지정된 일정이 아니므로 빈 배열을 반환합니다. */
-  const getExistingEntriesForDate = (date: string): DateScheduleEntry[] => {
-    if (!explicitDateKeys.has(date)) return [];
-    const existing = resolvedByDate.get(date);
-    return existing ? [existing, ...(existing.additionalSchedules ?? [])] : [];
+  /** 해당 날짜에 이 시리즈(excludeSeriesId)를 제외하고도 이미 최대 개수만큼 다른 일정이 채워져 있는지 확인합니다. "이어서 표시" 범위가 이 날짜까지 이어져도 실제로는 추가되지 않고 조용히 건너뛰어질지 미리 알려주는 데 사용합니다. */
+  const isDateFullExcludingSeries = (date: string, excludeSeriesId: string): boolean => {
+    const others = getExistingEntriesForDate(date).filter((item) => item.seriesId !== excludeSeriesId);
+    return others.length >= MAX_SCHEDULES;
   };
 
   /** list에서 seriesId가 일치하는 항목을 제거하고, included면 entry를 이 시리즈로 표시해 덧붙입니다(최대 개수 초과 시 덧붙이지 않음). */
@@ -582,8 +654,34 @@ export default function DateScheduleModal({
     return [...withoutSeries, { ...entry, seriesId, rangeEnd: undefined }];
   };
 
+  /** indexes에 해당하는 항목들이 다른 날짜로 전파했던 복사본을 모두 정리합니다. 여러 항목이 같은 날짜에 겹쳐 전파돼 있어도 날짜별로 한 번만 반영하도록 모아서 처리합니다. */
+  const cleanupPropagatedSeries = (indexes: number[]) => {
+    const updates = new Map<string, DateScheduleEntry[]>();
+    indexes.forEach((index) => {
+      const removedSeriesId = `${dateKey}#${entryIds[index]}`;
+      const removedOldRange = index < initialEntryRanges.length ? initialEntryRanges[index] : undefined;
+      const removedOldDates = removedOldRange
+        ? (removedOldRange.enabled ? enumerateDateRange(dateKey, removedOldRange.end) : [dateKey])
+        : [];
+      removedOldDates.filter((date) => date !== dateKey).forEach((date) => {
+        const baseList = updates.get(date) ?? getExistingEntriesForDate(date);
+        updates.set(date, baseList.filter((item) => item.seriesId !== removedSeriesId));
+      });
+    });
+    updates.forEach((list, date) => {
+      const existingList = getExistingEntriesForDate(date);
+      if (list.length === existingList.length) return;
+      if (list.length === 0) {
+        onClearDate(date);
+      } else {
+        const cleanedSchedule = buildSchedule(list, date);
+        if (cleanedSchedule) onSave(cleanedSchedule);
+      }
+    });
+  };
+
   const handleSave = () => {
-    if (timeErrors.some(Boolean)) return;
+    if (timeErrors.some(Boolean) || duplicateIndexes.size > 0) return;
     if (entries.length === 0) {
       if (isAutomaticHoliday) {
         onSave({ date: dateKey, type: 'open', hideBadge: true });
@@ -650,6 +748,8 @@ export default function DateScheduleModal({
             outputFormat={outputFormat}
             defaultLabelFontSize={defaultLabelFontSize}
             isDragging={draggedIndex === index}
+            isDuplicate={duplicateIndexes.has(index)}
+            isDateFull={(date) => isDateFullExcludingSeries(date, `${dateKey}#${entryIds[index]}`)}
             dateKey={dateKey}
             maxRangeEnd={maxRangeEnd}
             range={entryRanges[index]}
@@ -666,6 +766,7 @@ export default function DateScheduleModal({
                 } else {
                   onClear();
                 }
+                cleanupPropagatedSeries([0]);
                 onClose();
                 return;
               }
@@ -689,22 +790,7 @@ export default function DateScheduleModal({
               if (schedule) onSave(schedule);
 
               // 삭제한 항목이 다른 날짜로 전파되어 있었다면 그 흔적도 정리합니다.
-              const removedSeriesId = `${dateKey}#${entryIds[index]}`;
-              const removedOldRange = index < initialEntryRanges.length ? initialEntryRanges[index] : undefined;
-              const removedOldDates = removedOldRange
-                ? (removedOldRange.enabled ? enumerateDateRange(dateKey, removedOldRange.end) : [dateKey])
-                : [];
-              removedOldDates.filter((date) => date !== dateKey).forEach((date) => {
-                const existingList = getExistingEntriesForDate(date);
-                const nextList = existingList.filter((item) => item.seriesId !== removedSeriesId);
-                if (nextList.length === existingList.length) return;
-                if (nextList.length === 0) {
-                  onClearDate(date);
-                } else {
-                  const cleanedSchedule = buildSchedule(nextList, date);
-                  if (cleanedSchedule) onSave(cleanedSchedule);
-                }
-              });
+              cleanupPropagatedSeries([index]);
 
               setExpandedIndex((current) => current > index ? current - 1 : Math.min(current, entries.length - 2));
             }}
@@ -733,11 +819,20 @@ export default function DateScheduleModal({
           type="button"
           className={`${styles.button} ${styles.buttonSecondary}`}
           disabled={!hasOverride}
-          onClick={() => { onClear(); onClose(); }}
+          onClick={() => {
+            onClear();
+            cleanupPropagatedSeries(entries.map((_, index) => index));
+            onClose();
+          }}
         >
           기본 일정 불러오기
         </button>
-        <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} disabled={timeErrors.some(Boolean)} onClick={handleSave}>
+        <button
+          type="button"
+          className={`${styles.button} ${styles.buttonPrimary}`}
+          disabled={timeErrors.some(Boolean) || duplicateIndexes.size > 0}
+          onClick={handleSave}
+        >
           저장
         </button>
       </div>

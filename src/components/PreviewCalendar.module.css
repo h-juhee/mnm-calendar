@@ -9,6 +9,8 @@
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
   font-family: var(--calendar-font-family, 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Roboto, 'Malgun Gothic', sans-serif);
   font-weight: var(--calendar-font-weight);
+  /* 날짜 숫자가 셀 안에서 시작하는 좌우 여백입니다(.cell의 좌우 padding과 같은 값). 뱃지와 이어서-막대(.mergedBadgeCell)가 이 값을 그대로 써서 날짜 숫자와 시작점을 맞춥니다. */
+  --calendar-cell-hpad: 10px;
 }
 
 .frame {
@@ -179,16 +181,13 @@
   left: 0;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: var(--calendar-badge-gap);
   width: 100%;
   max-width: 100%;
+  box-sizing: border-box;
+  padding: 0 var(--calendar-cell-hpad, 10px);
   pointer-events: none;
-}
-
-.singleBadge {
-  top: 0 !important;
-  bottom: 0 !important;
 }
 
 /** 겹치는 다른 일정과 줄을 맞춰야 하는 날짜용 배치입니다. 가운데 정렬 대신 위에서부터 고정된 줄 순서로 쌓아서, 이어붙는 막대(.mergedBadgeCell)의 위치 계산과 맞아떨어지게 합니다. */
@@ -205,9 +204,9 @@
 
 .badges > .badge {
   flex-shrink: 0;
-  width: min(var(--calendar-badge-width), 100%) !important;
-  min-width: min(var(--calendar-badge-width), 100%) !important;
-  max-width: min(var(--calendar-badge-width), 100%) !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
   box-sizing: border-box;
 }
 
@@ -220,9 +219,9 @@
 }
 
 .timedBadge > .badge {
-  width: min(var(--calendar-badge-width), 100%);
-  min-width: min(var(--calendar-badge-width), 100%);
-  max-width: min(var(--calendar-badge-width), 100%);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   flex-shrink: 0;
 }
 
@@ -412,6 +411,10 @@
   --calendar-badge-gap: 5px;
 }
 
+.instagram {
+  --calendar-cell-hpad: 8px;
+}
+
 .instagram .cell {
   gap: 4px;
   padding: 6px 8px;
@@ -485,6 +488,7 @@
 .didVertical {
   padding: 16px;
   border-radius: 42px;
+  --calendar-cell-hpad: 20px;
 }
 
 .didVertical .frame {
@@ -523,33 +527,28 @@
 
 .didVertical .badges {
   --calendar-badge-width: 240px;
-  --calendar-badge-gap: 6px;
+  --calendar-badge-gap: 16px;
   --calendar-badge-bottom: 20px;
-  top: 80px;
-  justify-content: center;
+  top: 92px;
 }
 
-.didVertical .badges:not(.singleBadge) .badge {
+.didVertical .badges:not(.singleBadge) .badge,
+.didVertical .mergedBadgeCell .badge {
   min-height: 46px;
   padding: 5px 12px;
   font-size: 30px;
 }
 
-.didVertical .singleBadge {
-  top: 80px !important;
-  bottom: 20px !important;
-  justify-content: center;
-}
-
 .didVertical .grid {
-  --calendar-track-top: 80px;
+  --calendar-track-top: 92px;
   --calendar-track-slot: 46px;
-  --calendar-badge-gap: 6px;
+  --calendar-badge-gap: 16px;
 }
 
 .didHorizontal {
   padding: 16px;
   border-radius: 42px;
+  --calendar-cell-hpad: 18px;
 }
 
 .didHorizontal .frame {
@@ -604,7 +603,7 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  padding: 0 10px;
+  padding: 0 var(--calendar-cell-hpad, 10px);
   pointer-events: none;
 }
 
