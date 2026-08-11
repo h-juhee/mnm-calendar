@@ -3,14 +3,17 @@ import { TEMPLATES } from '../types/schedule';
 import styles from './TemplateSelector.module.css';
 
 interface TemplateSelectorProps {
+  month: number;
   selectedId: TemplateId | null;
   onSelect: (id: TemplateId) => void;
 }
 
-export default function TemplateSelector({ selectedId, onSelect }: TemplateSelectorProps) {
+export default function TemplateSelector({ month, selectedId, onSelect }: TemplateSelectorProps) {
+  const templates = TEMPLATES.filter((template) => template.month === month);
+
   return (
-    <div className={styles.list} role="radiogroup" aria-label="디자인 템플릿">
-      {TEMPLATES.map((template) => {
+    <div className={styles.list} role="radiogroup" aria-label={`${month}월 디자인 시안`}>
+      {templates.map((template) => {
         const selected = template.id === selectedId;
         return (
           <button

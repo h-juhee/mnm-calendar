@@ -29,6 +29,13 @@ import ScheduleATemplate from './templates/ScheduleATemplate';
 import ScheduleBTemplate from './templates/ScheduleBTemplate';
 import ScheduleCTemplate from './templates/ScheduleCTemplate';
 import ScheduleDTemplate from './templates/ScheduleDTemplate';
+import {
+  SeptemberATemplate,
+  SeptemberBTemplate,
+  SeptemberCTemplate,
+  SeptemberDTemplate,
+  SeptemberETemplate,
+} from './templates/SeptemberTemplates';
 import Modal from './Modal';
 import FontSelector from './FontSelector';
 import styles from './SchedulePreview.module.css';
@@ -79,6 +86,11 @@ const TEMPLATE_COMPONENTS: Record<TemplateId, typeof ScheduleATemplate> = {
   scheduleB: ScheduleBTemplate,
   scheduleC: ScheduleCTemplate,
   scheduleD: ScheduleDTemplate,
+  septemberA: SeptemberATemplate,
+  septemberB: SeptemberBTemplate,
+  septemberC: SeptemberCTemplate,
+  septemberD: SeptemberDTemplate,
+  septemberE: SeptemberETemplate,
 };
 
 const DEFAULT_FONT_SIZES: Record<OutputFormat, Record<VisibleLayerId, number>> = {
@@ -96,7 +108,7 @@ const MAX_DESIGN_HISTORY = 50;
 const MAX_FONT_SIZE = 500;
 const CANVAS_EDIT_HINT_KEY = 'mnn-calendar:canvas-edit-hint-seen';
 const CALENDAR_DRAG_HINT_KEY = 'mnn-calendar:calendar-drag-hint-seen';
-const DEFAULT_TITLE_OUTLINE_COLORS: Record<TemplateId, string> = {
+const DEFAULT_TITLE_OUTLINE_COLORS: Partial<Record<TemplateId, string>> = {
   scheduleA: '#1e3a5f',
   scheduleB: '#ec4899',
   scheduleC: '#111827',

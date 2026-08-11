@@ -52,6 +52,20 @@ export default function ImageTemplateBase({
       ? styles.a4
       : '';
   const hasClinicHours = hasRenderableClinicHours(clinicHours) || reserveClinicHoursSpace;
+  const explicitDateKeys = new Set(dateSchedules.map((schedule) => schedule.date));
+  const maxCalendarContentRows = Math.max(1, ...calendarMatrix.flatMap((week) => week.map((cell) => {
+    if (!cell.date) return 0;
+    const schedule = resolvedByDate.get(cell.date);
+    if (!schedule) return 0;
+    return Math.min(3, [schedule, ...(schedule.additionalSchedules ?? [])]
+      .filter((entry) => !entry.hideBadge && (entry.type !== 'open' || explicitDateKeys.has(cell.date!)))
+      .reduce((rows, entry) => {
+        const start = entry.startTime ?? '09:00';
+        return rows + (entry.endTime && start < entry.endTime ? 2 : 1);
+      }, 0));
+  })));
+  const popupCalendarNeededHeight = 70 + calendarMatrix.length * (48 + maxCalendarContentRows * 26);
+  const a4HorizontalCalendarNeededHeight = 80 + calendarMatrix.length * (48 + maxCalendarContentRows * 33);
   const hospitalDisplayMode = hospital.displayMode ?? (hospital.logoUrl ? 'logo' : 'name');
   const titleText = designEdits.title?.text ?? getCalendarTitle(month, calendarLabelStyle);
   const subtitleText = designEdits.subtitle?.text ?? getCalendarSubtitle(calendarLabelStyle);
@@ -83,6 +97,8 @@ export default function ImageTemplateBase({
       style={{
         backgroundImage: customBackgroundUrl ? undefined : `url(${backgroundUrls[outputFormat]})`,
         '--export-font-family': fontFamily,
+        '--popup-calendar-needed-height': `${popupCalendarNeededHeight}px`,
+        '--a4-horizontal-calendar-needed-height': `${a4HorizontalCalendarNeededHeight}px`,
       } as CSSProperties}
     >
       {customBackgroundUrl && (
@@ -158,7 +174,7 @@ export default function ImageTemplateBase({
         className={styles.calendarArea}
         calendarMatrix={calendarMatrix}
         resolvedByDate={resolvedByDate}
-        explicitDateKeys={new Set(dateSchedules.map((schedule) => schedule.date))}
+        explicitDateKeys={explicitDateKeys}
         accentColor={hospital.primaryColor}
         onDateClick={onDateClick}
         labelStyle={calendarLabelStyle}

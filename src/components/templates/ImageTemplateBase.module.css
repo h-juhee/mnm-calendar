@@ -150,8 +150,8 @@
 
 .square:not(.instagram) .calendarArea {
   width: 100%;
-  height: 840px;
-  flex: 0 0 840px;
+  height: max(765px, var(--popup-calendar-needed-height, 765px));
+  flex: 0 0 max(765px, var(--popup-calendar-needed-height, 765px));
   align-self: center;
   margin-right: auto;
   margin-left: auto;
@@ -227,7 +227,7 @@
   top: 495px;
   left: 66px;
   width: 948px;
-  height: 812px;
+  height: 765px;
   flex: none;
 }
 
@@ -312,6 +312,17 @@
   --calendar-base-y: -12px;
 }
 
+.a4:not(.a4Horizontal) .calendarArea {
+  position: absolute;
+  top: 711px;
+  left: 61px;
+  width: 1117px;
+  height: 894px;
+  flex: none;
+  margin: 0;
+  --calendar-base-y: 0px;
+}
+
 .a4Horizontal.a4 {
   padding: 0;
   gap: 0;
@@ -374,9 +385,9 @@
 .a4Horizontal.a4 .calendarArea {
   position: absolute;
   top: 170px;
-  left: 652px;
-  width: 1000px;
-  height: 870px;
+  left: 628px;
+  width: 1061px;
+  height: max(849px, var(--a4-horizontal-calendar-needed-height, 849px));
   flex: none;
   min-height: 0;
   margin: 0;
@@ -390,8 +401,6 @@
 }
 
 .didVertical .heroHeader {
-  /* Keep a dedicated copy area below the title for opening hours and other
-     clinic information, matching the portrait DID reference composition. */
   display: grid;
   grid-template-rows: 220px auto;
   align-content: start;
@@ -435,7 +444,7 @@
 }
 
 .didVertical .calendarArea {
-  flex: 0 0 1850px;
+  flex: 0 0 1600px;
   --calendar-base-y: -95px;
 }
 
@@ -479,7 +488,10 @@
 }
 
 .didHorizontal .calendarArea {
-  grid-column: 2;
-  grid-row: 1 / 3;
-  margin: 38px 62px 68px;
+  position: absolute;
+  top: 280px;
+  left: 1712px;
+  width: 2000px;
+  height: 1600px;
+  margin: 0;
 }

@@ -4,37 +4,19 @@ interface MonthSelectorProps {
   year: number;
   month: number;
   onChange: (year: number, month: number) => void;
+  availableMonths?: number[];
 }
 
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
-const MIN_YEAR = 2000;
-const MAX_YEAR = 2100;
+const FIXED_YEAR = 2026;
 
-export default function MonthSelector({ year, month, onChange }: MonthSelectorProps) {
+export default function MonthSelector({ month, onChange, availableMonths = MONTH_OPTIONS }: MonthSelectorProps) {
   return (
     <div className={styles.row}>
       <div className={styles.field}>
         <span className={styles.label} id="schedule-year-label">제작 연도</span>
         <div className={styles.yearStepper} role="group" aria-labelledby="schedule-year-label">
-          <button
-            type="button"
-            className={styles.stepperButton}
-            aria-label="이전 연도"
-            disabled={year <= MIN_YEAR}
-            onClick={() => onChange(year - 1, month)}
-          >
-            −
-          </button>
-          <output className={styles.yearValue} aria-live="polite">{year}년</output>
-          <button
-            type="button"
-            className={styles.stepperButton}
-            aria-label="다음 연도"
-            disabled={year >= MAX_YEAR}
-            onClick={() => onChange(year + 1, month)}
-          >
-            +
-          </button>
+          <output className={styles.yearValue}>2026년</output>
         </div>
       </div>
       <div className={styles.field}>
@@ -44,9 +26,9 @@ export default function MonthSelector({ year, month, onChange }: MonthSelectorPr
             id="schedule-month"
             className={styles.select}
             value={month}
-            onChange={(e) => onChange(year, Number(e.target.value))}
+            onChange={(e) => onChange(FIXED_YEAR, Number(e.target.value))}
           >
-            {MONTH_OPTIONS.map((m) => (
+            {availableMonths.map((m) => (
               <option key={m} value={m}>{m}월</option>
             ))}
           </select>

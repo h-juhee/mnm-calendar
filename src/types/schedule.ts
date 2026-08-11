@@ -137,10 +137,13 @@ export const OUTPUT_SIZES: OutputSizeMeta[] = [
   { id: 'horizontalDid', label: '가로 DID' },
 ];
 
-export type TemplateId = 'scheduleA' | 'scheduleB' | 'scheduleC' | 'scheduleD';
+export type TemplateId =
+  | 'scheduleA' | 'scheduleB' | 'scheduleC' | 'scheduleD'
+  | 'septemberA' | 'septemberB' | 'septemberC' | 'septemberD' | 'septemberE';
 
 export interface TemplateMeta {
   id: TemplateId;
+  month: number;
   name: string;
   description: string;
   /** 템플릿 선택 카드 썸네일용 이미지. */
@@ -150,27 +153,66 @@ export interface TemplateMeta {
 export const TEMPLATES: TemplateMeta[] = [
   {
     id: 'scheduleA',
+    month: 8,
     name: '진료일정 A형',
     description: '한지 톤과 태극 포인트의 진료일정 시안',
     previewImageUrl: '/templates/schedule_A.png?v=3',
   },
   {
     id: 'scheduleB',
+    month: 8,
     name: '진료일정 B형',
     description: '하늘색 배경과 태극기 포인트의 진료일정 시안',
     previewImageUrl: '/templates/schedule_B.png',
   },
   {
     id: 'scheduleC',
+    month: 8,
     name: '진료일정 C형',
     description: '붓터치 질감의 진료일정 시안',
     previewImageUrl: '/templates/schedule_C.png',
   },
   {
     id: 'scheduleD',
+    month: 8,
     name: '진료일정 D형',
     description: '시원한 여름 바다 포인트의 진료일정 시안',
     previewImageUrl: '/templates/schedule_D.png',
+  },
+  {
+    id: 'septemberA',
+    month: 9,
+    name: '시안 A',
+    description: '단풍과 전통 정자가 어우러진 9월 시안',
+    previewImageUrl: '/templates/september_A_preview.jpg',
+  },
+  {
+    id: 'septemberB',
+    month: 9,
+    name: '시안 B',
+    description: '보랏빛 밤하늘과 한옥을 담은 9월 시안',
+    previewImageUrl: '/templates/september_B_preview.jpg',
+  },
+  {
+    id: 'septemberC',
+    month: 9,
+    name: '시안 C',
+    description: '학과 전통 문양을 담은 9월 시안',
+    previewImageUrl: '/templates/september_C_preview.jpg',
+  },
+  {
+    id: 'septemberD',
+    month: 9,
+    name: '시안 D',
+    description: '감나무와 노을을 담은 9월 시안',
+    previewImageUrl: '/templates/september_D_preview.jpg',
+  },
+  {
+    id: 'septemberE',
+    month: 9,
+    name: '시안 E',
+    description: '달맞이와 가족 풍경을 담은 9월 시안',
+    previewImageUrl: '/templates/september_E_preview.jpg',
   },
 ];
 

@@ -50,7 +50,7 @@
 
 .yearStepper {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  grid-template-columns: minmax(0, 1fr);
   height: 48px;
   overflow: hidden;
   border: 1px solid var(--color-border);
@@ -62,31 +62,9 @@
   border-color: var(--color-primary);
 }
 
-.stepperButton {
-  min-height: 0;
-  border: 0;
-  color: var(--color-primary);
-  background: transparent;
-  font: inherit;
-  font-size: 20px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.stepperButton:hover:not(:disabled) {
-  background: var(--color-primary-bg);
-}
-
-.stepperButton:disabled {
-  color: var(--color-text-muted);
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
 .yearValue {
   display: grid;
   place-items: center;
-  border-inline: 1px solid var(--color-border);
   font-size: 15px;
   font-weight: 600;
   color: var(--color-text);

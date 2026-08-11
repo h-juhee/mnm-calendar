@@ -23,13 +23,12 @@ import {
 } from '../utils/resetUtils';
 import {
   normalizeDesignEditsByFormat,
-  removeAutomaticTitleOverrides,
   setDesignEditsForFormat,
 } from '../utils/designEditsUtils';
 import { createExampleClinicHours, deriveClinicHoursConfirmed } from '../utils/clinicHoursUtils';
 
 const today = new Date();
-const DEFAULT_YEAR = today.getFullYear();
+const FIXED_YEAR = 2026;
 const DEFAULT_MONTH = today.getMonth() + 1;
 
 function normalizeOutputSizes(value: unknown): string[] {
@@ -39,6 +38,8 @@ function normalizeOutputSizes(value: unknown): string[] {
 
 function normalizeTemplateId(value: unknown): TemplateId | null {
   return value === 'scheduleA' || value === 'scheduleB' || value === 'scheduleC' || value === 'scheduleD'
+    || value === 'septemberA' || value === 'septemberB' || value === 'septemberC'
+    || value === 'septemberD' || value === 'septemberE'
     ? value
     : value === 'custom'
       ? 'scheduleA'
@@ -74,7 +75,7 @@ function createEmptyFormData(
     vacationStart: undefined,
     vacationEnd: undefined,
     vacationBadgeColor: keep?.vacationBadgeColor,
-    templateId: keep?.templateId ?? null,
+    templateId: null,
     fontId: keep?.fontId ?? DEFAULT_FONT_ID,
     calendarLabelStyle: keep?.calendarLabelStyle ?? 'korean',
     titleTextStyle: keep?.titleTextStyle ?? 'outline',
@@ -82,7 +83,7 @@ function createEmptyFormData(
     outputSize: normalizeOutputSizes(keep?.outputSize),
     calendarMustInclude: keep?.calendarMustInclude ?? '',
     clinicHours: normalizeClinicHours(keep?.clinicHours),
-    designEditsByFormat: removeAutomaticTitleOverrides(keep?.designEditsByFormat) ?? {},
+    designEditsByFormat: {},
   };
 }
 
@@ -91,7 +92,7 @@ export function useScheduleBuilder(hospitalId: string) {
   const saveStatusTimerRef = useRef<number | undefined>(undefined);
   const [formData, setFormData] = useState<ScheduleFormData>(() => {
     const lastActive = loadLastActiveMonth(hospitalId);
-    const year = lastActive?.year ?? DEFAULT_YEAR;
+    const year = FIXED_YEAR;
     const month = lastActive?.month ?? DEFAULT_MONTH;
     const loaded = loadScheduleDraft(hospitalId, year, month);
     return loaded
@@ -121,8 +122,9 @@ export function useScheduleBuilder(hospitalId: string) {
   }, [formData]);
 
   const setYearMonth = useCallback(
-    (year: number, month: number) => {
+    (_year: number, month: number) => {
       setFormData((prev) => {
+        const year = FIXED_YEAR;
         if (prev.year === year && prev.month === month) return prev;
         const loaded = loadScheduleDraft(hospitalId, year, month);
         return loaded

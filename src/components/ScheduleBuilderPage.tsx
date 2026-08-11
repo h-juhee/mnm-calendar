@@ -103,6 +103,11 @@ function ScheduleBuilderContent({
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [isCustomModalOpen, setCustomModalOpen] = useState(false);
   const [isTemplateModalOpen, setTemplateModalOpen] = useState(() => formData.templateId === null);
+  const availableTemplates = useMemo(
+    () => TEMPLATES.filter((template) => template.month === formData.month),
+    [formData.month],
+  );
+  const hasSelectedTemplate = availableTemplates.some((template) => template.id === formData.templateId);
   const [isHospitalSwitchConfirmOpen, setHospitalSwitchConfirmOpen] = useState(false);
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('square');
   const [isFormatSectionExpanded, setFormatSectionExpanded] = useState(true);
@@ -170,6 +175,11 @@ function ScheduleBuilderContent({
     ? TEMPLATES.find((template) => template.id === formData.templateId)
     : undefined;
   const currentDesignEdits = formData.designEditsByFormat?.[outputFormat] ?? {};
+
+  useEffect(() => {
+    const templateMatchesMonth = availableTemplates.some((template) => template.id === formData.templateId);
+    if (!templateMatchesMonth) setTemplateModalOpen(true);
+  }, [availableTemplates, formData.templateId]);
 
   const panelContent: Partial<Record<SettingsPanel, ReactNode>> = {
     basic: (
@@ -491,12 +501,19 @@ function ScheduleBuilderContent({
 
       {isTemplateModalOpen && (
         <Modal
-          title="시안을 선택해 주세요"
+          title={`${formData.year}년 ${formData.month}월 시안을 선택해 주세요`}
           onClose={() => setTemplateModalOpen(false)}
-          closable={formData.templateId !== null}
+          closable={hasSelectedTemplate}
           panelClassName={styles.templateSelectModal}
         >
+          <MonthSelector
+            year={formData.year}
+            month={formData.month}
+            availableMonths={[8, 9]}
+            onChange={actions.setYearMonth}
+          />
           <TemplateSelector
+            month={formData.month}
             selectedId={formData.templateId}
             onSelect={(templateId) => {
               actions.setTemplateId(templateId);

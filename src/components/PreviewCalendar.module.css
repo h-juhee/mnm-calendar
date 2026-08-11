@@ -448,17 +448,17 @@
 }
 
 .a4Horizontal .weekdays {
-  min-height: 48px;
+  min-height: 64px;
 }
 
 .a4Horizontal .weekday {
-  padding: 10px 0;
-  font-size: 18px;
+  padding: 17px 0 14px;
+  font-size: 25px;
 }
 
 .a4Horizontal .cell {
   gap: 6px;
-  padding: 8px 10px;
+  padding: 8px 18px;
 }
 
 .a4Horizontal .day {
@@ -527,22 +527,22 @@
 
 .didVertical .badges {
   --calendar-badge-width: 240px;
-  --calendar-badge-gap: 16px;
+  --calendar-badge-gap: 10px;
   --calendar-badge-bottom: 20px;
   top: 92px;
 }
 
 .didVertical .badges:not(.singleBadge) .badge,
 .didVertical .mergedBadgeCell .badge {
-  min-height: 46px;
+  min-height: 54px;
   padding: 5px 12px;
-  font-size: 30px;
+  font-size: 34px;
 }
 
 .didVertical .grid {
   --calendar-track-top: 92px;
-  --calendar-track-slot: 46px;
-  --calendar-badge-gap: 16px;
+  --calendar-track-slot: 54px;
+  --calendar-badge-gap: 10px;
 }
 
 .didHorizontal {
