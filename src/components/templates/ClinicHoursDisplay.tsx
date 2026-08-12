@@ -13,9 +13,10 @@ interface ClinicHoursDisplayProps {
   outputFormat: OutputFormat;
   edit?: LayerEdit;
   selected?: boolean;
+  defaultColor?: string;
 }
 
-export default function ClinicHoursDisplay({ value, outputFormat, edit, selected }: ClinicHoursDisplayProps) {
+export default function ClinicHoursDisplay({ value, outputFormat, edit, selected, defaultColor }: ClinicHoursDisplayProps) {
   if (outputFormat === 'square' || !value || value.hidden) return null;
 
   const rows = getValidClinicHoursRows(value);
@@ -30,7 +31,7 @@ export default function ClinicHoursDisplay({ value, outputFormat, edit, selected
       style={{
         transform: `translate(${outputFormat === 'a4Horizontal' ? 0 : edit?.x ?? 0}px, ${edit?.y ?? 0}px) scale(${edit?.scale ?? 1})`,
         transformOrigin: 'top left',
-        color: edit?.color,
+        color: edit?.color ?? defaultColor,
         fontSize: edit?.fontSize,
         fontFamily: edit?.fontId ? getFontOption(edit.fontId).family : undefined,
         '--clinic-hours-font-weight': edit?.fontWeight,

@@ -360,7 +360,6 @@ function ScheduleBuilderContent({
     <div className={styles.page}>
       <header className={styles.hero} style={{ '--hero-accent': hospital.primaryColor } as CSSProperties}>
         <div className={styles.heroInner}>
-          <span className={styles.heroBadge}>진료일정 이미지 자동 생성</span>
           <h1 className={styles.heroTitle}>{hospital.name} 원장님, 안녕하세요!</h1>
           <p className={styles.heroSubtitle}>
             휴진일과 진료 일정을 선택하면 진료안내 이미지를 실시간으로 만들 수 있어요.
@@ -424,7 +423,7 @@ function ScheduleBuilderContent({
             )}
             titleStyleEditor={(
               <TitleTextStyleSelector
-                value={formData.titleTextStyle ?? 'outline'}
+                value={formData.titleTextStyle ?? 'filled'}
                 onChange={actions.setTitleTextStyle}
               />
             )}

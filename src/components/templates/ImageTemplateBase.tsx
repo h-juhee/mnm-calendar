@@ -70,7 +70,7 @@ export default function ImageTemplateBase({
   const titleText = designEdits.title?.text ?? getCalendarTitle(month, calendarLabelStyle);
   const subtitleText = designEdits.subtitle?.text ?? getCalendarSubtitle(calendarLabelStyle);
   const subtitleColor = designEdits.subtitle?.color
-    ?? (outputFormat === 'a4Horizontal' ? '#000000' : textColor);
+    ?? (outputFormat === 'a4Horizontal' && textColor !== '#ffffff' ? '#000000' : textColor);
   const editableStyle = (id: keyof typeof designEdits): CSSProperties => {
     const edit = designEdits[id];
     const editX = outputFormat === 'a4Horizontal' && id === 'subtitle'
@@ -168,7 +168,7 @@ export default function ImageTemplateBase({
         </>
       )}
 
-      <ClinicHoursDisplay value={clinicHours} outputFormat={outputFormat} edit={designEdits.clinicHours} selected={selectedLayer === 'clinicHours'} />
+      <ClinicHoursDisplay value={clinicHours} outputFormat={outputFormat} edit={designEdits.clinicHours} selected={selectedLayer === 'clinicHours'} defaultColor={textColor} />
 
       <PreviewCalendar
         className={styles.calendarArea}

@@ -26,7 +26,7 @@ export function resetDesignSettings(formData: ScheduleFormData): ScheduleFormDat
   return {
     ...formData,
     fontId: DEFAULT_FONT_ID,
-    titleTextStyle: 'outline',
+    titleTextStyle: 'filled',
     designEditsByFormat: {},
     designEdits: {},
   };

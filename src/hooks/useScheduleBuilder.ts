@@ -76,7 +76,7 @@ function createEmptyFormData(
     templateId: null,
     fontId: keep?.fontId ?? DEFAULT_FONT_ID,
     calendarLabelStyle: keep?.calendarLabelStyle ?? 'korean',
-    titleTextStyle: keep?.titleTextStyle ?? 'outline',
+    titleTextStyle: keep?.titleTextStyle ?? 'filled',
     nextMonthEvent: '',
     outputSize: normalizeOutputSizes(keep?.outputSize),
     calendarMustInclude: keep?.calendarMustInclude ?? '',

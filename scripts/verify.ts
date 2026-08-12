@@ -427,7 +427,7 @@ test('디자인 초기화는 일정과 템플릿을 유지한다', () => {
   const after = resetDesignSettings(before);
   assert.deepEqual(after.recurringClosedDays, [0]);
   assert.equal(after.templateId, 'scheduleC');
-  assert.equal(after.titleTextStyle, 'outline');
+  assert.equal(after.titleTextStyle, 'filled');
   assert.deepEqual(after.designEditsByFormat, {});
 });
 
