@@ -5,19 +5,19 @@
 
 .recentSection { display: flex; flex-direction: column; gap: 9px; }
 .recentHeading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.recentHeading h3 { color: var(--color-text); font-size: 14px; }
-.recentHeading span { color: var(--color-text-muted); font-size: 11px; }
+.recentHeading h3 { color: var(--color-text); font-size: 16px; }
+.recentHeading span { color: var(--color-text-muted); font-size: 13px; }
 .recentList { display: flex; flex-direction: column; gap: 7px; }
 .recentItem { min-width: 0; display: flex; align-items: center; gap: 8px; padding: 7px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
 .recentSelect { min-width: 0; flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 5px 7px; color: var(--color-text); background: transparent; border: 0; cursor: pointer; text-align: left; }
-.recentSelect strong { width: 100%; overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
-.recentSelect span { color: var(--color-text-muted); font-size: 11px; }
+.recentSelect strong { width: 100%; overflow: hidden; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.recentSelect span { color: var(--color-text-muted); font-size: 13px; }
 .recentSelect:hover strong { color: var(--color-primary); }
-.deleteButton, .deleteConfirm button { padding: 6px 8px; color: var(--color-text-muted); background: #fff; border: 1px solid var(--color-border); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; }
+.deleteButton, .deleteConfirm button { padding: 6px 8px; color: var(--color-text-muted); background: #fff; border: 1px solid var(--color-border); border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
 .deleteButton:hover, .deleteConfirm .deleteConfirmButton { color: var(--color-danger); border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-border)); }
 .deleteConfirm { display: flex; align-items: center; gap: 5px; }
-.deleteConfirm span { color: var(--color-danger); font-size: 11px; font-weight: 600; white-space: nowrap; }
-.divider { display: flex; align-items: center; gap: 10px; color: var(--color-text-muted); font-size: 11px; }
+.deleteConfirm span { color: var(--color-danger); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.divider { display: flex; align-items: center; gap: 10px; color: var(--color-text-muted); font-size: 13px; }
 .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--color-border); }
 .divider span { white-space: nowrap; }
 
@@ -66,7 +66,7 @@
 }
 
 .label {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--color-text);
 }
@@ -79,7 +79,7 @@
   width: 100%;
   height: 48px;
   padding: 0 14px;
-  font-size: 15px;
+  font-size: 17px;
   font-family: inherit;
   color: var(--color-text);
   background: var(--color-surface);
@@ -104,7 +104,7 @@
 }
 
 .error {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.4;
   color: var(--color-danger);
 }
@@ -113,7 +113,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.5;
   color: var(--color-text-muted);
 }
