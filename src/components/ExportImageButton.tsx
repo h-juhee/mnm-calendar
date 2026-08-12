@@ -11,7 +11,10 @@ type ExportKind = 'png' | 'pdf';
 
 interface ExportImageButtonProps {
   nodeRef: RefObject<HTMLDivElement | null>;
+  hospitalId: string;
   hospitalName: string;
+  directorName?: string;
+  templateId: string | null;
   year: number;
   month: number;
   fontId?: FontId;
@@ -24,7 +27,10 @@ interface ExportImageButtonProps {
 
 export default function ExportImageButton({
   nodeRef,
+  hospitalId,
   hospitalName,
+  directorName,
+  templateId,
   year,
   month,
   fontId,
@@ -41,6 +47,29 @@ export default function ExportImageButton({
 
   /** 실제 인쇄 크기(mm)가 있는 규격(A4 등)에서만 PDF 저장을 제공합니다. */
   const canExportPdf = Boolean(getOutputFormatMeta(outputFormat).physicalWidthMm);
+
+  const recordUsage = async (kind: ExportKind) => {
+    try {
+      await fetch('/api/notion-usage-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true,
+        body: JSON.stringify({
+          eventId: crypto.randomUUID(),
+          hospitalId,
+          hospitalName,
+          directorName,
+          year,
+          month,
+          templateId,
+          outputFormat,
+          exportType: kind,
+        }),
+      });
+    } catch {
+      // 사용 이력 서버가 일시적으로 응답하지 않아도 파일 다운로드는 정상 완료합니다.
+    }
+  };
 
   const runDownload = async (kind: ExportKind) => {
     if (!nodeRef.current || disabled) return;
@@ -61,6 +90,7 @@ export default function ExportImageButton({
           outputFormat,
         );
       }
+      await recordUsage(kind);
       setStatus('done');
       setTimeout(() => setStatus('idle'), 2500);
     } catch {

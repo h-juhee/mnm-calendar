@@ -338,7 +338,10 @@ function ScheduleBuilderContent({
     <div className={styles.downloadActions}>
       <ExportImageButton
         nodeRef={exportNodeRef}
+        hospitalId={hospital.id}
         hospitalName={hospital.name}
+        directorName={hospital.directorName}
+        templateId={formData.templateId}
         year={formData.year}
         month={formData.month}
         fontId={(formData.fontId as FontId) ?? DEFAULT_FONT_ID}
