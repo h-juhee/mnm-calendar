@@ -11,7 +11,6 @@ import {
   upsertDateSchedule,
 } from '../utils/scheduleUtils';
 import {
-  loadLastActiveMonth,
   loadScheduleDraft,
   saveLastActiveMonth,
   saveScheduleDraft,
@@ -27,9 +26,8 @@ import {
 } from '../utils/designEditsUtils';
 import { createExampleClinicHours, deriveClinicHoursConfirmed } from '../utils/clinicHoursUtils';
 
-const today = new Date();
 const FIXED_YEAR = 2026;
-const DEFAULT_MONTH = today.getMonth() + 1;
+const DEFAULT_MONTH = 9;
 
 function normalizeOutputSizes(value: unknown): string[] {
   if (Array.isArray(value)) return value.filter((size): size is string => typeof size === 'string');
@@ -91,9 +89,8 @@ export function useScheduleBuilder(hospitalId: string) {
   const [saveStatus, setSaveStatus] = useState<'saving' | 'saved' | 'error'>('saving');
   const saveStatusTimerRef = useRef<number | undefined>(undefined);
   const [formData, setFormData] = useState<ScheduleFormData>(() => {
-    const lastActive = loadLastActiveMonth(hospitalId);
     const year = FIXED_YEAR;
-    const month = lastActive?.month ?? DEFAULT_MONTH;
+    const month = DEFAULT_MONTH;
     const loaded = loadScheduleDraft(hospitalId, year, month);
     return loaded
       ? {
