@@ -55,7 +55,7 @@ export async function renderNodeAsPng(node: HTMLElement, outputFormat: OutputFor
 
 }
 
-export async function exportNodeAsPng(node: HTMLElement, filename: string, outputFormat: OutputFormat = 'square'): Promise<void> {
+export async function exportNodeAsPng(node: HTMLElement, filename: string, outputFormat: OutputFormat = 'square'): Promise<string> {
   const dataUrl = await renderNodeAsPng(node, outputFormat);
   const link = document.createElement('a');
   link.href = dataUrl;
@@ -63,10 +63,11 @@ export async function exportNodeAsPng(node: HTMLElement, filename: string, outpu
   document.body.appendChild(link);
   link.click();
   link.remove();
+  return dataUrl;
 }
 
 /** 실제 인쇄 크기(mm)에 맞춰 PDF로 저장합니다. physicalWidthMm/physicalHeightMm이 없는 규격(화면·소셜미디어용)에는 사용하지 않습니다. */
-export async function exportNodeAsPdf(node: HTMLElement, filename: string, outputFormat: OutputFormat): Promise<void> {
+export async function exportNodeAsPdf(node: HTMLElement, filename: string, outputFormat: OutputFormat): Promise<string> {
   const format = getOutputFormatMeta(outputFormat);
   const widthMm = format.physicalWidthMm;
   const heightMm = format.physicalHeightMm;
@@ -82,6 +83,7 @@ export async function exportNodeAsPdf(node: HTMLElement, filename: string, outpu
   });
   pdf.addImage(dataUrl, 'PNG', 0, 0, widthMm, heightMm);
   pdf.save(filename);
+  return dataUrl;
 }
 
 export function buildExportFilename(

@@ -2,11 +2,11 @@ const NOTION_VERSION = '2026-03-11';
 const MAX_CALENDAR_IMAGE_BYTES = 20 * 1024 * 1024;
 
 const FIELD_CANDIDATES = {
-  directorName: ['\uC131\uD568', '\uC6D0\uC7A5\uB2D8 \uC131\uD568', '\uC6D0\uC7A5\uBA85'],
+  directorName: ['\uC6D0\uC7A5\uBA85', '\uC131\uD568', '\uC6D0\uC7A5\uB2D8 \uC131\uD568'],
   year: ['\uB300\uC0C1 \uC5F0\uB3C4'],
   month: ['\uB300\uC0C1 \uC6D4'],
   templateId: ['\uD15C\uD50C\uB9BF \uD0C0\uC785'],
-  outputSize: ['\uCD9C\uB825\uC0AC\uC774\uC988', '\uCD9C\uB825 \uC0AC\uC774\uC988', '\uC0AC\uC774\uC988'],
+  outputSize: ['\uADDC\uACA9', '\uCD9C\uB825\uC0AC\uC774\uC988', '\uCD9C\uB825 \uC0AC\uC774\uC988', '\uC0AC\uC774\uC988'],
   nextMonthEvent: ['\uC774\uBCA4\uD2B8', '\uB2E4\uC74C\uB2EC \uC774\uBCA4\uD2B8', '\uB2E4\uC74C\uB2EC\uC774\uBCA4\uD2B8'],
   specialNotes: ['\uD2B9\uC774\uC0AC\uD56D/\uBCD1\uC6D0\uC694\uCCAD', '\uD2B9\uC774\uC0AC\uD56D / \uBCD1\uC6D0 \uC694\uCCAD\uC0AC\uD56D', '\uD2B9\uC774\uC0AC\uD56D', '\uBE44\uACE0'],
   requestDetails: ['\uAE30\uD0C0\uC694\uCCAD', '\uAE30\uD0C0 \uC694\uCCAD', '\uC694\uCCAD \uB0B4\uC6A9', '\uC694\uCCAD\uC0AC\uD56D'],
@@ -91,11 +91,11 @@ function findSchemaPropertyName(schema, candidates) {
 
 function blocksFor(request) {
   const entries = [
-    ['성함', request.directorName], ['일정 요약', request.scheduleSummary],
+    ['원장명', request.directorName], ['일정 요약', request.scheduleSummary],
     ['수정 항목', request.editItems?.join(', ')], ['요청 내용', request.requestDetails],
     ['색상 변경 요청', request.colorRequest], ['문구 수정 요청', request.textRequest],
     ['이미지 교체 파일', request.replacementImageFilename],
-    ['다음달 이벤트', request.nextMonthEvent], ['출력 사이즈', fieldValue(request, 'outputSize')],
+    ['다음달 이벤트', request.nextMonthEvent], ['규격', fieldValue(request, 'outputSize')],
     ['캘린더 필수 포함', request.calendarMustInclude],
     ['점심시간', request.lunchHours],
     ['특이사항', request.specialNotes],

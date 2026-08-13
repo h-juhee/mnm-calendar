@@ -337,6 +337,7 @@ function ScheduleBuilderContent({
   const previewFooter = selectedTemplate ? (
     <div className={styles.downloadActions}>
       <ExportImageButton
+        key={outputFormat}
         nodeRef={exportNodeRef}
         hospitalId={hospital.id}
         hospitalName={hospital.name}
@@ -344,6 +345,8 @@ function ScheduleBuilderContent({
         templateId={formData.templateId}
         year={formData.year}
         month={formData.month}
+        formData={formData}
+        resolvedSchedule={resolvedSchedule}
         fontId={(formData.fontId as FontId) ?? DEFAULT_FONT_ID}
         disabled={false}
         outputFormat={outputFormat}
