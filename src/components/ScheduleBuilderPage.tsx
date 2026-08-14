@@ -21,7 +21,7 @@ import { getOutputFormatMeta, type OutputFormat } from '../types/outputFormat';
 import ClinicHoursEditor from './ClinicHoursEditor';
 import { deleteCustomBackground, loadCustomBackground, migrateCustomBackground, saveCustomBackground } from '../utils/backgroundStorage';
 import { removeHospitalData, removeHospitalInfo, saveHospitalInfo } from '../utils/storageUtils';
-import { getClinicHoursWithExample } from '../utils/clinicHoursUtils';
+import { getClinicHoursWithExample, parseNotionClinicHours } from '../utils/clinicHoursUtils';
 import styles from './ScheduleBuilderPage.module.css';
 
 type SettingsPanel =
@@ -118,6 +118,23 @@ function ScheduleBuilderContent({
   const customBackgroundObjectUrlRef = useRef<string | undefined>(undefined);
   const exportNodeRef = useRef<HTMLDivElement>(null);
   const settingsPanelRef = useRef<HTMLElement>(null);
+  const setClinicHours = actions.setClinicHours;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch(`/api/notion-clinic-hours?hospitalName=${encodeURIComponent(hospital.name)}`, {
+      signal: controller.signal,
+    })
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((result) => {
+        const notionHours = result?.found
+          ? parseNotionClinicHours(result.clinicHours ?? '', result.lunchHours ?? '')
+          : null;
+        if (notionHours) setClinicHours(notionHours);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [formData.month, formData.year, hospital.name, setClinicHours]);
 
   useEffect(() => {
     let active = true;

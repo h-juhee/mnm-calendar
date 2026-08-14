@@ -17,6 +17,48 @@ export function createExampleClinicHours(): ClinicHours {
   };
 }
 
+const KOREAN_WEEKDAY_NUMBER: Record<string, number> = {
+  '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6,
+};
+
+/** Parses strings such as `월 10:00~19:00, 화 10:00~21:00` from the client DB. */
+export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHours | null {
+  const grouped = new Map<string, { days: number[]; startTime: string; endTime: string }>();
+  const entryPattern = /([월화수목금토일])(?:요일)?\s*(\d{1,2}):([0-5]\d)\s*[~～\-–—]\s*(\d{1,2}):([0-5]\d)/g;
+
+  for (const match of text.matchAll(entryPattern)) {
+    const startHour = Number(match[2]);
+    const endHour = Number(match[4]);
+    if (startHour > 23 || endHour > 23) continue;
+    const startTime = `${String(startHour).padStart(2, '0')}:${match[3]}`;
+    const endTime = `${String(endHour).padStart(2, '0')}:${match[5]}`;
+    if (endTime <= startTime) continue;
+    const key = `${startTime}-${endTime}`;
+    const existing = grouped.get(key) ?? { days: [], startTime, endTime };
+    existing.days.push(KOREAN_WEEKDAY_NUMBER[match[1]]);
+    grouped.set(key, existing);
+  }
+
+  if (grouped.size === 0) return null;
+  const lunchMatch = /(\d{1,2}):([0-5]\d)\s*[~～\-–—]\s*(\d{1,2}):([0-5]\d)/.exec(lunchText);
+  const lunchStart = lunchMatch && Number(lunchMatch[1]) <= 23
+    ? `${String(Number(lunchMatch[1])).padStart(2, '0')}:${lunchMatch[2]}`
+    : '';
+  const lunchEnd = lunchMatch && Number(lunchMatch[3]) <= 23
+    ? `${String(Number(lunchMatch[3])).padStart(2, '0')}:${lunchMatch[4]}`
+    : '';
+  const hasLunchHours = Boolean(lunchStart && lunchEnd && lunchEnd > lunchStart);
+  return {
+    rows: [...grouped.values()].map((row, index) => ({ id: `notion-hours-${index}`, ...row })),
+    lunchStart: hasLunchHours ? lunchStart : '',
+    lunchEnd: hasLunchHours ? lunchEnd : '',
+    lunchDisabled: !hasLunchHours,
+    hidden: false,
+    confirmed: true,
+    note: '',
+  };
+}
+
 export function getClinicHoursWithExample(value?: ClinicHours): ClinicHours {
   return value ?? createExampleClinicHours();
 }

@@ -5,6 +5,9 @@
     },
     "api/notion-usage-log.mjs": {
       "maxDuration": 10
+    },
+    "api/notion-clinic-hours.mjs": {
+      "maxDuration": 10
     }
   }
 }

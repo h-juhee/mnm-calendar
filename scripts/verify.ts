@@ -25,6 +25,7 @@ import {
   removeAutomaticTitleOverrides,
   setDesignEditsForFormat,
 } from '../src/utils/designEditsUtils';
+import { parseNotionClinicHours } from '../src/utils/clinicHoursUtils';
 
 // Node 실행 환경에는 브라우저 localStorage가 없으므로 검증용 최소 메모리 구현을 주입합니다.
 class MemoryStorage {
@@ -478,6 +479,29 @@ test('현재 월 전체 초기화는 병원과 연월을 유지하고 작업 데
   assert.equal(after.nextMonthEvent, '');
   assert.deepEqual(after.outputSize, []);
   assert.equal(after.calendarMustInclude, '');
+});
+
+test('노션 거래처 진료시간을 동일 시간대의 요일별 행으로 변환한다', () => {
+  const parsed = parseNotionClinicHours('월 10:00~19:00, 화 10:00~21:00, 수 10:00~19:00, 목 10:00~21:00, 금 10:00~19:00, 토 10:00~14:00');
+  assert.ok(parsed);
+  assert.deepEqual(parsed.rows, [
+    { id: 'notion-hours-0', days: [1, 3, 5], startTime: '10:00', endTime: '19:00' },
+    { id: 'notion-hours-1', days: [2, 4], startTime: '10:00', endTime: '21:00' },
+    { id: 'notion-hours-2', days: [6], startTime: '10:00', endTime: '14:00' },
+  ]);
+  assert.equal(parsed.confirmed, true);
+});
+
+test('해석할 수 없는 노션 진료시간은 적용하지 않는다', () => {
+  assert.equal(parseNotionClinicHours('진료시간은 전화 문의'), null);
+});
+
+test('노션 페이지 본문의 점심시간을 진료시간과 함께 변환한다', () => {
+  const parsed = parseNotionClinicHours('월 09:30~20:00, 토 09:30~14:00', '13:00~14:30');
+  assert.ok(parsed);
+  assert.equal(parsed.lunchStart, '13:00');
+  assert.equal(parsed.lunchEnd, '14:30');
+  assert.equal(parsed.lunchDisabled, false);
 });
 
 let passed = 0;
