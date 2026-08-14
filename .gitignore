@@ -16,9 +16,7 @@ dist-ssr
 build
 coverage
 
-# Hospital logo assets (kept locally; not committed to GitHub)
-public/logos/*
-!public/logos/README.md
+# Hospital logo assets are committed so production deployments can serve them.
 
 # Environment variables
 .env
