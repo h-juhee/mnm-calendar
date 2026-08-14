@@ -16,6 +16,10 @@ dist-ssr
 build
 coverage
 
+# Hospital logo assets (kept locally; not committed to GitHub)
+public/logos/*
+!public/logos/README.md
+
 # Environment variables
 .env
 .env.*

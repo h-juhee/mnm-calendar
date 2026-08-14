@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
 import type { HospitalInfo } from '../types/schedule';
+import { withAutoMatchedLogo } from '../utils/hospitalLogoUtils';
 import { createHospitalId, listHospitalInfos } from '../utils/storageUtils';
 import Modal from './Modal';
 import styles from './HospitalIntakeForm.module.css';
@@ -38,13 +39,13 @@ export default function HospitalIntakeForm({ onSubmit, onDeleteHospital }: Hospi
     const trimmedName = name.trim();
     const trimmedDirectorName = directorName.trim();
     if (!trimmedName || !trimmedDirectorName) return;
-    onSubmit({
+    onSubmit(withAutoMatchedLogo({
       id: createHospitalId(),
       name: trimmedName,
       directorName: trimmedDirectorName,
       primaryColor: DEFAULT_PRIMARY_COLOR,
       storageVersion: 2,
-    });
+    }));
   };
 
   return (
@@ -81,7 +82,7 @@ export default function HospitalIntakeForm({ onSubmit, onDeleteHospital }: Hospi
                   <button
                     type="button"
                     className={styles.recentSelect}
-                    onClick={() => onSubmit(hospital)}
+                    onClick={() => onSubmit(withAutoMatchedLogo(hospital))}
                   >
                     <strong>{hospital.name}</strong>
                     <span>{hospital.directorName ? `${hospital.directorName} 원장` : '저장된 작업 열기'}</span>
