@@ -66,22 +66,21 @@ export async function exportNodeAsPng(node: HTMLElement, filename: string, outpu
   return dataUrl;
 }
 
-/** 실제 인쇄 크기(mm)에 맞춰 PDF로 저장합니다. physicalWidthMm/physicalHeightMm이 없는 규격(화면·소셜미디어용)에는 사용하지 않습니다. */
+/** A4는 실제 인쇄 크기(mm), 화면·DID 규격은 원본 픽셀 비율의 PDF로 저장합니다. */
 export async function exportNodeAsPdf(node: HTMLElement, filename: string, outputFormat: OutputFormat): Promise<string> {
   const format = getOutputFormatMeta(outputFormat);
-  const widthMm = format.physicalWidthMm;
-  const heightMm = format.physicalHeightMm;
-  if (!widthMm || !heightMm) {
-    throw new Error(`${outputFormat} 규격은 실제 인쇄 크기 정보가 없어 PDF로 저장할 수 없습니다.`);
-  }
   const dataUrl = await renderNodeAsPng(node, outputFormat);
   const { jsPDF } = await import('jspdf');
+  const hasPhysicalSize = Boolean(format.physicalWidthMm && format.physicalHeightMm);
+  const pageWidth = hasPhysicalSize ? format.physicalWidthMm! : format.width;
+  const pageHeight = hasPhysicalSize ? format.physicalHeightMm! : format.height;
   const pdf = new jsPDF({
-    orientation: widthMm >= heightMm ? 'landscape' : 'portrait',
-    unit: 'mm',
-    format: [widthMm, heightMm],
+    orientation: pageWidth >= pageHeight ? 'landscape' : 'portrait',
+    unit: hasPhysicalSize ? 'mm' : 'px',
+    format: [pageWidth, pageHeight],
+    ...(hasPhysicalSize ? {} : { hotfixes: ['px_scaling'] }),
   });
-  pdf.addImage(dataUrl, 'PNG', 0, 0, widthMm, heightMm);
+  pdf.addImage(dataUrl, 'PNG', 0, 0, pageWidth, pageHeight);
   pdf.save(filename);
   return dataUrl;
 }

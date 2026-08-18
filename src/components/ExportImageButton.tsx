@@ -4,7 +4,7 @@ import type { ClinicHoursRow, DateSchedule, ScheduleFormData } from '../types/sc
 import { buildExportFilename, exportNodeAsPdf, exportNodeAsPng } from '../utils/exportUtils';
 import { ensureFontLoaded } from '../utils/fontLoader';
 import styles from './ExportImageButton.module.css';
-import { getOutputFormatMeta, type OutputFormat } from '../types/outputFormat';
+import type { OutputFormat } from '../types/outputFormat';
 import Modal from './Modal';
 
 type ExportStatus = 'idle' | 'loading' | 'done' | 'error';
@@ -168,9 +168,6 @@ export default function ExportImageButton({
   const [confirmationChecked, setConfirmationChecked] = useState(false);
   const [pendingKind, setPendingKind] = useState<ExportKind>('png');
 
-  /** 실제 인쇄 크기(mm)가 있는 규격(A4 등)에서만 PDF 저장을 제공합니다. */
-  const canExportPdf = Boolean(getOutputFormatMeta(outputFormat).physicalWidthMm);
-
   const recordUsage = async (
     kind: ExportKind,
     calendarImage: string,
@@ -269,8 +266,7 @@ export default function ExportImageButton({
     >
       {labelFor('png', pngStatus)}
     </button>
-    {canExportPdf && (
-      <button
+    <button
         type="button"
         className={
           disabled
@@ -284,8 +280,7 @@ export default function ExportImageButton({
         aria-busy={pdfStatus === 'loading'}
       >
         {labelFor('pdf', pdfStatus)}
-      </button>
-    )}
+    </button>
     {confirmationOpen && (
       <Modal title="진료시간 확인" onClose={() => setConfirmationOpen(false)}>
         <div className={styles.confirmContent}>
