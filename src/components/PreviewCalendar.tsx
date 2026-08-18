@@ -32,6 +32,7 @@ const BADGE_CLASS: Record<string, string> = {
   night: styles.badgeNight,
   saturday: styles.badgeSaturday,
   sunday: styles.badgeSunday,
+  pediatric: styles.badgePediatric,
   custom: styles.badgeHalf,
   open: styles.badgeHalf,
 };

@@ -34,6 +34,7 @@ const FIELD_CANDIDATES = {
   holidaySchedules: ['\uACF5\uD734\uC77C \uC9C4\uB8CC', '\uACF5\uD734\uC77C\uC9C4\uB8CC'],
   saturdaySchedules: ['\uD1A0\uC694\uC77C\uC9C4\uB8CC', '\uD1A0\uC694\uC77C \uC9C4\uB8CC'],
   sundaySchedules: ['\uC77C\uC694\uC77C\uC9C4\uB8CC', '\uC77C\uC694\uC77C \uC9C4\uB8CC'],
+  pediatricSchedules: ['\uC18C\uC544\uC9C4\uB8CC', '\uC18C\uC544 \uC9C4\uB8CC'],
   mondayHours: ['\uC6D4 \uC9C4\uB8CC'],
   tuesdayHours: ['\uD654 \uC9C4\uB8CC'],
   wednesdayHours: ['\uC218 \uC9C4\uB8CC'],
@@ -77,6 +78,7 @@ function deriveScheduleFields(request) {
     holidaySchedules: matching('\uACF5\uD734\uC77C\uC9C4\uB8CC'),
     saturdaySchedules: matching('\uD1A0\uC694\uC77C\uC9C4\uB8CC'),
     sundaySchedules: matching('\uC77C\uC694\uC77C\uC9C4\uB8CC'),
+    pediatricSchedules: matching('\uC18C\uC544\uC9C4\uB8CC'),
     mondayHours: forWeekday('\uC6D4'), tuesdayHours: forWeekday('\uD654'),
     wednesdayHours: forWeekday('\uC218'), thursdayHours: forWeekday('\uBAA9'),
     fridayHours: forWeekday('\uAE08'), saturdayHours: forWeekday('\uD1A0'), sundayHours: forWeekday('\uC77C'),
@@ -139,13 +141,10 @@ function normalizePropertyName(name) {
     .replace(/[^\p{L}\p{N}]/gu, '');
 }
 
-function findSchemaPropertyName(schema, candidates) {
+function findSchemaPropertyNames(schema, candidates) {
   const propertyNames = Object.keys(schema);
-  const exact = candidates.find((name) => schema[name]);
-  if (exact) return exact;
-
   const normalizedCandidates = new Set(candidates.map(normalizePropertyName));
-  return propertyNames.find((name) => normalizedCandidates.has(normalizePropertyName(name)));
+  return propertyNames.filter((name) => normalizedCandidates.has(normalizePropertyName(name)));
 }
 
 function blocksFor(request) {
@@ -294,12 +293,12 @@ export default async function handler(req, res) {
     properties[title[0]] = propertyValue(title[1], pageTitle(request));
 
     for (const [field, candidates] of Object.entries(FIELD_CANDIDATES)) {
-      const match = findSchemaPropertyName(schema, candidates);
-      if (!match) continue;
       const rawValue = fieldValue(request, field);
-      const value = field === 'outputSize' && schema[match].type === 'select' ? rawValue.split(', ')[0] : rawValue;
-      const formatted = propertyValue(schema[match], value);
-      if (formatted) properties[match] = formatted;
+      for (const match of findSchemaPropertyNames(schema, candidates)) {
+        const value = field === 'outputSize' && schema[match].type === 'select' ? rawValue.split(', ')[0] : rawValue;
+        const formatted = propertyValue(schema[match], value);
+        if (formatted) properties[match] = formatted;
+      }
     }
 
     const page = await notion('/pages', {

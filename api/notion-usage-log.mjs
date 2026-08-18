@@ -163,6 +163,7 @@ function enrichScheduleDetails(request) {
     holidaySchedules: details.holidaySchedules || matching('\uACF5\uD734\uC77C\uC9C4\uB8CC'),
     saturdaySchedules: details.saturdaySchedules || matching('\uD1A0\uC694\uC77C\uC9C4\uB8CC'),
     sundaySchedules: details.sundaySchedules || matching('\uC77C\uC694\uC77C\uC9C4\uB8CC'),
+    pediatricSchedules: details.pediatricSchedules || matching('\uC18C\uC544\uC9C4\uB8CC'),
   };
 }
 
@@ -285,6 +286,8 @@ async function usageProperties(schema, request, existingPage = null) {
   setProperty(properties, schema, '\uC57C\uAC04\uC9C4\uB8CC \uD45C\uAE30\uBB38\uAD6C', details.nightSchedules);
   setProperty(properties, schema, '\uC57C\uAC04\uC9C4\uB8CC_\uBCC0\uACBD', details.nightSchedules);
   setProperty(properties, schema, '\uC77C\uC694\uC77C\uC9C4\uB8CC', details.sundaySchedules);
+  setProperty(properties, schema, '\uC18C\uC544\uC9C4\uB8CC', details.pediatricSchedules);
+  setProperty(properties, schema, '\uC18C\uC544 \uC9C4\uB8CC', details.pediatricSchedules);
   setProperty(properties, schema, '\uD1A0\uC694\uC77C\uC9C4\uB8CC', details.saturdaySchedules);
   setProperty(properties, schema, '\uACF5\uD734\uC77C \uC9C4\uB8CC', details.holidaySchedules);
   setProperty(properties, schema, '\uACF5\uD734\uC77C\uC9C4\uB8CC', details.holidaySchedules);

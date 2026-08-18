@@ -339,6 +339,10 @@
   background: var(--schedule-badge-color, #6cb3d6);
 }
 
+.badgePediatric {
+  background: var(--schedule-badge-color, #62cdb7);
+}
+
 .badge.badgePlain {
   background: transparent;
   color: var(--schedule-badge-color, #4779ca);

@@ -47,6 +47,7 @@ const SCHEDULE_TYPE_LABELS: Record<string, string> = {
   night: '야간진료',
   saturday: '토요일진료',
   sunday: '일요일진료',
+  pediatric: '소아진료',
   custom: '직접입력',
   open: '정상진료',
 };

@@ -11,6 +11,7 @@ export type ScheduleType =
   | 'night'
   | 'saturday'
   | 'sunday'
+  | 'pediatric'
   | 'custom'
   | 'open';
 
@@ -233,6 +234,7 @@ export const SCHEDULE_TYPE_META: Record<
   night: { label: '야간 진료', shortLabel: '야간진료', },
   saturday: { label: '토요일 진료', shortLabel: '토요일진료',  },
   sunday: { label: '일요일 진료', shortLabel: '일요일진료', },
+  pediatric: { label: '소아 진료', shortLabel: '소아진료', },
   custom: { label: '직접 입력', shortLabel: '직접입력',  },
   open: { label: '정상 진료', shortLabel: '정상진료', },
 };
@@ -248,6 +250,7 @@ export const SCHEDULE_TYPE_DEFAULT_BADGE_COLOR: Record<ScheduleType, string> = {
   night: '#4779ca',
   saturday: '#6cb3d6',
   sunday: '#6cb3d6',
+  pediatric: '#62cdb7',
   custom: '#4779ca',
   open: '#68BA8C',
 };
