@@ -254,8 +254,8 @@ function EntryEditor({
           <button
             type="button"
             role="radio"
-            aria-checked={range.dates.length === 1}
-            className={[styles.displayModeOption, range.dates.length === 1 ? styles.displayModeOptionSelected : ''].filter(Boolean).join(' ')}
+            aria-checked={range.dates.length === 1 && range.dates[0] === dateKey}
+            className={[styles.displayModeOption, range.dates.length === 1 && range.dates[0] === dateKey ? styles.displayModeOptionSelected : ''].filter(Boolean).join(' ')}
             onClick={() => onRangeChange({ ...range, dates: [dateKey] })}
           >
             이 날짜만
@@ -263,12 +263,12 @@ function EntryEditor({
           <button
             type="button"
             role="radio"
-            aria-checked={range.dates.length > 1}
-            className={[styles.displayModeOption, range.dates.length > 1 ? styles.displayModeOptionSelected : ''].filter(Boolean).join(' ')}
+            aria-checked={range.dates.length !== 1 || range.dates[0] !== dateKey}
+            className={[styles.displayModeOption, range.dates.length !== 1 || range.dates[0] !== dateKey ? styles.displayModeOptionSelected : ''].filter(Boolean).join(' ')}
             onClick={() => setRangePickerOpen(true)}
           >
             여러 날짜 선택
-            {range.dates.length > 1 && (
+            {(range.dates.length !== 1 || range.dates[0] !== dateKey) && (
               <small className={styles.displayModeSummary}>
                 ({range.dates.map((date) => Number(date.slice(-2))).join(', ')}일)
               </small>
@@ -695,15 +695,16 @@ export default function DateScheduleModal({
     const updatesByDate = new Map<string, DateScheduleEntry[]>();
 
     // origin 날짜(이 모달이 열린 날짜)는 항상 현재 편집된 entries로 전체 교체합니다.
-    updatesByDate.set(dateKey, entries.map((entry, index) => {
+    updatesByDate.set(dateKey, entries.flatMap((entry, index) => {
       const range = entryRanges[index];
-      return {
+      if (range && !range.dates.includes(dateKey)) return [];
+      return [{
         ...entry,
         seriesId: `${dateKey}#${entryIds[index]}`,
         rangeEnd: undefined,
         applyDates: range?.dates.length > 1 ? range.dates : undefined,
         noMerge: range && !range.merge ? true : undefined,
-      };
+      }];
     }));
 
     // 각 항목의 범위를 다른 날짜에 반영합니다. 이미 그 날짜에 있는(다른 시리즈의) 일정은 보존하고, 이 시리즈만 갱신/제거합니다.

@@ -25,10 +25,9 @@ export default function DateRangePickerModal({
 }: DateRangePickerModalProps) {
   const [year, month] = startDate.split('-').map(Number);
   const [selectedDates, setSelectedDates] = useState<Set<string>>(
-    () => new Set([startDate, ...initialDates.filter((date) => date <= maxDate)]),
+    () => new Set(initialDates.filter((date) => date <= maxDate)),
   );
   const calendarMatrix = buildCalendarMatrix(year, month);
-  const [, , startDayStr] = startDate.split('-');
   const hasFullDateInSelection = calendarMatrix.flat().some((cell) => {
     if (!cell.date || !selectedDates.has(cell.date)) return false;
     return isDateFull?.(cell.date) ?? false;
@@ -38,7 +37,7 @@ export default function DateRangePickerModal({
     <Modal title="일정을 적용할 날짜 선택" onClose={onClose} panelClassName={styles.modalPanel}>
       <div className={styles.content}>
         <p className={styles.hint}>
-          같은 일정을 적용할 날짜를 모두 선택해 주세요. {Number(startDayStr)}일은 현재 편집 중인 날짜라 해제할 수 없습니다.
+          같은 일정을 적용할 날짜를 모두 선택해 주세요. 현재 편집 중인 날짜도 선택 해제할 수 있습니다.
         </p>
         <div className={styles.weekdays}>
           {WEEKDAY_LABELS.map((label, i) => (
@@ -50,7 +49,6 @@ export default function DateRangePickerModal({
         <div className={styles.grid}>
           {calendarMatrix.flat().map((cell, idx) => {
             if (!cell.date) return <div key={`empty-${idx}`} className={styles.cell} />;
-            const isStart = cell.date === startDate;
             const isDisabled = cell.date > maxDate;
             const isSelected = selectedDates.has(cell.date);
             const isFull = !isDisabled && (isDateFull?.(cell.date) ?? false);
@@ -59,7 +57,6 @@ export default function DateRangePickerModal({
               styles.day,
               isDisabled ? styles.dayDisabled : '',
               isSelected ? styles.daySelected : '',
-              isStart ? styles.dayLocked : '',
               isFull ? styles.dayFull : '',
             ].filter(Boolean).join(' ');
             return (
@@ -68,8 +65,8 @@ export default function DateRangePickerModal({
                 type="button"
                 className={cellClassName}
                 disabled={isDisabled}
-                onClick={() => {
-                  if (isStart) return;
+                onClick={(event) => {
+                  event.currentTarget.blur();
                   setSelectedDates((current) => {
                     const next = new Set(current);
                     if (next.has(cell.date!)) next.delete(cell.date!);
