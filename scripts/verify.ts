@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readdirSync } from 'node:fs';
 import {
   buildCalendarMatrix,
   clipVacationRangeToMonth,
@@ -26,6 +27,7 @@ import {
   setDesignEditsForFormat,
 } from '../src/utils/designEditsUtils';
 import { parseNotionClinicHours } from '../src/utils/clinicHoursUtils';
+import { HOSPITAL_LOGO_FILES } from '../src/utils/hospitalLogoUtils';
 
 // Node 실행 환경에는 브라우저 localStorage가 없으므로 검증용 최소 메모리 구현을 주입합니다.
 class MemoryStorage {
@@ -502,6 +504,26 @@ test('노션 페이지 본문의 점심시간을 진료시간과 함께 변환�
   assert.equal(parsed.lunchStart, '13:00');
   assert.equal(parsed.lunchEnd, '14:30');
   assert.equal(parsed.lunchDisabled, false);
+});
+
+test('public 로고 파일과 자동 매칭 목록이 정확히 일치한다', () => {
+  const logoDirectory = new URL('../public/logos/', import.meta.url);
+  const actualLogoFiles = readdirSync(logoDirectory)
+    .filter((fileName) => /\.(?:png|jpe?g|webp|svg)$/iu.test(fileName))
+    .sort((a, b) => a.localeCompare(b, 'ko-KR'));
+  const registeredLogoFiles = [...HOSPITAL_LOGO_FILES]
+    .sort((a, b) => a.localeCompare(b, 'ko-KR'));
+
+  assert.deepEqual(
+    registeredLogoFiles,
+    actualLogoFiles,
+    'public/logos에 파일을 추가하거나 삭제했다면 HOSPITAL_LOGO_FILES 목록도 함께 수정해야 합니다.',
+  );
+  assert.equal(
+    new Set(HOSPITAL_LOGO_FILES).size,
+    HOSPITAL_LOGO_FILES.length,
+    'HOSPITAL_LOGO_FILES에 중복된 파일명이 있습니다.',
+  );
 });
 
 let passed = 0;

@@ -73,6 +73,7 @@ function createEmptyFormData(
     vacationStart: undefined,
     vacationEnd: undefined,
     vacationBadgeColor: keep?.vacationBadgeColor,
+    vacationNoMerge: keep?.vacationNoMerge ?? false,
     templateId: null,
     fontId: keep?.fontId ?? DEFAULT_FONT_ID,
     calendarLabelStyle: keep?.calendarLabelStyle ?? 'korean',
@@ -167,6 +168,10 @@ export function useScheduleBuilder(hospitalId: string) {
     setFormData((prev) => ({ ...prev, vacationBadgeColor }));
   }, []);
 
+  const setVacationNoMerge = useCallback((vacationNoMerge: boolean) => {
+    setFormData((prev) => ({ ...prev, vacationNoMerge }));
+  }, []);
+
   const setTemplateId = useCallback((templateId: TemplateId) => {
     setFormData((prev) => ({ ...prev, templateId }));
   }, []);
@@ -241,6 +246,7 @@ export function useScheduleBuilder(hospitalId: string) {
       clearDateSchedule,
       setVacationRange,
       setVacationBadgeColor,
+      setVacationNoMerge,
       setTemplateId,
       setCalendarLabelStyle,
       setTitleTextStyle,

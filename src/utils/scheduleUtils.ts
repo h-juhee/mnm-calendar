@@ -119,13 +119,18 @@ function isWithinRange(date: string, start?: string, end?: string): boolean {
 export function resolveDateSchedule(
   dateKey: string,
   weekday: number,
-  formData: Pick<ScheduleFormData, 'dateSchedules' | 'recurringClosedDays' | 'vacationStart' | 'vacationEnd' | 'vacationBadgeColor'>,
+  formData: Pick<ScheduleFormData, 'dateSchedules' | 'recurringClosedDays' | 'vacationStart' | 'vacationEnd' | 'vacationBadgeColor' | 'vacationNoMerge'>,
 ): DateSchedule {
   const explicit = formData.dateSchedules.find((s) => s.date === dateKey);
   if (explicit) return explicit;
 
   if (isWithinRange(dateKey, formData.vacationStart, formData.vacationEnd)) {
-    return { date: dateKey, type: 'vacation', badgeColor: formData.vacationBadgeColor };
+    return {
+      date: dateKey,
+      type: 'vacation',
+      badgeColor: formData.vacationBadgeColor,
+      noMerge: formData.vacationNoMerge,
+    };
   }
 
   const holiday = getKoreanHolidays(Number(dateKey.slice(0, 4))).find((item) => item.date === dateKey);

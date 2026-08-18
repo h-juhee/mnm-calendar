@@ -21,6 +21,7 @@ import OutputSizeSelector from "./OutputSizeSelector";
 import styles from "./CustomDesignRequestModal.module.css";
 
 interface CustomDesignRequestModalProps {
+  submissionMode?: 'schedule' | 'customDesign';
   hospital: HospitalInfo;
   formData: ScheduleFormData;
   resolvedSchedule: DateSchedule[];
@@ -34,15 +35,23 @@ interface CustomDesignRequestModalProps {
 
 function formatScheduleData(resolvedSchedule: DateSchedule[]) {
   return resolvedSchedule
-    .filter((schedule) => schedule.type !== "open")
+    .filter(isChangedSchedule)
     .map((schedule) => {
       const day = Number(schedule.date.slice(-2));
       const dayLabel = schedule.label
         ? `${day}일(${schedule.label})`
         : `${day}일`;
-      return `${dayLabel}: ${SCHEDULE_TYPE_META[schedule.type].shortLabel}`;
+      const time = [schedule.startTime, schedule.endTime].filter(Boolean).join("~");
+      return `${dayLabel}: ${SCHEDULE_TYPE_META[schedule.type].shortLabel}${time ? ` · ${time}` : ""}`;
     })
     .join("\n");
+}
+
+function isChangedSchedule(schedule: DateSchedule) {
+  return schedule.type !== "open"
+    || Boolean(schedule.startTime)
+    || Boolean(schedule.endTime)
+    || Boolean(schedule.label);
 }
 
 function formatClosedDates(resolvedSchedule: DateSchedule[]) {
@@ -53,6 +62,7 @@ function formatClosedDates(resolvedSchedule: DateSchedule[]) {
 }
 
 export default function CustomDesignRequestModal({
+  submissionMode = 'customDesign',
   hospital,
   formData,
   resolvedSchedule,
@@ -69,13 +79,12 @@ export default function CustomDesignRequestModal({
   const [outputSizeError, setOutputSizeError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [hasSubmissionFailed, setHasSubmissionFailed] = useState(false);
 
   const templateName =
     TEMPLATES.find((t) => t.id === formData.templateId)?.name ??
     formData.templateId;
-  const changedDaysCount = resolvedSchedule.filter(
-    (s) => s.type !== "open",
-  ).length;
+  const changedDaysCount = resolvedSchedule.filter(isChangedSchedule).length;
   const vacationText =
     formData.vacationStart && formData.vacationEnd
       ? `${formData.vacationStart} ~ ${formData.vacationEnd}`
@@ -88,6 +97,7 @@ export default function CustomDesignRequestModal({
       ? `휴가 ${vacationText}`
       : "휴가 설정 없음",
   ].join(" · ");
+  const scheduleDetailText = formatScheduleData(resolvedSchedule) || "변동 일정 없음";
   const hasOutputSize = (formData.outputSize ?? []).length > 0;
   const hasRequestContent = [
     formData.calendarMustInclude,
@@ -95,7 +105,8 @@ export default function CustomDesignRequestModal({
     requestDetails,
     specialNotes,
   ].some((value) => value?.trim());
-  const canSubmit = hasOutputSize && hasRequestContent && !isSubmitting;
+  const isScheduleSubmission = submissionMode === 'schedule';
+  const canSubmit = hasOutputSize && (isScheduleSubmission || hasRequestContent) && !isSubmitting;
 
   const handleSubmit = async () => {
     if (isSubmitting || isSubmitted) return;
@@ -103,12 +114,13 @@ export default function CustomDesignRequestModal({
       setOutputSizeError("제작을 원하는 규격을 하나 이상 선택해 주세요.");
       return;
     }
-    if (!hasRequestContent) {
+    if (!isScheduleSubmission && !hasRequestContent) {
       setError("맞춤 제작에 필요한 내용을 하나 이상 입력해 주세요.");
       return;
     }
     setOutputSizeError(null);
     setError(null);
+    setHasSubmissionFailed(false);
     setIsSubmitting(true);
 
     const record: CustomDesignRequestRecord = {
@@ -167,6 +179,7 @@ export default function CustomDesignRequestModal({
       saveCustomDesignRequest(record);
       setIsSubmitted(true);
     } catch (submissionError) {
+      setHasSubmissionFailed(true);
       setError(
         submissionError instanceof Error
           ? submissionError.message
@@ -189,7 +202,7 @@ export default function CustomDesignRequestModal({
 
   if (isSubmitted) {
     return (
-      <Modal title="맞춤 디자인 요청" onClose={onClose}>
+      <Modal title={isScheduleSubmission ? "진료일정 제출" : "맞춤 디자인 요청"} onClose={onClose}>
         <div className={styles.successWrap}>
           <img
             className={styles.successIcon}
@@ -198,7 +211,7 @@ export default function CustomDesignRequestModal({
             aria-hidden="true"
           />
           <p className={styles.successText}>
-            맞춤 디자인 요청이 정상적으로 접수되었습니다. 요청 내용을 확인한 후
+            {isScheduleSubmission ? "진료일정이" : "맞춤 디자인 요청이"} 정상적으로 접수되었습니다. 요청 내용을 확인한 후
             순차적으로 제작할 예정입니다.
           </p>
           <button
@@ -212,15 +225,54 @@ export default function CustomDesignRequestModal({
       </Modal>
     );
   }
+  if (hasSubmissionFailed) {
+    return (
+      <Modal title="제출 실패" onClose={onClose}>
+        <div className={styles.failureWrap} role="alert">
+          <span className={styles.failureIcon} aria-hidden="true">
+            <svg viewBox="0 0 64 64">
+              <circle cx="32" cy="32" r="27" />
+              <path d="M32 17v19" />
+              <circle cx="32" cy="45" r="2" className={styles.failureIconDot} />
+            </svg>
+          </span>
+          <h3 className={styles.failureTitle}>
+            {isScheduleSubmission ? "진료일정을" : "맞춤 디자인 요청을"} 제출하지 못했습니다.
+          </h3>
+          <p className={styles.failureText}>
+            입력한 내용은 그대로 보관되어 있습니다.<br />
+            {error ?? "잠시 후 다시 시도해 주세요."}
+          </p>
+          <div className={styles.failureActions}>
+            <button type="button" className={styles.button} onClick={onClose}>
+              닫기
+            </button>
+            <button
+              type="button"
+              className={`${styles.button} ${styles.buttonPrimary}`}
+              onClick={() => {
+                setHasSubmissionFailed(false);
+                void handleSubmit();
+              }}
+            >
+              다시 제출
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
   return (
     <Modal
-      title="맞춤 디자인 요청"
+      title={isScheduleSubmission ? "진료일정 제출" : "맞춤 디자인 요청"}
       onClose={onClose}
       panelClassName={styles.requestPanel}
     >
       <div className={styles.requestBody}>
         <p className={styles.intro}>
-          신규 레이아웃 및 여러 규격 제작은 별도 견적이 필요할 수 있습니다.
+          {isScheduleSubmission
+            ? "입력한 진료일정과 제작 요청 내용을 확인한 뒤 제출해 주세요."
+            : "신규 레이아웃 및 여러 규격 제작은 별도 견적이 필요할 수 있습니다."}
         </p>
 
         <section className={styles.summary} aria-labelledby="request-summary-title">
@@ -242,7 +294,10 @@ export default function CustomDesignRequestModal({
             </div>
             <div className={styles.summaryRow}>
               <dt>일정</dt>
-              <dd>{scheduleSummaryText}</dd>
+              <dd>
+                <span className={styles.scheduleCount}>{scheduleSummaryText}</span>
+                <span className={styles.scheduleDetails}>{scheduleDetailText}</span>
+              </dd>
             </div>
           </dl>
         </section>
@@ -297,7 +352,7 @@ export default function CustomDesignRequestModal({
           />
         </div>
 
-        {!hasRequestContent && (
+        {!isScheduleSubmission && !hasRequestContent && (
           <p className={styles.requirementMessage}>
             맞춤 제작에 필요한 내용을 하나 이상 입력해 주세요.
           </p>
@@ -308,7 +363,9 @@ export default function CustomDesignRequestModal({
       <div className={styles.footer}>
         {!canSubmit && !isSubmitting && (
           <p className={styles.footerHint}>
-            희망 규격과 요청 내용을 하나 이상 입력해 주세요.
+            {isScheduleSubmission
+              ? "희망 규격을 하나 이상 선택해 주세요."
+              : "희망 규격과 요청 내용을 하나 이상 입력해 주세요."}
           </p>
         )}
         <div className={styles.footerActions}>
@@ -321,7 +378,7 @@ export default function CustomDesignRequestModal({
             onClick={handleSubmit}
             disabled={!canSubmit}
           >
-            {isSubmitting ? "제출 중…" : "요청 제출"}
+            {isSubmitting ? "제출 중…" : isScheduleSubmission ? "진료일정 제출" : "요청 제출"}
           </button>
         </div>
       </div>

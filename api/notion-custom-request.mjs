@@ -92,6 +92,7 @@ function findSchemaPropertyName(schema, candidates) {
 function blocksFor(request) {
   const entries = [
     ['원장명', request.directorName], ['일정 요약', request.scheduleSummary],
+    ['상세 일정', request.scheduleData],
     ['수정 항목', request.editItems?.join(', ')], ['요청 내용', request.requestDetails],
     ['색상 변경 요청', request.colorRequest], ['문구 수정 요청', request.textRequest],
     ['이미지 교체 파일', request.replacementImageFilename],

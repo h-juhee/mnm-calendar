@@ -118,10 +118,12 @@ npm run preview
 맞춤 디자인 요청을 Notion에 저장하려면 프로젝트 루트에 `.env.local` 파일을 만들고 다음 값을 설정합니다.
 
 ```env
+VITE_APP_MODE=internal
 NOTION_TOKEN=ntn_...
 NOTION_DATA_SOURCE_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
+- `VITE_APP_MODE`: `internal`이면 내부 직원용, `customer`이면 원장님용 앱을 표시합니다. 생략 시 내부용입니다.
 - `NOTION_TOKEN`: Notion Internal Integration 시크릿
 - `NOTION_DATA_SOURCE_ID`: 연결할 Notion 데이터 소스 ID
 - 서버 전용 시크릿이므로 변수명 앞에 `VITE_`를 붙이지 마세요.
@@ -138,6 +140,7 @@ api/                  Notion 요청용 Serverless Function
 docs/                 연동 문서
 public/templates/     템플릿 및 출력 규격별 이미지
 scripts/              검증 스크립트
+src/apps/             내부용·원장님용 앱 진입점
 src/components/       화면과 일정표 템플릿 컴포넌트
 src/hooks/            일정 작성 상태 관리
 src/types/            일정, 글꼴, 출력 규격 타입

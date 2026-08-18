@@ -9,8 +9,10 @@ interface VacationRangeFieldProps {
   start?: string;
   end?: string;
   color?: string;
+  noMerge: boolean;
   onChange: (start: string | undefined, end: string | undefined) => void;
   onColorChange: (color: string | undefined) => void;
+  onNoMergeChange: (noMerge: boolean) => void;
 }
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -24,7 +26,7 @@ function formatRangeDate(value: string) {
   return `${year}.${month}.${day}`;
 }
 
-export default function VacationRangeField({ year, month, start, end, color, onChange, onColorChange }: VacationRangeFieldProps) {
+export default function VacationRangeField({ year, month, start, end, color, noMerge, onChange, onColorChange, onNoMergeChange }: VacationRangeFieldProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [hoveredDate, setHoveredDate] = useState<string>();
   const fieldRef = useRef<HTMLDivElement>(null);
@@ -147,6 +149,29 @@ export default function VacationRangeField({ year, month, start, end, color, onC
           ? `선택한 기간이 ${year}년 ${month}월 달력에 휴가로 표시됩니다.`
           : `${year}년 ${month}월 안에서 시작일과 종료일을 선택하세요.`}
       </p>
+      <div className={styles.displayModeField}>
+        <span className={styles.label}>표시 방식</span>
+        <div className={styles.displayModeGroup} role="radiogroup" aria-label="휴가 표시 방식">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={noMerge}
+            className={`${styles.displayModeOption} ${noMerge ? styles.displayModeOptionSelected : ''}`}
+            onClick={() => onNoMergeChange(true)}
+          >
+            개별로 표시
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!noMerge}
+            className={`${styles.displayModeOption} ${!noMerge ? styles.displayModeOptionSelected : ''}`}
+            onClick={() => onNoMergeChange(false)}
+          >
+            이어서 표시
+          </button>
+        </div>
+      </div>
       <div className={styles.colorField}>
         <label className={styles.label} htmlFor="vacation-badge-color">
           휴가 라벨 색상

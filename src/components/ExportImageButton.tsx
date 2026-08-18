@@ -178,7 +178,7 @@ export default function ExportImageButton({
     exportedFormat: OutputFormat,
   ) => {
     try {
-      await fetch('/api/notion-usage-log', {
+      const response = await fetch('/api/notion-usage-log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -195,6 +195,9 @@ export default function ExportImageButton({
           details: buildUsageDetails(formData, resolvedSchedule),
         }),
       });
+      if (!response.ok) {
+        throw new Error(`사용 이력 저장 실패 (${response.status})`);
+      }
     } catch {
       // 사용 이력 서버가 일시적으로 응답하지 않아도 파일 다운로드는 정상 완료합니다.
     }
@@ -223,9 +226,9 @@ export default function ExportImageButton({
           exportedFormat,
         );
       }
-      await recordUsage(kind, calendarImage, filename.replace(/\.pdf$/i, '.png'), exportedFormat);
       setStatus('done');
       setTimeout(() => setStatus('idle'), 2500);
+      void recordUsage(kind, calendarImage, filename.replace(/\.pdf$/i, '.png'), exportedFormat);
     } catch {
       setStatus('error');
     }

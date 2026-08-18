@@ -51,7 +51,11 @@ const SETTINGS_GROUPS: { id: SettingsGroupId; label: string; items: { id: Settin
   },
 ];
 
-export default function ScheduleBuilderPage() {
+interface ScheduleBuilderPageProps {
+  appMode: 'customer' | 'internal';
+}
+
+export default function ScheduleBuilderPage({ appMode }: ScheduleBuilderPageProps) {
   const [hospital, setHospital] = useState<HospitalInfo | null>(null);
 
   const handleHospitalChange = useCallback((nextHospital: HospitalInfo) => {
@@ -83,6 +87,7 @@ export default function ScheduleBuilderPage() {
   }
   return (
     <ScheduleBuilderContent
+      appMode={appMode}
       hospital={hospital}
       onHospitalChange={handleHospitalChange}
       onHospitalReset={handleHospitalReset}
@@ -91,10 +96,12 @@ export default function ScheduleBuilderPage() {
 }
 
 function ScheduleBuilderContent({
+  appMode,
   hospital,
   onHospitalChange,
   onHospitalReset,
 }: {
+  appMode: 'customer' | 'internal';
   hospital: HospitalInfo;
   onHospitalChange: (hospital: HospitalInfo) => void;
   onHospitalReset: () => void;
@@ -222,8 +229,10 @@ function ScheduleBuilderContent({
           start={formData.vacationStart}
           end={formData.vacationEnd}
           color={formData.vacationBadgeColor}
+          noMerge={formData.vacationNoMerge ?? false}
           onChange={actions.setVacationRange}
           onColorChange={actions.setVacationBadgeColor}
+          onNoMergeChange={actions.setVacationNoMerge}
         />
       </>
     ),
@@ -353,29 +362,33 @@ function ScheduleBuilderContent({
 
   const previewFooter = selectedTemplate ? (
     <div className={styles.downloadActions}>
-      <ExportImageButton
-        key={outputFormat}
-        nodeRef={exportNodeRef}
-        hospitalId={hospital.id}
-        hospitalName={hospital.name}
-        directorName={hospital.directorName}
-        templateId={formData.templateId}
-        year={formData.year}
-        month={formData.month}
-        formData={formData}
-        resolvedSchedule={resolvedSchedule}
-        fontId={(formData.fontId as FontId) ?? DEFAULT_FONT_ID}
-        disabled={false}
-        outputFormat={outputFormat}
-        requiresClinicHoursConfirmation={outputFormat !== 'square' && !formData.clinicHours?.confirmed}
-        onClinicHoursConfirm={() => actions.setClinicHours({
-          ...getClinicHoursWithExample(formData.clinicHours),
-          confirmed: true,
-        })}
-      />
-      <button type="button" className={styles.secondaryButton} onClick={() => setCustomModalOpen(true)}>
-        맞춤 디자인 요청하기
-      </button>
+      {appMode === 'internal' && (
+        <ExportImageButton
+          key={outputFormat}
+          nodeRef={exportNodeRef}
+          hospitalId={hospital.id}
+          hospitalName={hospital.name}
+          directorName={hospital.directorName}
+          templateId={formData.templateId}
+          year={formData.year}
+          month={formData.month}
+          formData={formData}
+          resolvedSchedule={resolvedSchedule}
+          fontId={(formData.fontId as FontId) ?? DEFAULT_FONT_ID}
+          disabled={false}
+          outputFormat={outputFormat}
+          requiresClinicHoursConfirmation={outputFormat !== 'square' && !formData.clinicHours?.confirmed}
+          onClinicHoursConfirm={() => actions.setClinicHours({
+            ...getClinicHoursWithExample(formData.clinicHours),
+            confirmed: true,
+          })}
+        />
+      )}
+      {appMode === 'customer' && (
+        <button type="button" className={styles.secondaryButton} onClick={() => setCustomModalOpen(true)}>
+          진료일정 제출하기
+        </button>
+      )}
     </div>
   ) : null;
 
@@ -545,8 +558,9 @@ function ScheduleBuilderContent({
         </Modal>
       )}
 
-      {isCustomModalOpen && (
+      {appMode === 'customer' && isCustomModalOpen && (
         <CustomDesignRequestModal
+          submissionMode="schedule"
           hospital={hospital}
           formData={formData}
           resolvedSchedule={resolvedSchedule}

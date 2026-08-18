@@ -87,6 +87,8 @@ export interface ScheduleFormData {
   vacationEnd?: string;
   /** 우측 휴가 설정에서 지정하는 휴가 뱃지 색상입니다. */
   vacationBadgeColor?: string;
+  /** true면 휴가 기간을 이어붙이지 않고 날짜마다 개별 배지로 표시합니다. */
+  vacationNoMerge?: boolean;
   templateId: TemplateId | null;
   /** 진료일정 이미지에 적용할 폰트. 과거에 저장된 데이터에는 없을 수 있어 선택 필드입니다. */
   fontId?: FontId;

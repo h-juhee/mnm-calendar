@@ -1,7 +1,10 @@
-import ScheduleBuilderPage from './components/ScheduleBuilderPage';
+import CustomerApp from './apps/CustomerApp';
+import InternalApp from './apps/InternalApp';
+
+const appMode = import.meta.env.VITE_APP_MODE === 'customer' ? 'customer' : 'internal';
 
 function App() {
-  return <ScheduleBuilderPage />;
+  return appMode === 'customer' ? <CustomerApp /> : <InternalApp />;
 }
 
 export default App;
