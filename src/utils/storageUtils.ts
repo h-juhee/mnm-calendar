@@ -252,6 +252,8 @@ export interface CustomDesignRequestRecord {
   outputSize: string[];
   calendarMustInclude: string;
   lunchHours: string;
+  clinicHoursSummary: string;
+  clinicHoursNote: string;
   specialNotes: string;
   /** Notion의 `일정데이터` 속성에 전달할, 사람이 읽을 수 있는 최종 일정입니다. */
   scheduleData: string;

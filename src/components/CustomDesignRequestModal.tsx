@@ -12,13 +12,14 @@ import {
 } from "../utils/storageUtils";
 import { buildExportFilename, renderNodeAsPng } from "../utils/exportUtils";
 import { ensureFontLoaded } from "../utils/fontLoader";
-import { hasValidLunchHours } from "../utils/clinicHoursUtils";
+import { getValidClinicHoursRows, hasValidLunchHours } from "../utils/clinicHoursUtils";
 import type { FontId } from "../types/font";
 import type { OutputFormat } from "../types/outputFormat";
 import Modal from "./Modal";
 import AdditionalInfoFields from "./AdditionalInfoFields";
 import OutputSizeSelector from "./OutputSizeSelector";
 import styles from "./CustomDesignRequestModal.module.css";
+import { postUsageLogReliably } from "../utils/usageLogUtils";
 
 interface CustomDesignRequestModalProps {
   submissionMode?: 'schedule' | 'customDesign';
@@ -59,6 +60,81 @@ function formatClosedDates(resolvedSchedule: DateSchedule[]) {
     .filter((schedule) => schedule.type === "closed")
     .map((schedule) => `${Number(schedule.date.slice(-2))}일`)
     .join(", ");
+}
+
+function formatHolidaySchedules(resolvedSchedule: DateSchedule[]) {
+  const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+  return resolvedSchedule
+    .filter((schedule) => schedule.type === "shortened")
+    .map((schedule) => {
+      const day = Number(schedule.date.slice(-2));
+      const weekday = weekdays[new Date(`${schedule.date}T00:00:00Z`).getUTCDay()];
+      const time = schedule.startTime && schedule.endTime ? ` · ${schedule.startTime}~${schedule.endTime}` : "";
+      return `${day}일(${weekday}): 공휴일 진료${time}`;
+    })
+    .join("\n");
+}
+
+function buildCustomerUsageDetails(formData: ScheduleFormData, resolvedSchedule: DateSchedule[]) {
+  const formatTypedSchedules = (types: string[]) => formatScheduleData(
+    resolvedSchedule.filter((schedule) => types.includes(schedule.type)),
+  );
+  const clinicRows = getValidClinicHoursRows(formData.clinicHours);
+  const hoursForDay = (day: number) => clinicRows
+    .filter((row) => row.days.includes(day))
+    .map((row) => {
+      const badge = row.badgeLabel?.trim() ? ` · 배지 ${row.badgeLabel.trim()}` : "";
+      const note = row.note?.trim() ? ` · 추가 안내 ${row.note.trim()}` : "";
+      return `${row.startTime}-${row.endTime}${badge}${note}`;
+    })
+    .join("\n");
+  const nightItems = resolvedSchedule.filter((schedule) => schedule.type === "night");
+  const weekdayLabels = ["일", "월", "화", "수", "목", "금", "토"];
+  return {
+    recurringClosedDays: formData.recurringClosedDays.map((day) => weekdayLabels[day]).join(", "),
+    customSchedules: formatScheduleData(formData.dateSchedules),
+    closedReason: formatTypedSchedules(["closed", "vacation", "seminarClosed"]),
+    mondayHours: hoursForDay(1),
+    tuesdayHours: hoursForDay(2),
+    wednesdayHours: hoursForDay(3),
+    thursdayHours: hoursForDay(4),
+    fridayHours: hoursForDay(5),
+    saturdayHours: hoursForDay(6),
+    sundayHours: hoursForDay(0),
+    morningHours: formatTypedSchedules(["morningClosed"]),
+    afternoonHours: formatTypedSchedules(["afternoonClosed"]),
+    nightSchedules: formatScheduleData(nightItems),
+    nightDates: nightItems.map((schedule) => `${Number(schedule.date.slice(-2))}일(${weekdayLabels[new Date(`${schedule.date}T00:00:00Z`).getUTCDay()]})`).join(", "),
+    saturdaySchedules: formatTypedSchedules(["saturday"]),
+    sundaySchedules: formatTypedSchedules(["sunday"]),
+    holidaySchedules: formatHolidaySchedules(resolvedSchedule),
+  };
+}
+
+const CLINIC_DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+const CLINIC_DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+function formatClinicHoursSummary(formData: ScheduleFormData) {
+  const rows = getValidClinicHoursRows(formData.clinicHours);
+  if (rows.length === 0) return "진료시간 미입력";
+  return rows.map((row) => {
+    const days = CLINIC_DAY_ORDER
+      .filter((day) => row.days.includes(day))
+      .map((day) => CLINIC_DAY_LABELS[day])
+      .join("·");
+    const badge = row.badgeLabel?.trim()
+      ? `- 배지: ${row.badgeLabel.trim()}${row.badgeColor ? ` (${row.badgeColor.toUpperCase()})` : ""}`
+      : "";
+    const note = row.note?.trim() ? `- 추가 안내: ${row.note.trim()}` : "";
+    return [`${days} ${row.startTime}~${row.endTime}`, badge, note].filter(Boolean).join("\n");
+  }).join("\n\n");
+}
+
+function formatLunchHoursSummary(formData: ScheduleFormData) {
+  if (formData.clinicHours?.lunchDisabled) return "점심시간 없음";
+  return hasValidLunchHours(formData.clinicHours)
+    ? `${formData.clinicHours!.lunchStart}~${formData.clinicHours!.lunchEnd}`
+    : "점심시간 미입력";
 }
 
 export default function CustomDesignRequestModal({
@@ -140,6 +216,8 @@ export default function CustomDesignRequestModal({
       lunchHours: hasValidLunchHours(formData.clinicHours)
         ? `${formData.clinicHours!.lunchStart} ~ ${formData.clinicHours!.lunchEnd}`
         : "",
+      clinicHoursSummary: formatClinicHoursSummary(formData),
+      clinicHoursNote: formData.clinicHours?.note?.trim() ?? "",
       specialNotes: specialNotes.trim(),
       scheduleData: formatScheduleData(resolvedSchedule),
       closedDates: formatClosedDates(resolvedSchedule),
@@ -174,6 +252,45 @@ export default function CustomDesignRequestModal({
       } | null;
       if (!response.ok)
         throw new Error(result?.message ?? "요청을 저장하지 못했습니다.");
+
+      // 원장용 제출도 내부 다운로드와 같은 사용이력 DB에 기록합니다.
+      // 주 접수는 이미 완료된 상태이므로, 이력 저장 실패가 재제출과 중복 접수로 이어지지 않게 별도로 처리합니다.
+      if (isScheduleSubmission) {
+        await postUsageLogReliably({
+            hospitalId: hospital.id,
+            hospitalName: hospital.name,
+            directorName: hospital.directorName,
+            year: formData.year,
+            month: formData.month,
+            templateId: formData.templateId,
+            outputFormat,
+            outputSizes: record.outputSize,
+            exportType: "png",
+            calendarImage,
+            calendarImageFilename: buildExportFilename(
+              hospital.name,
+              formData.year,
+              formData.month,
+              outputFormat,
+            ),
+            details: {
+              ...buildCustomerUsageDetails(formData, resolvedSchedule),
+              scheduleData: record.scheduleData,
+              closedDates: record.closedDates,
+              nextMonthEvent: record.nextMonthEvent,
+              calendarMustInclude: record.calendarMustInclude,
+              lunchHours: record.lunchHours,
+              clinicHoursRaw: record.clinicHoursSummary,
+              clinicHoursNote: record.clinicHoursNote,
+              otherRequests: [record.requestDetails, record.specialNotes].filter(Boolean).join("\n"),
+              vacationRange: formData.vacationStart && formData.vacationEnd
+                ? `${formData.vacationStart} ~ ${formData.vacationEnd}`
+                : "",
+            },
+        }).catch((usageError) => {
+          console.error("사용이력 저장을 보류했습니다. 다음 실행 때 다시 시도합니다.", usageError);
+        });
+      }
 
       // Keep a local copy for this browser as well, after Notion accepts the request.
       saveCustomDesignRequest(record);
@@ -298,6 +415,14 @@ export default function CustomDesignRequestModal({
                 <span className={styles.scheduleCount}>{scheduleSummaryText}</span>
                 <span className={styles.scheduleDetails}>{scheduleDetailText}</span>
               </dd>
+            </div>
+            <div className={styles.summaryRow}>
+              <dt>진료시간</dt>
+              <dd className={styles.multilineValue}>{formatClinicHoursSummary(formData)}</dd>
+            </div>
+            <div className={styles.summaryRow}>
+              <dt>점심시간</dt>
+              <dd>{formatLunchHoursSummary(formData)}</dd>
             </div>
           </dl>
         </section>

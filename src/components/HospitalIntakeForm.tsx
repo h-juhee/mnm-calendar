@@ -8,11 +8,12 @@ import styles from './HospitalIntakeForm.module.css';
 interface HospitalIntakeFormProps {
   onSubmit: (hospital: HospitalInfo) => void;
   onDeleteHospital: (hospital: HospitalInfo) => Promise<boolean>;
+  showRecentHospitals?: boolean;
 }
 
 const DEFAULT_PRIMARY_COLOR = '#2f6fed';
 
-export default function HospitalIntakeForm({ onSubmit, onDeleteHospital }: HospitalIntakeFormProps) {
+export default function HospitalIntakeForm({ onSubmit, onDeleteHospital, showRecentHospitals = false }: HospitalIntakeFormProps) {
   const [recentHospitals, setRecentHospitals] = useState(() => listHospitalInfos());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -70,7 +71,7 @@ export default function HospitalIntakeForm({ onSubmit, onDeleteHospital }: Hospi
           </p>
         </div>
 
-        {recentHospitals.length > 0 && (
+        {showRecentHospitals && recentHospitals.length > 0 && (
           <section className={styles.recentSection} aria-labelledby="recent-hospitals-title">
             <div className={styles.recentHeading}>
               <h3 id="recent-hospitals-title">최근 병원</h3>
@@ -125,7 +126,7 @@ export default function HospitalIntakeForm({ onSubmit, onDeleteHospital }: Hospi
           </section>
         )}
 
-        {recentHospitals.length > 0 && (
+        {showRecentHospitals && recentHospitals.length > 0 && (
           <div className={styles.divider}><span>새 병원 등록</span></div>
         )}
 

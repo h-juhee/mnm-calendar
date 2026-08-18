@@ -143,6 +143,10 @@
   line-height: 1.65;
 }
 
+.multilineValue {
+  white-space: pre-line;
+}
+
 .error {
   font-size: 13px;
   color: var(--color-danger);

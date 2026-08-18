@@ -59,6 +59,7 @@
 .secondaryButton:hover { color: var(--color-primary); border-color: var(--color-primary); }
 .previewDisabled { min-height: 420px; display: grid; place-items: center; color: var(--color-text-muted); border: 1px dashed var(--color-border); border-radius: var(--radius-lg); }
 .templateSelectModal { max-width: 520px; }
+.templateListSpacing { margin-top: 12px; }
 .switchConfirmContent { display: flex; flex-direction: column; gap: 9px; }
 .switchConfirmContent p { color: var(--color-text-muted); font-size: 13px; line-height: 1.55; }
 .switchConfirmContent strong { color: var(--color-text); }

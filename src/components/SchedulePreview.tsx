@@ -68,6 +68,7 @@ interface SchedulePreviewProps {
   previewFooter: ReactNode;
   onOpenElements: () => void;
   onOpenClinicHours: () => void;
+  requireClinicHoursConfirmation?: boolean;
   onHospitalDisplayModeChange: (mode: 'name' | 'logo') => void;
 }
 
@@ -169,6 +170,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     previewFooter,
     onOpenElements,
     onOpenClinicHours,
+    requireClinicHoursConfirmation = false,
     onHospitalDisplayModeChange,
   },
   ref,
@@ -211,8 +213,9 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
   const displayedClinicHours = hidesClinicHours
     ? formData.clinicHours
     : getClinicHoursWithExample(formData.clinicHours);
-  const usesExampleClinicHours = !hidesClinicHours && !hasRenderableClinicHours(formData.clinicHours);
-  const needsClinicHoursConfirmation = !hidesClinicHours && !formData.clinicHours?.confirmed;
+  const shouldCheckClinicHours = !hidesClinicHours || requireClinicHoursConfirmation;
+  const usesExampleClinicHours = shouldCheckClinicHours && !hasRenderableClinicHours(formData.clinicHours);
+  const needsClinicHoursConfirmation = shouldCheckClinicHours && !formData.clinicHours?.confirmed;
   const scale = fitScale;
 
   const dismissCanvasEditHint = useCallback(() => {
@@ -496,6 +499,12 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     setSelectedLayer(id);
     setCanvasElementSelected(true);
     setExpandedLayer(id);
+    if (id === 'clinicHours') {
+      onOpenClinicHours();
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     onOpenElements();
 
     if (target.querySelector('img') || !['title', 'subtitle', 'hospital'].includes(id)) {
@@ -874,8 +883,12 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
         {needsClinicHoursConfirmation && (
           <button type="button" className={styles.exampleHoursNotice} onClick={onOpenClinicHours}>
             <span>
-              <strong>{usesExampleClinicHours ? '예시 진료시간 · 수정 필요' : '진료시간 · 확인 필요'}</strong>
-              <small>실제 운영시간에 맞게 수정하고 확인해 주세요.</small>
+              <strong>진료시간을 확인해 주세요</strong>
+              <small>
+                {usesExampleClinicHours
+                  ? '예시 시간입니다. 실제 운영시간과 맞는지 확인하고 필요한 경우 수정해 주세요.'
+                  : '실제 운영시간과 맞는지 확인하고 필요한 경우 수정해 주세요.'}
+              </small>
             </span>
             <span className={styles.exampleHoursAction}>진료시간 수정</span>
           </button>

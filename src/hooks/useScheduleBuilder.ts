@@ -30,8 +30,15 @@ const FIXED_YEAR = 2026;
 const DEFAULT_MONTH = 9;
 
 function normalizeOutputSizes(value: unknown): string[] {
-  if (Array.isArray(value)) return value.filter((size): size is string => typeof size === 'string');
-  return typeof value === 'string' ? [value] : [];
+  const legacyIds: Record<string, string> = {
+    popup: 'square',
+    verticalDid: 'didVertical',
+    horizontalDid: 'didHorizontal',
+  };
+  const sizes = Array.isArray(value) ? value : typeof value === 'string' ? [value] : [];
+  return [...new Set(sizes
+    .filter((size): size is string => typeof size === 'string')
+    .map((size) => legacyIds[size] ?? size))];
 }
 
 function normalizeTemplateId(value: unknown): TemplateId | null {
@@ -51,7 +58,7 @@ function normalizeClinicHours(value: ClinicHours | undefined): ClinicHours {
     lunchStart: value.lunchStart ?? '',
     lunchEnd: value.lunchEnd ?? '',
     lunchDisabled: value.lunchDisabled ?? false,
-    hidden: value.hidden ?? false,
+    hidden: false,
     confirmed: value.confirmed ?? false,
     note: value.note ?? '',
   };

@@ -30,6 +30,9 @@
 }
 
 .sizeOption {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
   padding: 10px 12px;
   font-size: 14px;
   font-weight: 600;
@@ -38,6 +41,22 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
+}
+
+.sizeOption strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sizeOption span {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.sizeOptionActive span {
+  color: currentColor;
+  opacity: 0.85;
 }
 
 .sizeOption:hover {

@@ -6,6 +6,7 @@ import { ensureFontLoaded } from '../utils/fontLoader';
 import styles from './ExportImageButton.module.css';
 import type { OutputFormat } from '../types/outputFormat';
 import Modal from './Modal';
+import { postUsageLogReliably } from '../utils/usageLogUtils';
 
 type ExportStatus = 'idle' | 'loading' | 'done' | 'error';
 type ExportKind = 'png' | 'pdf';
@@ -79,22 +80,39 @@ function formatNightDates(schedules: DateSchedule[]) {
     .join(', ');
 }
 
+function formatHolidaySchedule(schedule: DateSchedule) {
+  const weekday = WEEKDAY_NAMES[new Date(`${schedule.date}T00:00:00Z`).getUTCDay()];
+  const time = schedule.startTime && schedule.endTime ? ` · ${schedule.startTime}~${schedule.endTime}` : '';
+  return `${formatDateLabel(schedule.date)}(${weekday}) 공휴일진료${time}`;
+}
+
 function formatClinicHours(formData: ScheduleFormData) {
   const clinicHours = formData.clinicHours;
   if (!clinicHours || clinicHours.hidden) return {};
 
-  const rows = clinicHours.rows
-    .filter((row) => row.days.length && row.startTime && row.endTime)
-    .map((row) => {
-      const days = row.days.map((day) => WEEKDAY_NAMES[day]).join(',');
-      const note = row.note?.trim() ? ` (${row.note.trim()})` : '';
-      return `${days} ${row.startTime}-${row.endTime}${note}`;
-    });
   const byDay = (day: number) => rowsForDay(clinicHours.rows, day);
+  const orderedDays = [1, 2, 3, 4, 5, 6, 0];
+  const dayRows = orderedDays
+    .map((day) => {
+      const hours = byDay(day);
+      return hours ? `${WEEKDAY_NAMES[day]} ${hours}` : '';
+    })
+    .filter(Boolean);
+  const clinicHoursSummary = clinicHours.rows
+    .filter((row) => row.days.length > 0 && row.startTime && row.endTime)
+    .map((row) => {
+      const days = orderedDays.filter((day) => row.days.includes(day)).map((day) => WEEKDAY_NAMES[day]).join('·');
+      const badge = row.badgeLabel?.trim()
+        ? `- 배지: ${row.badgeLabel.trim()}${row.badgeColor ? ` (${row.badgeColor.toUpperCase()})` : ''}`
+        : '';
+      const note = row.note?.trim() ? `- 추가 안내: ${row.note.trim()}` : '';
+      return [`${days} ${row.startTime}~${row.endTime}`, badge, note].filter(Boolean).join('\n');
+    })
+    .join('\n\n');
   const lunchHours = clinicHours.lunchDisabled ? '' : [clinicHours.lunchStart, clinicHours.lunchEnd].filter(Boolean).join('-');
 
   return {
-    clinicHoursRaw: rows.join('\n'),
+    clinicHoursRaw: clinicHoursSummary,
     mondayHours: byDay(1),
     tuesdayHours: byDay(2),
     wednesdayHours: byDay(3),
@@ -102,8 +120,8 @@ function formatClinicHours(formData: ScheduleFormData) {
     fridayHours: byDay(5),
     saturdayHours: byDay(6),
     sundayHours: byDay(0),
-    morningHours: rows.find((row) => row.includes('오전')) || '',
-    afternoonHours: rows.find((row) => row.includes('오후')) || '',
+    morningHours: dayRows.find((row) => row.includes('오전')) || '',
+    afternoonHours: dayRows.find((row) => row.includes('오후')) || '',
     lunchHours,
     clinicHoursNote: clinicHours.note?.trim() || '',
   };
@@ -112,7 +130,13 @@ function formatClinicHours(formData: ScheduleFormData) {
 function rowsForDay(rows: ClinicHoursRow[], day: number) {
   return rows
     .filter((row) => row.days?.includes(day) && row.startTime && row.endTime)
-    .map((row) => `${row.startTime}-${row.endTime}${row.note?.trim() ? ` (${row.note.trim()})` : ''}`)
+    .map((row) => {
+      const badge = row.badgeLabel?.trim()
+        ? ` · 배지 ${row.badgeLabel.trim()}${row.badgeColor ? ` (${row.badgeColor.toUpperCase()})` : ''}`
+        : '';
+      const note = row.note?.trim() ? ` · 추가 안내 ${row.note.trim()}` : '';
+      return `${row.startTime}-${row.endTime}${badge}${note}`;
+    })
     .join('\n');
 }
 
@@ -123,7 +147,8 @@ function buildUsageDetails(formData: ScheduleFormData, resolvedSchedule: DateSch
     .map(formatDateSchedule)
     .join('\n');
   const nightSchedules = resolvedSchedule.filter((schedule) => schedule.type === 'night').map(formatDateSchedule).join('\n');
-  const holidaySchedules = resolvedSchedule.filter((schedule) => schedule.type === 'shortened').map(formatDateSchedule).join('\n');
+  const holidayScheduleItems = resolvedSchedule.filter((schedule) => schedule.type === 'shortened');
+  const holidaySchedules = holidayScheduleItems.map(formatHolidaySchedule).join('\n');
   const vacationRange = [formData.vacationStart, formData.vacationEnd].filter(Boolean).join(' ~ ');
 
   return {
@@ -141,8 +166,6 @@ function buildUsageDetails(formData: ScheduleFormData, resolvedSchedule: DateSch
     sundaySchedules: formatScheduleDates(resolvedSchedule, 'sunday'),
     nextMonthEvent: formData.nextMonthEvent?.trim() || '',
     calendarMustInclude: formData.calendarMustInclude?.trim() || '',
-    finalScheduleJson: JSON.stringify(resolvedSchedule),
-    exceptionScheduleJson: JSON.stringify(formData.dateSchedules),
   };
 }
 
@@ -175,10 +198,7 @@ export default function ExportImageButton({
     exportedFormat: OutputFormat,
   ) => {
     try {
-      const response = await fetch('/api/notion-usage-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await postUsageLogReliably({
           hospitalId,
           hospitalName,
           directorName,
@@ -190,13 +210,9 @@ export default function ExportImageButton({
           calendarImage,
           calendarImageFilename,
           details: buildUsageDetails(formData, resolvedSchedule),
-        }),
-      });
-      if (!response.ok) {
-        throw new Error(`사용 이력 저장 실패 (${response.status})`);
-      }
-    } catch {
-      // 사용 이력 서버가 일시적으로 응답하지 않아도 파일 다운로드는 정상 완료합니다.
+        });
+    } catch (error) {
+      console.error('사용이력 저장을 보류했습니다. 다음 실행 때 다시 시도합니다.', error);
     }
   };
 
@@ -225,7 +241,7 @@ export default function ExportImageButton({
       }
       setStatus('done');
       setTimeout(() => setStatus('idle'), 2500);
-      void recordUsage(kind, calendarImage, filename.replace(/\.pdf$/i, '.png'), exportedFormat);
+      await recordUsage(kind, calendarImage, filename.replace(/\.pdf$/i, '.png'), exportedFormat);
     } catch {
       setStatus('error');
     }

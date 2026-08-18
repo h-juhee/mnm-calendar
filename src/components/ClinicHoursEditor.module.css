@@ -1,17 +1,25 @@
 .wrap { display: flex; flex-direction: column; gap: 14px; }
-.exampleNotice { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; color: var(--color-text); background: color-mix(in srgb, #fff4cc 70%, #fff); border: 1px solid #ead17a; border-radius: 10px; cursor: text; }
-.exampleNotice strong { font-size: 12px; font-weight: 600; }
-.exampleNotice span { color: var(--color-text-muted); font-size: 11px; line-height: 1.45; }
+.exampleNotice { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; color: #111827; background: #ffedaa; border: 1px solid #d79a12; border-radius: 10px; }
+.exampleNotice > div { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.exampleNotice strong { color: #111827; font-size: 15px; font-weight: 700; }
+.exampleNotice span { color: #111827; font-size: 14px; line-height: 1.45; }
+.exampleNotice button { flex: 0 0 auto; padding: 8px 11px; color: #111827; background: #fff9e5; border: 1px solid #c98c0b; border-radius: 7px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; }
+.exampleNotice button:hover { color: #fff; background: var(--color-primary); border-color: var(--color-primary); }
 .fields { display: flex; flex-direction: column; gap: 14px; }
-.fields[hidden] { display: none; }
-.visibilityOption { display: inline-flex; align-items: center; gap: 8px; color: var(--color-text); cursor: pointer; }
-.visibilityOption input { width: 17px; height: 17px; margin: 0; flex: 0 0 auto; accent-color: var(--color-primary); }
-.visibilityOption strong { font-size: 12px; }
-.displaySettings { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 4px 0; border-top: 1px solid var(--color-border); }
-.displaySettings > span { color: var(--color-text-muted); font-size: 11px; font-weight: 600; }
+.currentHoursSummary { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; color: var(--color-text); background: color-mix(in srgb, var(--color-primary-bg) 48%, #fff); border: 1px solid color-mix(in srgb, var(--color-primary) 30%, var(--color-border)); border-radius: 10px; }
+.currentHoursSummary > strong { font-size: 13px; font-weight: 700; }
+.currentHoursSummary > div { display: flex; flex-direction: column; gap: 5px; }
+.currentHoursSummary span { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; font-size: 13px; line-height: 1.45; }
+.currentHoursSummary b { font-weight: 600; }
+.currentHoursSummary p { margin: 0; color: var(--color-text-muted); font-size: 13px; }
 .rowCard { padding: 20px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 12px; }
 .rowHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
 .rowHeader strong { font-size: 17px; font-weight: 800; line-height: 1.35; }
+.rowToggle { min-width: 0; flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 0; color: var(--color-text); background: transparent; border: 0; cursor: pointer; text-align: left; }
+.rowToggle > span { min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.rowToggle small { overflow: hidden; color: var(--color-text-muted); font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.rowToggle svg, .detailToggle svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; transition: transform 160ms ease; }
+.rowToggle[aria-expanded='true'] svg, .detailToggle[aria-expanded='true'] svg { transform: rotate(180deg); }
 .removeButton { min-height: 34px; padding: 6px 9px; color: color-mix(in srgb, var(--color-danger) 65%, var(--color-text-muted)); background: transparent; border: 0; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
 .removeButton:hover { color: var(--color-danger); background: var(--color-danger-bg); }
 .dayToolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 0 8px; color: var(--color-text-muted); font-size: 12px; font-weight: 600; }
@@ -24,25 +32,31 @@
 .day { min-width: 0; height: 38px; padding: 0; color: var(--color-text-muted); background: #fff; border: 1px solid var(--color-border); border-radius: 10px; cursor: pointer; font-weight: 600; }
 .dayActive { color: #fff; background: var(--color-primary); border-color: var(--color-primary); }
 .timeFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; }
-.timeFields label, .noteField { min-width: 0; display: flex; flex-direction: column; gap: 6px; color: var(--color-text-muted); font-size: 12px; font-weight: 600; }
+.timeFields label, .detailFields label, .noteField { min-width: 0; display: flex; flex-direction: column; gap: 6px; color: var(--color-text-muted); font-size: 12px; font-weight: 600; }
+.detailToggle { width: 100%; display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding: 10px 12px; color: var(--color-text); background: #fff; border: 1px solid var(--color-border); border-radius: 8px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 700; }
+.detailToggle:hover { color: var(--color-primary); border-color: var(--color-primary); }
+.detailFields { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border); }
 .badgeField, .rowNoteField { grid-column: 1 / -1; }
 .badgeField small, .rowNoteField small { color: var(--color-text-muted); font-size: 11px; font-weight: 400; }
-.badgeColorField { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; }
-.badgeColorControls { display: flex; align-items: center; gap: 8px; }
-.badgeColorControls button { padding: 6px 8px; color: var(--color-text-muted); background: #fff; border: 1px solid var(--color-border); border-radius: 7px; cursor: pointer; font: inherit; font-size: 11px; font-weight: 600; }
-.badgeColorControls button:disabled { cursor: default; opacity: .45; }
-.timeFields input, .timeFields select, .secondaryFields input, .secondaryFields select { width: 100%; min-width: 0; min-height: 44px; padding: 9px 11px; color: var(--color-text); background: #fff; border: 1px solid var(--color-border); border-radius: 8px; font: inherit; }
-.timeFields input::placeholder, .secondaryFields input::placeholder { font-weight: 400; }
-.timeFields input:focus, .timeFields select:focus, .secondaryFields input:focus, .secondaryFields select:focus { border-color: var(--color-primary); }
-.addButton { width: 100%; min-height: 42px; padding: 9px 11px; color: var(--color-text-muted); font-size: 13px; font-weight: 600; background: #fff; border: 1px solid var(--color-border); border-radius: 9px; cursor: pointer; }
-.addButton:hover { color: var(--color-primary); border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary-bg) 35%, #fff); }
+.badgeColorField { display: grid; grid-template-columns: auto minmax(150px, 170px) auto; align-items: center; justify-content: start; gap: 8px; }
+.badgeColorField > span { color: var(--color-text-muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.badgeColorReset { padding: 6px 8px; color: var(--color-text-muted); background: #fff; border: 1px solid var(--color-border); border-radius: 7px; cursor: pointer; font: inherit; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.badgeColorReset:hover:not(:disabled) { color: var(--color-primary); border-color: var(--color-primary); }
+.badgeColorReset:disabled { cursor: default; opacity: .45; }
+.timeFields input, .timeFields select, .detailFields > label > input, .detailFields > label > select, .secondaryFields input, .secondaryFields select { width: 100%; min-width: 0; min-height: 44px; box-sizing: border-box; padding: 9px 11px; color: var(--color-text); background: #fff; border: 1px solid var(--color-border); border-radius: 8px; font: inherit; }
+.timeFields input::placeholder, .detailFields > label > input::placeholder, .secondaryFields input::placeholder { font-weight: 400; }
+.timeFields input:focus, .timeFields select:focus, .detailFields > label > input:focus, .detailFields > label > select:focus, .secondaryFields input:focus, .secondaryFields select:focus { border-color: var(--color-primary); outline: none; }
+.addButton { width: 100%; min-height: 44px; padding: 9px 11px; color: var(--color-primary); font-size: 13px; font-weight: 700; background: color-mix(in srgb, var(--color-primary-bg) 55%, #fff); border: 1px solid color-mix(in srgb, var(--color-primary) 60%, var(--color-border)); border-radius: 9px; cursor: pointer; }
+.addButton:hover { color: #fff; border-color: var(--color-primary); background: var(--color-primary); }
 .addButtonSecondary { font-size: 13px; }
 .secondaryFields { display: flex; flex-direction: column; gap: 10px; padding-top: 8px; }
 .lunchHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--color-text); font-size: 13px; }
 .lunchHeader > strong { font-size: 17px; font-weight: 800; line-height: 1.35; }
 .noLunchOption { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-muted); font-size: 11px; font-weight: 600; cursor: pointer; }
 .noLunchOption input { width: 16px; min-height: 16px; accent-color: var(--color-primary); }
-.lunchFields { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 8px; font-size: 12px; font-weight: 600; }
+.lunchFields { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: end; gap: 8px; font-size: 12px; font-weight: 600; }
+.lunchFields label { min-width: 0; display: flex; flex-direction: column; gap: 6px; color: var(--color-text-muted); font-size: 12px; font-weight: 600; }
+.lunchFields > span { min-height: 44px; display: flex; align-items: center; color: var(--color-text); }
 .secondaryFields input:disabled, .secondaryFields select:disabled { color: var(--color-text-muted); background: var(--color-bg); cursor: not-allowed; opacity: .7; }
 .errorList { display: flex; flex-direction: column; gap: 3px; margin-top: 12px; }
 .errorList p, .inlineError { margin: 0; color: var(--color-danger); font-size: 11px; line-height: 1.4; }
@@ -63,4 +77,6 @@
   .timeFields { grid-template-columns: minmax(0, 1fr); }
   .badgeField, .badgeColorField, .rowNoteField { grid-column: auto; }
   .lunchHeader { align-items: flex-start; flex-wrap: wrap; }
+  .badgeColorField { grid-template-columns: auto minmax(0, 1fr); }
+  .badgeColorReset { grid-column: 2; justify-self: start; }
 }

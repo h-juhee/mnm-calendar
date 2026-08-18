@@ -22,6 +22,7 @@ import ClinicHoursEditor from './ClinicHoursEditor';
 import { deleteCustomBackground, loadCustomBackground, migrateCustomBackground, saveCustomBackground } from '../utils/backgroundStorage';
 import { removeHospitalData, removeHospitalInfo, saveHospitalInfo } from '../utils/storageUtils';
 import { getClinicHoursWithExample, parseNotionClinicHours } from '../utils/clinicHoursUtils';
+import { flushPendingUsageLogs } from '../utils/usageLogUtils';
 import styles from './ScheduleBuilderPage.module.css';
 
 type SettingsPanel =
@@ -82,6 +83,7 @@ export default function ScheduleBuilderPage({ appMode }: ScheduleBuilderPageProp
       <HospitalIntakeForm
         onSubmit={handleHospitalChange}
         onDeleteHospital={handleHospitalDelete}
+        showRecentHospitals={false}
       />
     );
   }
@@ -120,12 +122,33 @@ function ScheduleBuilderContent({
   const [isFormatSectionExpanded, setFormatSectionExpanded] = useState(true);
   const [activeSettingsPanel, setActiveSettingsPanel] = useState<SettingsPanel>('basic');
   const [expandedSettingsGroup, setExpandedSettingsGroup] = useState<SettingsGroupId>('schedule');
+  const visibleSettingsGroups = appMode === 'customer'
+    ? SETTINGS_GROUPS.filter((group) => group.id !== 'design')
+    : SETTINGS_GROUPS;
   const [customBackgroundUrl, setCustomBackgroundUrl] = useState<string>();
   const [customBackgroundFileName, setCustomBackgroundFileName] = useState<string>();
   const customBackgroundObjectUrlRef = useRef<string | undefined>(undefined);
   const exportNodeRef = useRef<HTMLDivElement>(null);
   const settingsPanelRef = useRef<HTMLElement>(null);
   const setClinicHours = actions.setClinicHours;
+
+  useEffect(() => {
+    void flushPendingUsageLogs();
+  }, []);
+
+  useEffect(() => {
+    if (appMode === 'customer' && outputFormat !== 'square') {
+      setOutputFormat('square');
+    }
+  }, [appMode, outputFormat]);
+
+  const openClinicHoursSettings = useCallback(() => {
+    setActiveSettingsPanel('hours');
+    setExpandedSettingsGroup('schedule');
+    requestAnimationFrame(() => {
+      settingsPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -240,7 +263,7 @@ function ScheduleBuilderContent({
       <>
         <h2 className={styles.cardTitle}>진료시간</h2>
         <p className={styles.cardHint}>A4와 DID 이미지의 제목 아래에 표시됩니다.</p>
-        {outputFormat === 'square' ? (
+        {outputFormat === 'square' && appMode === 'internal' ? (
           <div className={styles.unsupportedNotice}>
             <strong>이 이미지 규격에서는 진료시간이 적용되지 않습니다.</strong>
             <span>진료시간을 표시하려면 A4 또는 DID 규격을 선택해 주세요.</span>
@@ -249,6 +272,11 @@ function ScheduleBuilderContent({
           <ClinicHoursEditor
             value={getClinicHoursWithExample(formData.clinicHours)}
             onChange={actions.setClinicHours}
+            showConfirmationAction={appMode === 'customer'}
+            onConfirm={() => actions.setClinicHours({
+              ...getClinicHoursWithExample(formData.clinicHours),
+              confirmed: true,
+            })}
           />
         )}
       </>
@@ -257,7 +285,7 @@ function ScheduleBuilderContent({
 
   const settingsContent = (
       <nav className={styles.settingsNav} aria-label="일정 이미지 설정">
-        {SETTINGS_GROUPS.map((group) => (
+        {visibleSettingsGroups.map((group) => (
           <div className={styles.settingsGroup} key={group.label}>
             <button
               type="button"
@@ -341,7 +369,11 @@ function ScheduleBuilderContent({
         >
           <span>
             <strong>이미지 규격</strong>
-            <small>{getOutputFormatMeta(outputFormat).label}</small>
+            <small>
+              {appMode === 'customer'
+                ? `${(formData.outputSize ?? []).length}개 선택`
+                : getOutputFormatMeta(outputFormat).label}
+            </small>
           </span>
           <svg aria-hidden="true" viewBox="0 0 20 20">
             <path d="m5 7.5 5 5 5-5" />
@@ -349,11 +381,22 @@ function ScheduleBuilderContent({
         </button>
         {isFormatSectionExpanded && (
           <div id="output-format-options" className={styles.formatSectionContent}>
-            <p className={styles.cardHint}>제작할 이미지의 크기와 용도를 선택하세요.</p>
-            <p className={styles.formatNotice}>
-              미리보기는 화면에 맞춰 축소되며, PNG 저장 시 선택한 실제 픽셀 크기로 출력됩니다.
+            <p className={styles.cardHint}>
+              {appMode === 'customer'
+                ? '제작을 원하는 규격을 모두 선택하세요. 복수 선택할 수 있습니다.'
+                : '제작할 이미지의 크기와 용도를 선택하세요.'}
             </p>
-            <OutputFormatSelector value={outputFormat} onChange={setOutputFormat} />
+            <p className={styles.formatNotice}>
+              {appMode === 'customer'
+                ? '미리보기는 인스타 팝업 규격으로 고정되며, 선택한 규격은 제출 데이터에 반영됩니다.'
+                : '미리보기는 화면에 맞춰 축소되며, PNG 저장 시 선택한 실제 픽셀 크기로 출력됩니다.'}
+            </p>
+            <OutputFormatSelector
+              value={outputFormat}
+              onChange={setOutputFormat}
+              multipleValue={appMode === 'customer' ? formData.outputSize ?? [] : undefined}
+              onMultipleChange={appMode === 'customer' ? actions.setOutputSize : undefined}
+            />
           </div>
         )}
       </section>
@@ -385,7 +428,17 @@ function ScheduleBuilderContent({
         />
       )}
       {appMode === 'customer' && (
-        <button type="button" className={styles.secondaryButton} onClick={() => setCustomModalOpen(true)}>
+        <button
+          type="button"
+          className={styles.secondaryButton}
+          onClick={() => {
+            if (!formData.clinicHours?.confirmed) {
+              openClinicHoursSettings();
+              return;
+            }
+            setCustomModalOpen(true);
+          }}
+        >
           진료일정 제출하기
         </button>
       )}
@@ -469,13 +522,8 @@ function ScheduleBuilderContent({
               setActiveSettingsPanel('elements');
               setExpandedSettingsGroup('design');
             }}
-            onOpenClinicHours={() => {
-              setActiveSettingsPanel('hours');
-              setExpandedSettingsGroup('schedule');
-              requestAnimationFrame(() => {
-                settingsPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              });
-            }}
+            onOpenClinicHours={openClinicHoursSettings}
+            requireClinicHoursConfirmation={appMode === 'customer'}
             onHospitalDisplayModeChange={(displayMode) => onHospitalChange({ ...hospital, displayMode })}
           />
         ) : (
@@ -547,14 +595,16 @@ function ScheduleBuilderContent({
             availableMonths={[8, 9]}
             onChange={actions.setYearMonth}
           />
-          <TemplateSelector
-            month={formData.month}
-            selectedId={formData.templateId}
-            onSelect={(templateId) => {
-              actions.setTemplateId(templateId);
-              setTemplateModalOpen(false);
-            }}
-          />
+          <div className={styles.templateListSpacing}>
+            <TemplateSelector
+              month={formData.month}
+              selectedId={formData.templateId}
+              onSelect={(templateId) => {
+                actions.setTemplateId(templateId);
+                setTemplateModalOpen(false);
+              }}
+            />
+          </div>
         </Modal>
       )}
 

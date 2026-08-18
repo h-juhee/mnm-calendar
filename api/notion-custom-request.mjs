@@ -26,8 +26,62 @@ const FIELD_CANDIDATES = {
   ],
   scheduleData: ['\uC77C\uC815\uB370\uC774\uD130', '\uC77C\uC815 \uB370\uC774\uD130'],
   closedDates: ['\uD734\uC9C4\uC77C', '\uD734\uC9C4 \uC77C'],
+  morningHours: ['\uC624\uC804\uC9C4\uB8CC', '\uC624\uC804 \uC9C4\uB8CC'],
+  afternoonHours: ['\uC624\uD6C4\uC9C4\uB8CC', '\uC624\uD6C4 \uC9C4\uB8CC'],
+  nightSchedules: ['\uC57C\uAC04\uC9C4\uB8CC \uD45C\uAE30\uBB38\uAD6C', '\uC57C\uAC04\uC9C4\uB8CC_\uBCC0\uACBD', '\uC57C\uAC04\uC9C4\uB8CC \uC2DC\uAC04'],
+  nightDates: ['\uC57C\uAC04\uC9C4\uB8CC \uC694\uC77C'],
+  nightEnabled: ['\uC57C\uAC04\uC9C4\uB8CC \uC5EC\uBD80'],
+  holidaySchedules: ['\uACF5\uD734\uC77C \uC9C4\uB8CC', '\uACF5\uD734\uC77C\uC9C4\uB8CC'],
+  saturdaySchedules: ['\uD1A0\uC694\uC77C\uC9C4\uB8CC', '\uD1A0\uC694\uC77C \uC9C4\uB8CC'],
+  sundaySchedules: ['\uC77C\uC694\uC77C\uC9C4\uB8CC', '\uC77C\uC694\uC77C \uC9C4\uB8CC'],
+  mondayHours: ['\uC6D4 \uC9C4\uB8CC'],
+  tuesdayHours: ['\uD654 \uC9C4\uB8CC'],
+  wednesdayHours: ['\uC218 \uC9C4\uB8CC'],
+  thursdayHours: ['\uBAA9 \uC9C4\uB8CC'],
+  fridayHours: ['\uAE08 \uC9C4\uB8CC'],
+  saturdayHours: ['\uD1A0 \uC9C4\uB8CC'],
+  sundayHours: ['\uC77C \uC9C4\uB8CC'],
   createdAt: ['\uC81C\uCD9C\uC77C', '\uC811\uC218\uC77C', '\uC811\uC218\uC77C\uC2DC', '\uC0DD\uC131\uC77C'],
 };
+
+function deriveScheduleFields(request) {
+  const lines = String(request.scheduleData ?? '').split('\n').map((line) => line.trim()).filter(Boolean);
+  const weekdayNames = ['\uC77C', '\uC6D4', '\uD654', '\uC218', '\uBAA9', '\uAE08', '\uD1A0'];
+  const addWeekday = (line) => {
+    const match = /^(?:(\d{1,2})\/(\d{1,2})|(\d{1,2})\uC77C)/.exec(line);
+    const day = Number(match?.[2] ?? match?.[3]);
+    if (!match || !day) return line;
+    const weekday = weekdayNames[new Date(Date.UTC(Number(request.year), Number(request.month) - 1, day)).getUTCDay()];
+    return `${match[0]}(${weekday})${line.slice(match[0].length)}`;
+  };
+  const matching = (...labels) => lines
+    .filter((line) => labels.some((label) => line.replace(/\s/g, '').includes(label.replace(/\s/g, ''))))
+    .map(addWeekday)
+    .join('\n');
+  const forWeekday = (weekday) => lines
+    .filter((line) => {
+      const match = /^(?:(\d{1,2})\/(\d{1,2})|(\d{1,2})\uC77C)/.exec(line);
+      const day = Number(match?.[2] ?? match?.[3]);
+      if (!match || !day) return false;
+      return weekdayNames[new Date(Date.UTC(Number(request.year), Number(request.month) - 1, day)).getUTCDay()] === weekday;
+    })
+    .map(addWeekday)
+    .join('\n');
+  const nightSchedules = matching('\uC57C\uAC04\uC9C4\uB8CC');
+  return {
+    morningHours: matching('\uC624\uC804\uC9C4\uB8CC'),
+    afternoonHours: matching('\uC624\uD6C4\uC9C4\uB8CC'),
+    nightSchedules,
+    nightDates: nightSchedules.split('\n').filter(Boolean).map((line) => line.split(':')[0]).join(', '),
+    nightEnabled: Boolean(nightSchedules),
+    holidaySchedules: matching('\uACF5\uD734\uC77C\uC9C4\uB8CC'),
+    saturdaySchedules: matching('\uD1A0\uC694\uC77C\uC9C4\uB8CC'),
+    sundaySchedules: matching('\uC77C\uC694\uC77C\uC9C4\uB8CC'),
+    mondayHours: forWeekday('\uC6D4'), tuesdayHours: forWeekday('\uD654'),
+    wednesdayHours: forWeekday('\uC218'), thursdayHours: forWeekday('\uBAA9'),
+    fridayHours: forWeekday('\uAE08'), saturdayHours: forWeekday('\uD1A0'), sundayHours: forWeekday('\uC77C'),
+  };
+}
 
 function richText(content) {
   return content ? [{ type: 'text', text: { content: String(content).slice(0, 2000) } }] : [];
@@ -64,7 +118,12 @@ function fieldValue(request, field) {
   if (field === 'editItems') return request[field]?.join(', ');
   if (field === 'templateId') return request.templateId?.replace('schedule', '') ?? null;
   if (field === 'outputSize') {
-    const labels = { popup: '\uD31D\uC5C5\uC6A9', a4: 'A4', verticalDid: '\uC138\uB85C DID', horizontalDid: '\uAC00\uB85C DID' };
+    const labels = {
+      square: '\uC778\uC2A4\uD0C0 \uD31D\uC5C5', instagram: '\uC778\uC2A4\uD0C0 \uC138\uB85C',
+      a4: 'A4 \uC138\uB85C', a4Horizontal: 'A4 \uAC00\uB85C',
+      didVertical: 'DID \uC138\uB85C', didHorizontal: 'DID \uAC00\uB85C',
+      popup: '\uC778\uC2A4\uD0C0 \uD31D\uC5C5', verticalDid: 'DID \uC138\uB85C', horizontalDid: 'DID \uAC00\uB85C',
+    };
     const sizes = Array.isArray(request.outputSize) ? request.outputSize : [request.outputSize].filter(Boolean);
     return sizes.map((size) => labels[size] ?? size).join(', ');
   }
@@ -98,13 +157,18 @@ function blocksFor(request) {
     ['이미지 교체 파일', request.replacementImageFilename],
     ['다음달 이벤트', request.nextMonthEvent], ['규격', fieldValue(request, 'outputSize')],
     ['캘린더 필수 포함', request.calendarMustInclude],
+    ['진료시간', request.clinicHoursSummary],
     ['점심시간', request.lunchHours],
+    ['진료시간 공통 안내', request.clinicHoursNote],
     ['특이사항', request.specialNotes],
   ].filter(([, value]) => value);
 
-  return entries.map(([label, value]) => ({
-    object: 'block', type: 'paragraph', paragraph: { rich_text: richText(`${label}: ${value}`) },
-  }));
+  return entries.map(([label, value]) => {
+    const text = String(value).includes('\n') ? `${label}:\n${value}` : `${label}: ${value}`;
+    return {
+      object: 'block', type: 'paragraph', paragraph: { rich_text: richText(text) },
+    };
+  });
 }
 
 function calendarImageFromRequest(request) {
@@ -210,6 +274,8 @@ export default async function handler(req, res) {
   if (!request?.hospitalName) {
     return sendJson(400, { message: '필수 요청 정보가 누락되었습니다.' });
   }
+
+  request = { ...request, ...deriveScheduleFields(request) };
 
   try {
     const calendarImage = calendarImageFromRequest(request);

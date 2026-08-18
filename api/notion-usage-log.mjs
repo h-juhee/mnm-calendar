@@ -2,7 +2,7 @@ const NOTION_VERSION = '2026-03-11';
 const MAX_CALENDAR_IMAGE_BYTES = 20 * 1024 * 1024;
 
 const OUTPUT_FORMAT_LABELS = {
-  square: '\uC815\uC0AC\uAC01\uD615',
+  square: '\uC778\uC2A4\uD0C0 \uD31D\uC5C5',
   instagram: '\uC778\uC2A4\uD0C0 \uC138\uB85C',
   a4: 'A4 \uC138\uB85C',
   a4Horizontal: 'A4 \uAC00\uB85C',
@@ -37,7 +37,11 @@ async function readBody(req) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
-async function notion(path, options = {}) {
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function notion(path, options = {}, attempt = 0) {
   const response = await fetch(`https://api.notion.com/v1${path}`, {
     ...options,
     headers: {
@@ -49,6 +53,11 @@ async function notion(path, options = {}) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (attempt < 2 && (response.status === 429 || response.status >= 500)) {
+      const retryAfter = Number(response.headers.get('retry-after'));
+      await wait(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 500 * (attempt + 1));
+      return notion(path, options, attempt + 1);
+    }
     throw Object.assign(new Error(data.message || 'Notion usage log request failed.'), {
       status: response.status,
     });
@@ -132,6 +141,31 @@ function setRelationProperty(properties, schema, name, pageId) {
   properties[name] = { relation: [{ id: pageId }] };
 }
 
+function enrichScheduleDetails(request) {
+  const details = request.details ?? {};
+  const lines = String(details.scheduleData ?? '').split('\n').map((line) => line.trim()).filter(Boolean);
+  const withWeekday = (line) => {
+    const match = /^(?:(\d{1,2})\/(\d{1,2})|(\d{1,2})\uC77C)/.exec(line);
+    const day = Number(match?.[2] ?? match?.[3]);
+    if (!match || !day) return line;
+    const weekday = ['\uC77C', '\uC6D4', '\uD654', '\uC218', '\uBAA9', '\uAE08', '\uD1A0'][new Date(Date.UTC(Number(request.year), Number(request.month) - 1, day)).getUTCDay()];
+    return `${match[0]}(${weekday})${line.slice(match[0].length)}`;
+  };
+  const matching = (...labels) => lines
+    .filter((line) => labels.some((label) => line.replace(/\s/g, '').includes(label.replace(/\s/g, ''))))
+    .map(withWeekday)
+    .join('\n');
+  return {
+    ...details,
+    morningHours: details.morningHours || matching('\uC624\uC804\uC9C4\uB8CC'),
+    afternoonHours: details.afternoonHours || matching('\uC624\uD6C4\uC9C4\uB8CC'),
+    nightSchedules: details.nightSchedules || matching('\uC57C\uAC04\uC9C4\uB8CC'),
+    holidaySchedules: details.holidaySchedules || matching('\uACF5\uD734\uC77C\uC9C4\uB8CC'),
+    saturdaySchedules: details.saturdaySchedules || matching('\uD1A0\uC694\uC77C\uC9C4\uB8CC'),
+    sundaySchedules: details.sundaySchedules || matching('\uC77C\uC694\uC77C\uC9C4\uB8CC'),
+  };
+}
+
 async function findRelatedPageId(relationProperty, title) {
   const dataSourceId = relationProperty?.relation?.data_source_id;
   const query = String(title ?? '').trim();
@@ -197,12 +231,16 @@ async function usageProperties(schema, request, existingPage = null) {
     (value) => ALLOWED_TEMPLATE_LABELS.has(value),
   ))];
   setProperty(properties, schema, '\uC0AC\uC6A9 \uD15C\uD50C\uB9BF', usedTemplates.join(', '));
-  const currentOutputSize = outputSizeLabel(request.outputFormat);
+  const requestedFormats = [...new Set([
+    request.outputFormat,
+    ...(Array.isArray(request.outputSizes) ? request.outputSizes : []),
+  ].filter(Boolean))];
+  const currentOutputSizes = requestedFormats.map(outputSizeLabel).filter(Boolean);
   const previousOutputSizes = [
     ...propertyOptionNames(existingPage?.properties?.['\uADDC\uACA9']),
     ...propertyOptionNames(existingPage?.properties?.['\uCD9C\uB825\uC0AC\uC774\uC988']),
   ];
-  const usedOutputSizes = [...new Set([...previousOutputSizes, currentOutputSize].filter(
+  const usedOutputSizes = [...new Set([...previousOutputSizes, ...currentOutputSizes].filter(
     (value) => ALLOWED_OUTPUT_SIZE_LABELS.has(value),
   ))];
   setProperty(properties, schema, '\uCD9C\uB825\uC0AC\uC774\uC988', usedOutputSizes.join(', '));
@@ -217,21 +255,21 @@ async function usageProperties(schema, request, existingPage = null) {
     await findRelatedPageId(schema['\uAC70\uB798\uCC98'], request.hospitalName),
   );
 
-  for (const field of OUTPUT_FORMAT_REQUIRED_FIELDS[request.outputFormat] ?? []) {
-    setProperty(properties, schema, field, true);
+  for (const format of requestedFormats) {
+    for (const field of OUTPUT_FORMAT_REQUIRED_FIELDS[format] ?? []) {
+      setProperty(properties, schema, field, true);
+    }
   }
 
-  const details = request.details ?? {};
+  const details = enrichScheduleDetails(request);
   setProperty(properties, schema, '\uBCD1\uC6D0 \uC9C4\uB8CC\uC2DC\uAC04 \uC6D0\uBB38', details.clinicHoursRaw);
   setProperty(properties, schema, '\uC77C\uC815\uB370\uC774\uD130', details.scheduleData);
   setProperty(properties, schema, '\uD734\uC9C4\uC77C', details.closedDates);
   setProperty(properties, schema, '\uD734\uC9C4\uC0AC\uC720', details.closedReason);
   setProperty(properties, schema, '\uC608\uC678 \uC77C\uC815', details.customSchedules);
-  setProperty(properties, schema, '\uC6D4\uBCC4 \uC608\uC678 JSON', details.exceptionScheduleJson);
-  setProperty(properties, schema, '\uCD5C\uC885 \uC77C\uC815 JSON', details.finalScheduleJson);
-  setProperty(properties, schema, '\uC694\uC77C\uBCC4 \uC9C4\uB8CC\uC2DC\uAC04 JSON', details.clinicHoursRaw ? JSON.stringify(details) : '');
   setProperty(properties, schema, '\uC774\uBCA4\uD2B8', details.nextMonthEvent);
   setProperty(properties, schema, '\uD544\uC218\uD45C\uAE30', details.calendarMustInclude);
+  setProperty(properties, schema, '\uB2EC\uB825 \uD45C\uAE30 \uD544\uC218\uB0B4\uC6A9', details.calendarMustInclude);
   setProperty(properties, schema, '\uB2EC\uB825 \uD45C\uAE30 \uD544\uC218\uB0B4\uC6A9 \uC6D0\uBB38', details.calendarMustInclude);
   setProperty(properties, schema, '\uC810\uC2EC\uC2DC\uAC04', details.lunchHours);
   setProperty(properties, schema, '\uC6D4 \uC9C4\uB8CC', details.mondayHours);
@@ -243,30 +281,56 @@ async function usageProperties(schema, request, existingPage = null) {
   setProperty(properties, schema, '\uC77C \uC9C4\uB8CC', details.sundayHours);
   setProperty(properties, schema, '\uC624\uC804\uC9C4\uB8CC', details.morningHours);
   setProperty(properties, schema, '\uC624\uD6C4\uC9C4\uB8CC', details.afternoonHours);
+  setProperty(properties, schema, '\uC57C\uAC04\uC9C4\uB8CC \uC5EC\uBD80', Boolean(details.nightSchedules));
+  setProperty(properties, schema, '\uC57C\uAC04\uC9C4\uB8CC \uD45C\uAE30\uBB38\uAD6C', details.nightSchedules);
+  setProperty(properties, schema, '\uC57C\uAC04\uC9C4\uB8CC_\uBCC0\uACBD', details.nightSchedules);
   setProperty(properties, schema, '\uC77C\uC694\uC77C\uC9C4\uB8CC', details.sundaySchedules);
   setProperty(properties, schema, '\uD1A0\uC694\uC77C\uC9C4\uB8CC', details.saturdaySchedules);
+  setProperty(properties, schema, '\uACF5\uD734\uC77C \uC9C4\uB8CC', details.holidaySchedules);
   setProperty(properties, schema, '\uACF5\uD734\uC77C\uC9C4\uB8CC', details.holidaySchedules);
   setProperty(properties, schema, '\uC57C\uAC04\uC9C4\uB8CC \uC2DC\uAC04', details.nightSchedules);
   setProperty(properties, schema, '\uC57C\uAC04\uC9C4\uB8CC \uC694\uC77C', details.nightDates);
+  setProperty(properties, schema, '\uAE30\uD0C0\uC694\uCCAD', details.otherRequests);
 
   return properties;
 }
 
 function blocksFor(request) {
+  const details = request.details ?? {};
+  const scheduleLines = String(details.scheduleData ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const scheduleSummary = [
+    `${request.year}\uB144 ${String(request.month).padStart(2, '0')}\uC6D4`,
+    `\uD15C\uD50C\uB9BF \uC2DC\uC548 ${templateLabel(request.templateId) ?? '-'}`,
+    scheduleLines.length ? `\uBCC0\uB3D9 \uC9C4\uB8CC\uC77C ${scheduleLines.length}\uC77C` : '\uBCC0\uB3D9 \uC77C\uC815 \uC5C6\uC74C',
+    details.vacationRange ? `\uD734\uAC00 ${details.vacationRange}` : '',
+  ].filter(Boolean).join(' \u00B7 ');
   const entries = [
     ['\uBCD1\uC6D0\uBA85', request.hospitalName],
     ['\uC6D0\uC7A5\uBA85', request.directorName],
     ['\uB300\uC0C1 \uC5F0\uC6D4', `${request.year}\uB144 ${request.month}\uC6D4`],
     ['\uD15C\uD50C\uB9BF', templateLabel(request.templateId)],
+    ['\uC77C\uC815 \uC694\uC57D', scheduleSummary],
+    ['\uC0C1\uC138 \uC77C\uC815', details.scheduleData],
+    ['\uB2E4\uC74C\uB2EC \uC774\uBCA4\uD2B8', details.nextMonthEvent],
     ['\uADDC\uACA9', outputSizeLabel(request.outputFormat)],
+    ['\uCEA8\uB9B0\uB354 \uD544\uC218 \uD3EC\uD568', details.calendarMustInclude],
+    ['\uC9C4\uB8CC\uC2DC\uAC04', details.clinicHoursRaw],
+    ['\uC810\uC2EC\uC2DC\uAC04', details.lunchHours],
+    ['\uC9C4\uB8CC\uC2DC\uAC04 \uACF5\uD1B5 \uC548\uB0B4', details.clinicHoursNote],
     ['\uD30C\uC77C \uD615\uC2DD', request.exportType?.toUpperCase()],
   ].filter(([, value]) => value);
 
-  return entries.map(([label, value]) => ({
-    object: 'block',
-    type: 'paragraph',
-    paragraph: { rich_text: richText(`${label}: ${value}`) },
-  }));
+  return entries.map(([label, value]) => {
+    const text = String(value).includes('\n') ? `${label}:\n${value}` : `${label}: ${value}`;
+    return {
+      object: 'block',
+      type: 'paragraph',
+      paragraph: { rich_text: richText(text) },
+    };
+  });
 }
 
 function originalImageNoticeBlock() {
@@ -392,9 +456,15 @@ export default async function handler(req, res) {
     schema = await ensureUsedTemplatesProperty(dataSourceId, schema);
     const calendarImage = calendarImageFromRequest(request);
     const calendarImageFilename = request.calendarImageFilename || 'calendar.png';
-    const calendarImageUploadId = calendarImage
-      ? await uploadCalendarImage(calendarImage, request.calendarImageFilename || 'calendar.png')
-      : null;
+    let calendarImageUploadId = null;
+    if (calendarImage) {
+      try {
+        calendarImageUploadId = await uploadCalendarImage(calendarImage, request.calendarImageFilename || 'calendar.png');
+      } catch (imageError) {
+        // 이미지 첨부 실패 때문에 사용이력 행 전체가 누락되지 않도록 DB 기록을 우선 저장합니다.
+        console.error('Usage log image upload failed; saving the record without an attachment.', imageError);
+      }
+    }
     const properties = await usageProperties(schema, request, existingPage);
     if (existingPage) {
       await notion(`/pages/${existingPage.id}`, {

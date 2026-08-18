@@ -74,13 +74,22 @@ function getEntrySignature(entry: DateScheduleEntry): string {
 }
 
 interface EntryRange {
-  enabled: boolean;
-  end: string;
+  dates: string[];
   merge: boolean;
 }
 
 function createEntryRange(dateKey: string): EntryRange {
-  return { enabled: false, end: dateKey, merge: true };
+  return { dates: [dateKey], merge: false };
+}
+
+function createEntryRangeFromSchedule(entry: DateScheduleEntry, dateKey: string): EntryRange {
+  const dates = entry.applyDates?.length
+    ? entry.applyDates
+    : entry.rangeEnd
+      ? enumerateDateRange(dateKey, entry.rangeEnd)
+      : [dateKey];
+  const normalizedDates = [...new Set([dateKey, ...dates])].sort();
+  return { dates: normalizedDates, merge: normalizedDates.length > 1 && !entry.noMerge };
 }
 
 function moveItem<T>(list: T[], sourceIndex: number, targetIndex: number): T[] {
@@ -169,8 +178,6 @@ function EntryEditor({
   onDragOver,
   onDragEnd,
 }: EntryEditorProps) {
-  const [, month, day] = dateKey.split('-');
-  const [, rangeEndMonth, rangeEndDay] = range.end.split('-');
   const [rangePickerOpen, setRangePickerOpen] = useState(false);
   const displayedBadgeColor = entry.badgeColor || SCHEDULE_TYPE_DEFAULT_BADGE_COLOR[entry.type];
   const currentFormatFontSize = entry.labelFontSizeByFormat?.[outputFormat];
@@ -237,46 +244,59 @@ function EntryEditor({
       </div>
       {isDuplicate && (
         <p className={styles.duplicateWarning}>
-          다른 일정(또는 바로 옆 날짜의 일정)과 내용이 완전히 같아요. 달력에 같은 일정이 중복으로 표시됩니다. 내용을 다르게 바꾸거나 하나를 삭제해 주세요.
+          같은 날짜의 다른 일정과 내용이 완전히 같아요. 달력에 같은 일정이 중복으로 표시됩니다. 내용을 다르게 바꾸거나 하나를 삭제해 주세요.
         </p>
       )}
       {expanded && <div className={styles.scheduleCardBody}>
       <div className={styles.rangeToggle}>
-        <span className={styles.rangeToggleLabel}>표시 방식</span>
-        <div className={styles.displayModeGroup} role="radiogroup" aria-label={`일정 ${index + 1} 표시 방식`}>
+        <span className={styles.rangeToggleLabel}>적용 날짜</span>
+        <div className={styles.displayModeGroup} role="radiogroup" aria-label={`일정 ${index + 1} 적용 날짜`}>
           <button
             type="button"
             role="radio"
-            aria-checked={!range.enabled}
-            className={[styles.displayModeOption, !range.enabled ? styles.displayModeOptionSelected : ''].filter(Boolean).join(' ')}
-            onClick={() => onRangeChange({ ...range, enabled: false, end: dateKey, merge: true })}
+            aria-checked={range.dates.length === 1}
+            className={[styles.displayModeOption, range.dates.length === 1 ? styles.displayModeOptionSelected : ''].filter(Boolean).join(' ')}
+            onClick={() => onRangeChange({ ...range, dates: [dateKey] })}
           >
-            개별로 표시
+            이 날짜만
           </button>
           <button
             type="button"
             role="radio"
-            aria-checked={range.enabled}
-            className={[styles.displayModeOption, range.enabled ? styles.displayModeOptionSelected : ''].filter(Boolean).join(' ')}
+            aria-checked={range.dates.length > 1}
+            className={[styles.displayModeOption, range.dates.length > 1 ? styles.displayModeOptionSelected : ''].filter(Boolean).join(' ')}
             onClick={() => setRangePickerOpen(true)}
           >
-            이어서 표시
-            {range.enabled && (
+            여러 날짜 선택
+            {range.dates.length > 1 && (
               <small className={styles.displayModeSummary}>
-                ({Number(month)}/{Number(day)} ~ {Number(rangeEndMonth)}/{Number(rangeEndDay)})
+                ({range.dates.map((date) => Number(date.slice(-2))).join(', ')}일)
               </small>
             )}
           </button>
         </div>
       </div>
+      {range.dates.length > 1 && (
+        <div className={styles.rangeToggle}>
+          <span className={styles.rangeToggleLabel}>달력 표시</span>
+          <div className={styles.displayModeGroup} role="radiogroup" aria-label={`일정 ${index + 1} 달력 표시 방식`}>
+            <button type="button" role="radio" aria-checked={!range.merge} className={[styles.displayModeOption, !range.merge ? styles.displayModeOptionSelected : ''].filter(Boolean).join(' ')} onClick={() => onRangeChange({ ...range, merge: false })}>
+              날짜별 배지
+            </button>
+            <button type="button" role="radio" aria-checked={range.merge} className={[styles.displayModeOption, range.merge ? styles.displayModeOptionSelected : ''].filter(Boolean).join(' ')} onClick={() => onRangeChange({ ...range, merge: true })}>
+              연속된 날짜는 배지 연결
+            </button>
+          </div>
+        </div>
+      )}
       {rangePickerOpen && (
         <DateRangePickerModal
           startDate={dateKey}
-          initialEnd={range.enabled ? range.end : dateKey}
+          initialDates={range.dates}
           maxDate={maxRangeEnd}
           isDateFull={isDateFull}
-          onConfirm={(end) => {
-            onRangeChange({ ...range, enabled: true, end, merge: true });
+          onConfirm={(dates) => {
+            onRangeChange({ ...range, dates });
             setRangePickerOpen(false);
           }}
           onClose={() => setRangePickerOpen(false)}
@@ -372,39 +392,41 @@ function EntryEditor({
           </label>
         </div>
         <div className={styles.colorControls}>
-          <div className={styles.colorRow}>
-            <span className={styles.colorRowLabel}>{entry.fillBadge !== false ? '배경색' : '글자색'}</span>
-            <HexColorInput
-              className={styles.colorRowInput}
-              value={displayedBadgeColor}
-              onChange={(badgeColor) => onChange({ ...entry, badgeColor })}
-              pickerLabel={`일정 ${index + 1} ${entry.fillBadge !== false ? '배경' : '글자'} 색상`}
-              codeLabel={`일정 ${index + 1} ${entry.fillBadge !== false ? '배경' : '글자'} 색상 코드`}
-            />
-            {entry.badgeColor && (
-              <button type="button" className={styles.colorReset} onClick={() => onChange({ ...entry, badgeColor: undefined })}>
-                기본색
-              </button>
-            )}
-          </div>
-
-          {entry.fillBadge !== false && (
+          <div className={[styles.colorPair, entry.fillBadge === false ? styles.colorPairSingle : ''].filter(Boolean).join(' ')}>
             <div className={styles.colorRow}>
-              <span className={styles.colorRowLabel}>글자색</span>
+              <span className={styles.colorRowLabel}>{entry.fillBadge !== false ? '배경색' : '글자색'}</span>
               <HexColorInput
                 className={styles.colorRowInput}
-                value={entry.labelTextColor ?? '#FFFFFF'}
-                onChange={(labelTextColor) => onChange({ ...entry, labelTextColor })}
-                pickerLabel={`일정 ${index + 1} 글자 색상`}
-                codeLabel={`일정 ${index + 1} 글자 색상 코드`}
+                value={displayedBadgeColor}
+                onChange={(badgeColor) => onChange({ ...entry, badgeColor })}
+                pickerLabel={`일정 ${index + 1} ${entry.fillBadge !== false ? '배경' : '글자'} 색상`}
+                codeLabel={`일정 ${index + 1} ${entry.fillBadge !== false ? '배경' : '글자'} 색상 코드`}
               />
-              {entry.labelTextColor && (
-                <button type="button" className={styles.colorReset} onClick={() => onChange({ ...entry, labelTextColor: undefined })}>
+              {entry.badgeColor && (
+                <button type="button" className={styles.colorReset} onClick={() => onChange({ ...entry, badgeColor: undefined })}>
                   기본색
                 </button>
               )}
             </div>
-          )}
+
+            {entry.fillBadge !== false && (
+              <div className={styles.colorRow}>
+                <span className={styles.colorRowLabel}>글자색</span>
+                <HexColorInput
+                  className={styles.colorRowInput}
+                  value={entry.labelTextColor ?? '#FFFFFF'}
+                  onChange={(labelTextColor) => onChange({ ...entry, labelTextColor })}
+                  pickerLabel={`일정 ${index + 1} 글자 색상`}
+                  codeLabel={`일정 ${index + 1} 글자 색상 코드`}
+                />
+                {entry.labelTextColor && (
+                  <button type="button" className={styles.colorReset} onClick={() => onChange({ ...entry, labelTextColor: undefined })}>
+                    기본색
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className={styles.colorRow}>
             <span className={styles.colorRowLabel}>글자 크기</span>
@@ -509,8 +531,8 @@ export default function DateScheduleModal({
     ...rawAdditional.map(normalizeEntry),
   ];
   const initialEntryRanges: EntryRange[] = [
-    currentSchedule.rangeEnd ? { enabled: true, end: currentSchedule.rangeEnd, merge: !currentSchedule.noMerge } : createEntryRange(dateKey),
-    ...rawAdditional.map((entry) => entry.rangeEnd ? { enabled: true, end: entry.rangeEnd, merge: !entry.noMerge } : createEntryRange(dateKey)),
+    createEntryRangeFromSchedule(currentSchedule, dateKey),
+    ...rawAdditional.map((entry) => createEntryRangeFromSchedule(entry, dateKey)),
   ];
   const initialEntryIds: string[] = [
     deriveEntryId(currentSchedule, dateKey),
@@ -534,15 +556,8 @@ export default function DateScheduleModal({
   };
 
   const duplicateIndexes = useMemo(() => {
-    const getNeighborEntries = (date: string): DateScheduleEntry[] => {
-      if (!explicitDateKeys.has(date)) return [];
-      const existing = resolvedByDate.get(date);
-      return existing ? [existing, ...(existing.additionalSchedules ?? [])] : [];
-    };
     const seenAt = new Map<string, number>();
     const duplicates = new Set<number>();
-    const prevDateKey = addDaysToKey(dateKey, -1);
-    const nextDateKey = addDaysToKey(dateKey, 1);
     entries.forEach((entry, index) => {
       const signature = getEntrySignature(entry);
       const firstIndex = seenAt.get(signature);
@@ -552,22 +567,9 @@ export default function DateScheduleModal({
         duplicates.add(firstIndex);
         duplicates.add(index);
       }
-
-      // 바로 옆 날짜에 이미 같은 계열이 아닌(다른 시리즈) 일정이 완전히 같은 내용으로 들어가 있는지 확인합니다.
-      // "이어서 표시"로 이 항목 자신이 넘어간 경우는 원래 같은 계열이므로 제외합니다.
-      const prospectiveSeriesId = `${dateKey}#${entryIds[index]}`;
-      [prevDateKey, nextDateKey].forEach((neighborDateKey) => {
-        const collidesWithNeighbor = getNeighborEntries(neighborDateKey).some((neighborEntry) => {
-          const sameSeries = Boolean(neighborEntry.seriesId)
-            && (neighborEntry.seriesId === entry.seriesId || neighborEntry.seriesId === prospectiveSeriesId);
-          if (sameSeries) return false;
-          return getEntrySignature(neighborEntry) === signature;
-        });
-        if (collidesWithNeighbor) duplicates.add(index);
-      });
     });
     return duplicates;
-  }, [entries, dateKey, entryIds, resolvedByDate, explicitDateKeys]);
+  }, [entries]);
   const [year, month, day] = dateKey.split('-');
   const lastDayOfMonth = new Date(Number(year), Number(month), 0).getDate();
   const maxRangeEnd = `${year}-${month}-${String(lastDayOfMonth).padStart(2, '0')}`;
@@ -651,7 +653,7 @@ export default function DateScheduleModal({
     const withoutSeries = list.filter((item) => item.seriesId !== seriesId);
     if (!included) return withoutSeries;
     if (withoutSeries.length >= MAX_SCHEDULES) return withoutSeries;
-    return [...withoutSeries, { ...entry, seriesId, rangeEnd: undefined }];
+    return [...withoutSeries, { ...entry, seriesId, rangeEnd: undefined, applyDates: undefined }];
   };
 
   /** indexes에 해당하는 항목들이 다른 날짜로 전파했던 복사본을 모두 정리합니다. 여러 항목이 같은 날짜에 겹쳐 전파돼 있어도 날짜별로 한 번만 반영하도록 모아서 처리합니다. */
@@ -660,9 +662,7 @@ export default function DateScheduleModal({
     indexes.forEach((index) => {
       const removedSeriesId = `${dateKey}#${entryIds[index]}`;
       const removedOldRange = index < initialEntryRanges.length ? initialEntryRanges[index] : undefined;
-      const removedOldDates = removedOldRange
-        ? (removedOldRange.enabled ? enumerateDateRange(dateKey, removedOldRange.end) : [dateKey])
-        : [];
+      const removedOldDates = removedOldRange?.dates ?? [];
       removedOldDates.filter((date) => date !== dateKey).forEach((date) => {
         const baseList = updates.get(date) ?? getExistingEntriesForDate(date);
         updates.set(date, baseList.filter((item) => item.seriesId !== removedSeriesId));
@@ -700,8 +700,9 @@ export default function DateScheduleModal({
       return {
         ...entry,
         seriesId: `${dateKey}#${entryIds[index]}`,
-        rangeEnd: range?.enabled ? range.end : undefined,
-        noMerge: range?.enabled && !range.merge ? true : undefined,
+        rangeEnd: undefined,
+        applyDates: range?.dates.length > 1 ? range.dates : undefined,
+        noMerge: range && !range.merge ? true : undefined,
       };
     }));
 
@@ -709,12 +710,12 @@ export default function DateScheduleModal({
     entries.forEach((entry, index) => {
       const seriesId = `${dateKey}#${entryIds[index]}`;
       const range = entryRanges[index];
-      const newDates = range?.enabled ? enumerateDateRange(dateKey, range.end) : [dateKey];
+      const newDates = range?.dates ?? [dateKey];
       const oldRange = index < initialEntryRanges.length ? initialEntryRanges[index] : undefined;
-      const oldDates = oldRange ? (oldRange.enabled ? enumerateDateRange(dateKey, oldRange.end) : [dateKey]) : [];
+      const oldDates = oldRange?.dates ?? [];
       const affectedDates = new Set([...newDates, ...oldDates]);
       affectedDates.delete(dateKey);
-      const propagatedEntry = { ...entry, noMerge: range?.enabled && !range.merge ? true : undefined };
+      const propagatedEntry = { ...entry, applyDates: undefined, rangeEnd: undefined, noMerge: range && !range.merge ? true : undefined };
       affectedDates.forEach((date) => {
         const baseList = updatesByDate.get(date) ?? getExistingEntriesForDate(date);
         const included = newDates.includes(date);
@@ -779,8 +780,9 @@ export default function DateScheduleModal({
                   return {
                     ...remainingEntry,
                     seriesId: `${dateKey}#${remainingIds[itemIndex]}`,
-                    rangeEnd: range?.enabled ? range.end : undefined,
-                    noMerge: range?.enabled && !range.merge ? true : undefined,
+                    rangeEnd: undefined,
+                    applyDates: range?.dates.length > 1 ? range.dates : undefined,
+                    noMerge: range && !range.merge ? true : undefined,
                   };
                 });
               setEntries(entries.filter((_, itemIndex) => itemIndex !== index));

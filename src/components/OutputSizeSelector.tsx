@@ -1,4 +1,4 @@
-import { OUTPUT_SIZES } from '../types/schedule';
+import { OUTPUT_FORMATS } from '../types/outputFormat';
 import styles from './OutputSizeSelector.module.css';
 
 interface OutputSizeSelectorProps {
@@ -23,7 +23,7 @@ export default function OutputSizeSelector({ value, onChange, error }: OutputSiz
         aria-describedby={error ? 'output-size-error' : undefined}
         aria-invalid={error ? true : undefined}
       >
-        {OUTPUT_SIZES.map((size) => (
+        {OUTPUT_FORMATS.map((size) => (
           <button
             key={size.id}
             type="button"
@@ -31,7 +31,12 @@ export default function OutputSizeSelector({ value, onChange, error }: OutputSiz
             className={value.includes(size.id) ? `${styles.sizeOption} ${styles.sizeOptionActive}` : styles.sizeOption}
             onClick={() => onChange(value.includes(size.id) ? value.filter((id) => id !== size.id) : [...value, size.id])}
           >
-            {size.id === 'popup' ? '팝업용' : size.label}
+            <strong>{size.label}</strong>
+            <span>
+              ({size.physicalWidthMm && size.physicalHeightMm
+                ? `${size.physicalWidthMm} × ${size.physicalHeightMm}mm`
+                : `${size.width} × ${size.height}px`})
+            </span>
           </button>
         ))}
       </div>

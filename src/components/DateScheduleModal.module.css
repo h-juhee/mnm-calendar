@@ -241,6 +241,40 @@
   gap: 8px;
 }
 
+.colorPair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.colorPairSingle {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.colorPair .colorRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px 8px;
+  align-items: center;
+}
+
+.colorPair .colorRowLabel {
+  grid-column: 1;
+  width: auto;
+}
+
+.colorPair .colorRow > .colorRowInput {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+}
+
+.colorPair .colorReset {
+  grid-column: 2;
+  grid-row: 1;
+  margin-left: 0;
+}
+
 .colorHint {
   font-size: 12px;
   color: var(--color-text-muted);
@@ -299,6 +333,15 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
+}
+
+select.input {
+  appearance: none;
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%23222b3a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
 }
 
 .input::placeholder {
@@ -372,6 +415,10 @@
 @media (max-width: 420px) {
   .timeRange {
     gap: 7px;
+  }
+
+  .colorPair {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

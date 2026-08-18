@@ -493,7 +493,7 @@
 .dangerZone summary {
   color: var(--color-text-muted);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -513,9 +513,9 @@
   gap: 12px;
   margin-bottom: 8px;
   padding: 11px 13px;
-  color: var(--color-text);
-  background: color-mix(in srgb, #fff4cc 72%, #fff);
-  border: 1px solid #ead17a;
+  color: #111827;
+  background: #ffedaa;
+  border: 1px solid #d79a12;
   border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: left;
@@ -528,20 +528,22 @@
 }
 
 .exampleHoursNotice strong {
-  font-size: 12px;
-  font-weight: 600;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .exampleHoursNotice small {
-  color: var(--color-text-muted);
-  font-size: 11px;
+  color: #111827;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .exampleHoursAction {
   flex: 0 0 auto;
-  color: var(--color-primary);
-  font-size: 11px;
-  font-weight: 600;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .scaledBox {

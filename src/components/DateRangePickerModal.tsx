@@ -6,38 +6,39 @@ import styles from './DateRangePickerModal.module.css';
 interface DateRangePickerModalProps {
   /** 항상 범위의 시작일로 고정됩니다(모달을 연 날짜). */
   startDate: string;
-  initialEnd: string;
+  initialDates: string[];
   /** 같은 달을 벗어나지 않도록 하는 최대 종료일입니다. */
   maxDate: string;
   /** 해당 날짜에 이미 다른 일정이 최대 개수만큼 채워져 있는지 확인합니다. true인 날짜는 범위에 포함해도 이 일정이 조용히 추가되지 않으므로 미리 표시해 줍니다. */
   isDateFull?: (date: string) => boolean;
-  onConfirm: (end: string) => void;
+  onConfirm: (dates: string[]) => void;
   onClose: () => void;
 }
 
 export default function DateRangePickerModal({
   startDate,
-  initialEnd,
+  initialDates,
   maxDate,
   isDateFull,
   onConfirm,
   onClose,
 }: DateRangePickerModalProps) {
   const [year, month] = startDate.split('-').map(Number);
-  const [selectedEnd, setSelectedEnd] = useState(initialEnd >= startDate ? initialEnd : startDate);
+  const [selectedDates, setSelectedDates] = useState<Set<string>>(
+    () => new Set([startDate, ...initialDates.filter((date) => date <= maxDate)]),
+  );
   const calendarMatrix = buildCalendarMatrix(year, month);
   const [, , startDayStr] = startDate.split('-');
-  const [, , endDayStr] = selectedEnd.split('-');
   const hasFullDateInSelection = calendarMatrix.flat().some((cell) => {
-    if (!cell.date || cell.date < startDate || cell.date > selectedEnd) return false;
+    if (!cell.date || !selectedDates.has(cell.date)) return false;
     return isDateFull?.(cell.date) ?? false;
   });
 
   return (
-    <Modal title="이어서 표시할 기간 선택" onClose={onClose} panelClassName={styles.modalPanel}>
+    <Modal title="일정을 적용할 날짜 선택" onClose={onClose} panelClassName={styles.modalPanel}>
       <div className={styles.content}>
         <p className={styles.hint}>
-          {Number(startDayStr)}일부터 종료일을 선택하세요. 선택한 기간에 같은 일정이 이어진 배지로 표시됩니다.
+          같은 일정을 적용할 날짜를 모두 선택해 주세요. {Number(startDayStr)}일은 현재 편집 중인 날짜라 해제할 수 없습니다.
         </p>
         <div className={styles.weekdays}>
           {WEEKDAY_LABELS.map((label, i) => (
@@ -50,17 +51,15 @@ export default function DateRangePickerModal({
           {calendarMatrix.flat().map((cell, idx) => {
             if (!cell.date) return <div key={`empty-${idx}`} className={styles.cell} />;
             const isStart = cell.date === startDate;
-            const isEnd = cell.date === selectedEnd;
-            const isDisabled = cell.date < startDate || cell.date > maxDate;
-            const isInRange = !isDisabled && cell.date >= startDate && cell.date <= selectedEnd;
+            const isDisabled = cell.date > maxDate;
+            const isSelected = selectedDates.has(cell.date);
             const isFull = !isDisabled && (isDateFull?.(cell.date) ?? false);
             const cellClassName = [
               styles.cell,
               styles.day,
               isDisabled ? styles.dayDisabled : '',
-              isInRange ? styles.dayInRange : '',
-              isStart ? styles.dayStart : '',
-              isEnd && !isStart ? styles.dayEnd : '',
+              isSelected ? styles.daySelected : '',
+              isStart ? styles.dayLocked : '',
               isFull ? styles.dayFull : '',
             ].filter(Boolean).join(' ');
             return (
@@ -69,7 +68,15 @@ export default function DateRangePickerModal({
                 type="button"
                 className={cellClassName}
                 disabled={isDisabled}
-                onClick={() => setSelectedEnd(cell.date!)}
+                onClick={() => {
+                  if (isStart) return;
+                  setSelectedDates((current) => {
+                    const next = new Set(current);
+                    if (next.has(cell.date!)) next.delete(cell.date!);
+                    else next.add(cell.date!);
+                    return next;
+                  });
+                }}
                 aria-label={isFull ? `${cell.day}일, 이미 일정이 3개 채워져 있어 추가되지 않음` : undefined}
                 title={isFull ? '이미 일정이 3개 채워져 있어 이 일정은 추가되지 않아요' : undefined}
               >
@@ -79,7 +86,7 @@ export default function DateRangePickerModal({
           })}
         </div>
         <p className={styles.summary}>
-          {Number(startDayStr)}일부터 {Number(endDayStr)}일까지
+          총 {selectedDates.size}일 선택
         </p>
         {hasFullDateInSelection && (
           <p className={styles.fullWarning}>
@@ -89,7 +96,7 @@ export default function DateRangePickerModal({
       </div>
       <div className={styles.footer}>
         <button type="button" className={styles.button} onClick={onClose}>취소</button>
-        <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} onClick={() => onConfirm(selectedEnd)}>
+        <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} onClick={() => onConfirm([...selectedDates].sort())}>
           확인
         </button>
       </div>
