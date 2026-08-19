@@ -117,17 +117,32 @@ const CLINIC_DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 function formatClinicHoursSummary(formData: ScheduleFormData) {
   const rows = getValidClinicHoursRows(formData.clinicHours);
   if (rows.length === 0) return "진료시간 미입력";
+  return CLINIC_DAY_ORDER.map((day) => {
+    const dayRows = rows.filter((row) => row.days.includes(day));
+    if (dayRows.length === 0) {
+      return formData.recurringClosedDays.includes(day)
+        ? `- ${CLINIC_DAY_LABELS[day]} : 휴진`
+        : "";
+    }
+    const hours = dayRows.map((row) => {
+      const badge = row.badgeLabel?.trim() ? ` (${row.badgeLabel.trim()})` : "";
+      const note = row.note?.trim() ? ` / ${row.note.trim()}` : "";
+      return `${row.startTime}~${row.endTime}${badge}${note}`;
+    }).join(" / ");
+    return `- ${CLINIC_DAY_LABELS[day]} : ${hours}`;
+  }).filter(Boolean).join("\n");
+}
+
+function formatClinicHoursModalSummary(formData: ScheduleFormData) {
+  const rows = getValidClinicHoursRows(formData.clinicHours);
+  if (rows.length === 0) return "진료시간 미입력";
   return rows.map((row) => {
     const days = CLINIC_DAY_ORDER
       .filter((day) => row.days.includes(day))
       .map((day) => CLINIC_DAY_LABELS[day])
       .join("·");
-    const badge = row.badgeLabel?.trim()
-      ? `- 배지: ${row.badgeLabel.trim()}${row.badgeColor ? ` (${row.badgeColor.toUpperCase()})` : ""}`
-      : "";
-    const note = row.note?.trim() ? `- 추가 안내: ${row.note.trim()}` : "";
-    return [`${days} ${row.startTime}~${row.endTime}`, badge, note].filter(Boolean).join("\n");
-  }).join("\n\n");
+    return `${days} ${row.startTime}~${row.endTime}`;
+  }).join("\n");
 }
 
 function formatLunchHoursSummary(formData: ScheduleFormData) {
@@ -418,7 +433,7 @@ export default function CustomDesignRequestModal({
             </div>
             <div className={styles.summaryRow}>
               <dt>진료시간</dt>
-              <dd className={styles.multilineValue}>{formatClinicHoursSummary(formData)}</dd>
+              <dd className={styles.multilineValue}>{formatClinicHoursModalSummary(formData)}</dd>
             </div>
             <div className={styles.summaryRow}>
               <dt>점심시간</dt>

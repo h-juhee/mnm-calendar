@@ -99,17 +99,14 @@ function formatClinicHours(formData: ScheduleFormData) {
       return hours ? `${WEEKDAY_NAMES[day]} ${hours}` : '';
     })
     .filter(Boolean);
-  const clinicHoursSummary = clinicHours.rows
-    .filter((row) => row.days.length > 0 && row.startTime && row.endTime)
-    .map((row) => {
-      const days = orderedDays.filter((day) => row.days.includes(day)).map((day) => WEEKDAY_NAMES[day]).join('·');
-      const badge = row.badgeLabel?.trim()
-        ? `- 배지: ${row.badgeLabel.trim()}${row.badgeColor ? ` (${row.badgeColor.toUpperCase()})` : ''}`
-        : '';
-      const note = row.note?.trim() ? `- 추가 안내: ${row.note.trim()}` : '';
-      return [`${days} ${row.startTime}~${row.endTime}`, badge, note].filter(Boolean).join('\n');
+  const clinicHoursSummary = orderedDays
+    .map((day) => {
+      const hours = byDay(day).replaceAll('-', '~');
+      if (hours) return `- ${WEEKDAY_NAMES[day]} : ${hours}`;
+      return formData.recurringClosedDays.includes(day) ? `- ${WEEKDAY_NAMES[day]} : 휴진` : '';
     })
-    .join('\n\n');
+    .filter(Boolean)
+    .join('\n');
   const lunchHours = clinicHours.lunchDisabled ? '' : [clinicHours.lunchStart, clinicHours.lunchEnd].filter(Boolean).join('-');
 
   return {

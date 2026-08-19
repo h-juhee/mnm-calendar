@@ -148,6 +148,10 @@ function findSchemaPropertyNames(schema, candidates) {
 }
 
 function blocksFor(request) {
+  const basicClinicHours = [
+    request.clinicHoursSummary,
+    request.lunchHours ? `- 휴게시간 : ${request.lunchHours}` : '',
+  ].filter(Boolean).join('\n');
   const entries = [
     ['원장명', request.directorName], ['일정 요약', request.scheduleSummary],
     ['상세 일정', request.scheduleData],
@@ -156,9 +160,7 @@ function blocksFor(request) {
     ['이미지 교체 파일', request.replacementImageFilename],
     ['다음달 이벤트', request.nextMonthEvent], ['규격', fieldValue(request, 'outputSize')],
     ['캘린더 필수 포함', request.calendarMustInclude],
-    ['진료시간', request.clinicHoursSummary],
-    ['점심시간', request.lunchHours],
-    ['진료시간 공통 안내', request.clinicHoursNote],
+    ['기본 진료 일정', basicClinicHours],
     ['특이사항', request.specialNotes],
   ].filter(([, value]) => value);
 

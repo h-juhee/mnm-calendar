@@ -310,6 +310,10 @@ function blocksFor(request) {
     scheduleLines.length ? `\uBCC0\uB3D9 \uC9C4\uB8CC\uC77C ${scheduleLines.length}\uC77C` : '\uBCC0\uB3D9 \uC77C\uC815 \uC5C6\uC74C',
     details.vacationRange ? `\uD734\uAC00 ${details.vacationRange}` : '',
   ].filter(Boolean).join(' \u00B7 ');
+  const basicClinicHours = [
+    details.clinicHoursRaw,
+    details.lunchHours ? `- \uD734\uAC8C\uC2DC\uAC04 : ${details.lunchHours.replaceAll('-', '~')}` : '',
+  ].filter(Boolean).join('\n');
   const entries = [
     ['\uBCD1\uC6D0\uBA85', request.hospitalName],
     ['\uC6D0\uC7A5\uBA85', request.directorName],
@@ -320,9 +324,7 @@ function blocksFor(request) {
     ['\uB2E4\uC74C\uB2EC \uC774\uBCA4\uD2B8', details.nextMonthEvent],
     ['\uADDC\uACA9', outputSizeLabel(request.outputFormat)],
     ['\uCEA8\uB9B0\uB354 \uD544\uC218 \uD3EC\uD568', details.calendarMustInclude],
-    ['\uC9C4\uB8CC\uC2DC\uAC04', details.clinicHoursRaw],
-    ['\uC810\uC2EC\uC2DC\uAC04', details.lunchHours],
-    ['\uC9C4\uB8CC\uC2DC\uAC04 \uACF5\uD1B5 \uC548\uB0B4', details.clinicHoursNote],
+    ['\uAE30\uBCF8 \uC9C4\uB8CC \uC77C\uC815', basicClinicHours],
     ['\uD30C\uC77C \uD615\uC2DD', request.exportType?.toUpperCase()],
   ].filter(([, value]) => value);
 

@@ -12,9 +12,6 @@ export default function OutputSizeSelector({ value, onChange, error }: OutputSiz
     <div className={styles.wrap}>
       <div className={styles.heading}>
         <span className={styles.label}>맞춤 제작 희망 규격 · 복수 선택 가능</span>
-        <p className={styles.hint}>
-          현재 이미지와 별도로 추가 제작이 필요한 규격을 선택해 주세요. 정사각형·A4·DID 이미지는 메인 화면에서도 직접 다운로드할 수 있습니다.
-        </p>
       </div>
       <div
         className={styles.sizeGroup}
