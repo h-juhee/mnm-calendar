@@ -308,6 +308,7 @@ export default function CustomDesignRequestModal({
         }),
       });
       const result = (await response.json().catch(() => null)) as {
+        id?: string;
         message?: string;
       } | null;
       if (!response.ok)
@@ -340,14 +341,46 @@ export default function CustomDesignRequestModal({
               throw new Error("달력 미리보기를 준비하지 못했습니다.");
             }
             await ensureFontLoaded(formData.fontId as FontId | undefined);
-            // 미리보기 DOM은 한 번에 한 규격만 렌더링하되, Drive 업로드는 두 개씩 병렬 처리합니다.
-            for (let index = 0; index < formatsToRender.length; index += 2) {
-              const batch = formatsToRender.slice(index, index + 2);
-              const renderedBatch: Array<{ format: OutputFormat; image: string }> = [];
-              for (const format of batch) {
-                renderedBatch.push({ format, image: await renderFormat(format) });
+
+            // 빠른 DB 접수 후 대표 정사각형 시안을 생성해 방금 만든 Notion 페이지에 추가합니다.
+            if (result?.id) {
+              try {
+                const notionPreviewImage = await renderFormat(primaryFormat);
+                const previewResponse = await fetch('/api/notion-custom-request', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    action: 'attach-calendar-image',
+                    pageId: result.id,
+                    calendarImage: notionPreviewImage,
+                    calendarImageFilename: buildExportFilename(
+                      hospital.name,
+                      formData.year,
+                      formData.month,
+                      primaryFormat,
+                    ),
+                  }),
+                });
+                const previewResult = await previewResponse.json().catch(() => null) as { message?: string } | null;
+                if (!previewResponse.ok) {
+                  throw new Error(previewResult?.message ?? `Notion 시안 저장 실패 (HTTP ${previewResponse.status})`);
+                }
+              } catch (notionImageError) {
+                console.error('Notion에 달력 시안을 추가하지 못했습니다.', notionImageError);
+                const reason = notionImageError instanceof Error ? notionImageError.message : '알 수 없는 오류';
+                setSubmissionWarning((current) => [
+                  current,
+                  `Notion 시안 저장에 실패했습니다: ${reason}`,
+                ].filter(Boolean).join('\n'));
               }
-              await Promise.all(renderedBatch.map(async ({ format, image }) => {
+            }
+
+            const failedFormats: string[] = [];
+            // 제출 완료 화면은 이미 표시되므로 Drive 업로드는 안정성을 우선해 규격별로 처리합니다.
+            // 한 규격이 실패해도 나머지 이미지 저장은 계속 시도합니다.
+            for (const format of formatsToRender) {
+              try {
+                const image = await renderFormat(format);
                 await uploadScheduleImageToDrive({
                   hospitalName: hospital.name,
                   year: formData.year,
@@ -359,16 +392,26 @@ export default function CustomDesignRequestModal({
                   ...current,
                   completed: Math.min(current.completed + 1, current.total),
                 }));
-              }));
+              } catch (formatError) {
+                console.error(`${format} Drive 이미지 저장에 실패했습니다.`, formatError);
+                const formatLabel = OUTPUT_FORMATS.find((item) => item.id === format)?.label ?? format;
+                const reason = formatError instanceof Error ? formatError.message : '알 수 없는 오류';
+                failedFormats.push(`${formatLabel}: ${reason}`);
+              }
+            }
+            if (failedFormats.length > 0) {
+              throw new Error(failedFormats.join(' / '));
             }
             setImageUploadProgress((current) => ({ ...current, status: 'complete' }));
           } catch (driveError) {
             console.error('진료일정 이미지를 Drive에 저장하지 못했습니다.', driveError);
             setImageUploadProgress((current) => ({ ...current, status: 'failed' }));
             setSubmissionWarning(
-              driveError instanceof Error
+              (current) => [current, driveError instanceof Error
                 ? `진료일정은 접수되었지만 일부 이미지 저장에 실패했습니다: ${driveError.message}`
-                : '진료일정은 접수되었지만 일부 이미지를 Drive에 저장하지 못했습니다.',
+                : '진료일정은 접수되었지만 일부 이미지를 Drive에 저장하지 못했습니다.']
+                .filter(Boolean)
+                .join('\n'),
             );
           }
 

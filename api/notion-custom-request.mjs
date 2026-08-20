@@ -323,6 +323,41 @@ export default async function handler(req, res) {
       return sendJson(400, { message: '요청 형식이 올바르지 않습니다.' });
     }
   }
+
+  if (request?.action === 'attach-calendar-image') {
+    if (typeof request.pageId !== 'string' || !request.pageId.trim()) {
+      return sendJson(400, { message: 'Notion 페이지 ID가 누락되었습니다.' });
+    }
+    try {
+      const calendarImage = calendarImageFromRequest(request);
+      if (!calendarImage) return sendJson(400, { message: '달력 시안 이미지가 누락되었습니다.' });
+      const uploadId = await uploadCalendarImage(
+        calendarImage,
+        request.calendarImageFilename || 'calendar.png',
+      );
+      await notion(`/blocks/${encodeURIComponent(request.pageId)}/children`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          children: [{
+            object: 'block',
+            type: 'image',
+            image: {
+              type: 'file_upload',
+              file_upload: { id: uploadId },
+              caption: richText('병원장이 작성한 달력 시안'),
+            },
+          }],
+        }),
+      });
+      return sendJson(200, { ok: true });
+    } catch (error) {
+      console.error('Notion calendar image attachment failed:', error);
+      return sendJson(error.status ?? 500, {
+        message: error.message || 'Notion에 달력 시안을 추가하지 못했습니다.',
+      });
+    }
+  }
+
   if (!request?.hospitalName) {
     return sendJson(400, { message: '필수 요청 정보가 누락되었습니다.' });
   }

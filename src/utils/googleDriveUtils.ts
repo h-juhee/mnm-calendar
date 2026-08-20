@@ -6,22 +6,37 @@ export interface DriveScheduleImage {
   image: string;
 }
 
-const DRIVE_CHUNK_SIZE = 2 * 1024 * 1024;
+// Base64와 JSON 인코딩 후에도 Vercel 요청 본문 제한에 여유가 있도록 1MB로 나눕니다.
+const DRIVE_CHUNK_SIZE = 1024 * 1024;
+const MAX_REQUEST_ATTEMPTS = 3;
+
+function wait(milliseconds: number) {
+  return new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
+}
 
 async function postDriveRequest(body: Record<string, unknown>) {
-  const response = await fetch('/api/google-drive-upload', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const result = await response.json().catch(() => null) as {
-    message?: string;
-    uploadUrl?: string;
-    nextOffset?: number;
-    done?: boolean;
-  } | null;
-  if (!response.ok) throw new Error(result?.message ?? '구글 드라이브에 이미지를 저장하지 못했습니다.');
-  return result;
+  for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
+    const response = await fetch('/api/google-drive-upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const result = await response.json().catch(() => null) as {
+      message?: string;
+      uploadUrl?: string;
+      nextOffset?: number;
+      done?: boolean;
+    } | null;
+    if (response.ok) return result;
+
+    const canRetry = response.status === 429 || response.status >= 500;
+    if (canRetry && attempt < MAX_REQUEST_ATTEMPTS) {
+      await wait(500 * attempt);
+      continue;
+    }
+    throw new Error(result?.message ?? `구글 드라이브 저장 요청에 실패했습니다. (HTTP ${response.status})`);
+  }
+  throw new Error('구글 드라이브 저장 요청에 반복해서 실패했습니다.');
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
