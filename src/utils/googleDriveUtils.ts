@@ -4,6 +4,7 @@ export interface DriveScheduleImage {
   month: number;
   filename: string;
   image: string;
+  signal?: AbortSignal;
 }
 
 // Base64와 JSON 인코딩 후에도 Vercel 요청 본문 제한에 여유가 있도록 1MB로 나눕니다.
@@ -14,12 +15,13 @@ function wait(milliseconds: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
-async function postDriveRequest(body: Record<string, unknown>) {
+async function postDriveRequest(body: Record<string, unknown>, signal?: AbortSignal) {
   for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
     const response = await fetch('/api/google-drive-upload', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal,
     });
     const result = await response.json().catch(() => null) as {
       message?: string;
@@ -32,6 +34,7 @@ async function postDriveRequest(body: Record<string, unknown>) {
     const canRetry = response.status === 429 || response.status >= 500;
     if (canRetry && attempt < MAX_REQUEST_ATTEMPTS) {
       await wait(500 * attempt);
+      signal?.throwIfAborted();
       continue;
     }
     throw new Error(result?.message ?? `구글 드라이브 저장 요청에 실패했습니다. (HTTP ${response.status})`);
@@ -58,19 +61,20 @@ export async function uploadScheduleImageToDrive(payload: DriveScheduleImage): P
     month: payload.month,
     filename: payload.filename,
     totalSize: imageBlob.size,
-  });
+  }, payload.signal);
   if (!initialized?.uploadUrl) throw new Error('구글 드라이브 업로드 세션을 만들지 못했습니다.');
 
   let offset = 0;
   while (offset < imageBlob.size) {
     const chunk = imageBlob.slice(offset, Math.min(offset + DRIVE_CHUNK_SIZE, imageBlob.size));
+    payload.signal?.throwIfAborted();
     const result = await postDriveRequest({
       action: 'chunk',
       uploadUrl: initialized.uploadUrl,
       offset,
       totalSize: imageBlob.size,
       chunk: await blobToBase64(chunk),
-    });
+    }, payload.signal);
     offset = result?.nextOffset ?? offset + chunk.size;
     if (result?.done) break;
   }

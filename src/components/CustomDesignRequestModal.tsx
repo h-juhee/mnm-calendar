@@ -22,6 +22,15 @@ import styles from "./CustomDesignRequestModal.module.css";
 import { postUsageLogReliably } from "../utils/usageLogUtils";
 import { uploadScheduleImageToDrive } from "../utils/googleDriveUtils";
 
+const activeScheduleUploadJobs = new Map<string, AbortController>();
+let previewRenderQueue: Promise<void> = Promise.resolve();
+
+function queuePreviewRender<T>(task: () => Promise<T>): Promise<T> {
+  const result = previewRenderQueue.then(task, task);
+  previewRenderQueue = result.then(() => undefined, () => undefined);
+  return result;
+}
+
 interface CustomDesignRequestModalProps {
   submissionMode?: 'schedule' | 'customDesign';
   hospital: HospitalInfo;
@@ -335,6 +344,17 @@ export default function CustomDesignRequestModal({
         setImageUploadProgress({ completed: 0, total: formatsToRender.length, status: 'uploading' });
         setIsSubmitted(true);
 
+        const uploadJobKey = `${hospital.id}:${formData.year}-${formData.month}`;
+        activeScheduleUploadJobs.get(uploadJobKey)?.abort();
+        const uploadController = new AbortController();
+        activeScheduleUploadJobs.set(uploadJobKey, uploadController);
+        const renderCurrentFormat = (format: OutputFormat) => queuePreviewRender(async () => {
+          uploadController.signal.throwIfAborted();
+          const image = await renderFormat(format);
+          uploadController.signal.throwIfAborted();
+          return image;
+        });
+
         void (async () => {
           try {
             if (!previewNodeRef.current) {
@@ -345,10 +365,11 @@ export default function CustomDesignRequestModal({
             // 빠른 DB 접수 후 대표 정사각형 시안을 생성해 방금 만든 Notion 페이지에 추가합니다.
             if (result?.id) {
               try {
-                const notionPreviewImage = await renderFormat(primaryFormat);
+                const notionPreviewImage = await renderCurrentFormat(primaryFormat);
                 const previewResponse = await fetch('/api/notion-custom-request', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
+                  signal: uploadController.signal,
                   body: JSON.stringify({
                     action: 'attach-calendar-image',
                     pageId: result.id,
@@ -366,6 +387,7 @@ export default function CustomDesignRequestModal({
                   throw new Error(previewResult?.message ?? `Notion 시안 저장 실패 (HTTP ${previewResponse.status})`);
                 }
               } catch (notionImageError) {
+                if (uploadController.signal.aborted) throw notionImageError;
                 console.error('Notion에 달력 시안을 추가하지 못했습니다.', notionImageError);
                 const reason = notionImageError instanceof Error ? notionImageError.message : '알 수 없는 오류';
                 setSubmissionWarning((current) => [
@@ -380,13 +402,14 @@ export default function CustomDesignRequestModal({
             // 한 규격이 실패해도 나머지 이미지 저장은 계속 시도합니다.
             for (const format of formatsToRender) {
               try {
-                const image = await renderFormat(format);
+                const image = await renderCurrentFormat(format);
                 await uploadScheduleImageToDrive({
                   hospitalName: hospital.name,
                   year: formData.year,
                   month: formData.month,
                   filename: buildExportFilename(hospital.name, formData.year, formData.month, format),
                   image,
+                  signal: uploadController.signal,
                 });
                 setImageUploadProgress((current) => ({
                   ...current,
@@ -404,6 +427,7 @@ export default function CustomDesignRequestModal({
             }
             setImageUploadProgress((current) => ({ ...current, status: 'complete' }));
           } catch (driveError) {
+            if (uploadController.signal.aborted) return;
             console.error('진료일정 이미지를 Drive에 저장하지 못했습니다.', driveError);
             setImageUploadProgress((current) => ({ ...current, status: 'failed' }));
             setSubmissionWarning(
@@ -418,8 +442,9 @@ export default function CustomDesignRequestModal({
           // 사용이력은 주 접수와 Drive 저장 결과에 영향을 주지 않도록 마지막에 기록합니다.
           // Drive가 중간에 실패해 캐시되지 않은 규격도 있으므로 DOM 렌더링은 순차 실행합니다.
           for (const format of formatsToRender) {
+            if (uploadController.signal.aborted) break;
             try {
-              const formatImage = await renderFormat(format);
+              const formatImage = await renderCurrentFormat(format);
               await postUsageLogReliably({
                 hospitalId: hospital.id,
                 hospitalName: hospital.name,
@@ -442,6 +467,9 @@ export default function CustomDesignRequestModal({
             } catch (usageError) {
               console.error(`${format} 사용이력 이미지 저장을 보류했습니다.`, usageError);
             }
+          }
+          if (activeScheduleUploadJobs.get(uploadJobKey) === uploadController) {
+            activeScheduleUploadJobs.delete(uploadJobKey);
           }
         })();
         return;
