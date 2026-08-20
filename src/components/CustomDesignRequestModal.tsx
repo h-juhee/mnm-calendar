@@ -31,6 +31,11 @@ function queuePreviewRender<T>(task: () => Promise<T>): Promise<T> {
   return result;
 }
 
+function appendTemplateName(filename: string, name: string): string {
+  const safeTemplateName = name.replace(/[\\/:*?"<>|]/g, '').trim().replace(/\s+/g, '_');
+  return filename.replace(/(\.[^.]+)$/, `_${safeTemplateName}$1`);
+}
+
 interface CustomDesignRequestModalProps {
   submissionMode?: 'schedule' | 'customDesign';
   hospital: HospitalInfo;
@@ -199,7 +204,7 @@ export default function CustomDesignRequestModal({
 
   const templateName =
     TEMPLATES.find((t) => t.id === formData.templateId)?.name ??
-    formData.templateId;
+    formData.templateId ?? "시안";
   const changedDaysCount = resolvedSchedule.filter(isChangedSchedule).length;
   const vacationText =
     formData.vacationStart && formData.vacationEnd
@@ -407,7 +412,10 @@ export default function CustomDesignRequestModal({
                   hospitalName: hospital.name,
                   year: formData.year,
                   month: formData.month,
-                  filename: buildExportFilename(hospital.name, formData.year, formData.month, format),
+                  filename: appendTemplateName(
+                    buildExportFilename(hospital.name, formData.year, formData.month, format),
+                    templateName,
+                  ),
                   image,
                   signal: uploadController.signal,
                 });
@@ -502,7 +510,11 @@ export default function CustomDesignRequestModal({
 
   if (isSubmitted) {
     return (
-      <Modal title={isScheduleSubmission ? "진료일정 제출" : "맞춤 디자인 요청"} onClose={onClose}>
+      <Modal
+        title={isScheduleSubmission ? "진료일정 제출" : "맞춤 디자인 요청"}
+        onClose={onClose}
+        backdropClassName={imageUploadProgress.status === 'uploading' ? styles.submittingBackdrop : undefined}
+      >
         <div className={styles.successWrap}>
           <img
             className={styles.successIcon}

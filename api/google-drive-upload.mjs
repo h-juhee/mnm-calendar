@@ -120,15 +120,6 @@ function decodePng(dataUrl) {
 }
 
 async function uploadPng(token, folderId, filename, png) {
-  const existing = await findChild(token, folderId, filename, 'image/png');
-  if (existing) {
-    return driveRequest(token, `${DRIVE_UPLOAD_API}/files/${existing.id}?uploadType=media&supportsAllDrives=true&fields=id,name,webViewLink`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'image/png' },
-      body: png,
-    });
-  }
-
   const boundary = `mnn-calendar-${crypto.randomUUID()}`;
   const metadata = Buffer.from(JSON.stringify({ name: filename, parents: [folderId], mimeType: 'image/png' }));
   const body = Buffer.concat([
@@ -146,20 +137,15 @@ async function uploadPng(token, folderId, filename, png) {
 }
 
 async function startResumableUpload(token, folderId, filename, totalSize) {
-  const existing = await findChild(token, folderId, filename, 'image/png');
-  const url = existing
-    ? `${DRIVE_UPLOAD_API}/files/${existing.id}?uploadType=resumable&supportsAllDrives=true&fields=id,name,webViewLink`
-    : `${DRIVE_UPLOAD_API}/files?uploadType=resumable&supportsAllDrives=true&fields=id,name,webViewLink`;
-  const metadata = existing ? { name: filename } : { name: filename, parents: [folderId], mimeType: 'image/png' };
-  const response = await fetch(url, {
-    method: existing ? 'PATCH' : 'POST',
+  const response = await fetch(`${DRIVE_UPLOAD_API}/files?uploadType=resumable&supportsAllDrives=true&fields=id,name,webViewLink`, {
+    method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json; charset=UTF-8',
       'X-Upload-Content-Type': 'image/png',
       'X-Upload-Content-Length': String(totalSize),
     },
-    body: JSON.stringify(metadata),
+    body: JSON.stringify({ name: filename, parents: [folderId], mimeType: 'image/png' }),
   });
   if (!response.ok) {
     const result = await response.json().catch(() => null);
