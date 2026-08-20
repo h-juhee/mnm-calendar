@@ -8,6 +8,7 @@ interface ModalProps {
   children: ReactNode;
   closable?: boolean;
   panelClassName?: string;
+  backdropClassName?: string;
   descriptionId?: string;
   initialFocusRef?: RefObject<HTMLElement | null>;
   leadingVisual?: ReactNode;
@@ -20,6 +21,7 @@ export default function Modal({
   children,
   closable = true,
   panelClassName,
+  backdropClassName,
   descriptionId,
   initialFocusRef,
   leadingVisual,
@@ -87,7 +89,7 @@ export default function Modal({
 
   return createPortal(
     <div
-      className={styles.backdrop}
+      className={`${styles.backdrop}${backdropClassName ? ` ${backdropClassName}` : ''}`}
       onMouseDown={(e) => {
         if (closable && e.target === e.currentTarget) onClose();
       }}

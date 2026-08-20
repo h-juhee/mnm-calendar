@@ -5,6 +5,12 @@
   overflow: hidden;
 }
 
+.submittingBackdrop {
+  background: rgba(238, 243, 251, 0.78);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
 .requestPanel > :first-child {
   flex-shrink: 0;
 }

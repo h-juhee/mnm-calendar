@@ -215,6 +215,7 @@ export default function CustomDesignRequestModal({
     setError(null);
     setHasSubmissionFailed(false);
     setIsSubmitting(true);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
     const record: CustomDesignRequestRecord = {
       id: `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -250,7 +251,11 @@ export default function CustomDesignRequestModal({
         (id): id is OutputFormat => OUTPUT_FORMATS.some((format) => format.id === id),
       );
       const formatsToRender = selectedFormats.length > 0 ? selectedFormats : [outputFormat];
-      const primaryFormat = formatsToRender.includes('square') ? 'square' : formatsToRender[0];
+      // 원장용 진료일정 DB에는 원장이 실제로 확인한 정사각형 미리보기를 대표 이미지로 올립니다.
+      // 선택한 A4·DID 등의 규격은 아래 사용이력 저장 단계에서 각각 별도 생성합니다.
+      const primaryFormat: OutputFormat = isScheduleSubmission
+        ? 'square'
+        : formatsToRender.includes('square') ? 'square' : formatsToRender[0];
       const renderedImages = new Map<OutputFormat, string>();
       const renderFormat = async (format: OutputFormat) => {
         const existing = renderedImages.get(format);
@@ -419,6 +424,7 @@ export default function CustomDesignRequestModal({
       title={isScheduleSubmission ? "진료일정 제출" : "맞춤 디자인 요청"}
       onClose={onClose}
       panelClassName={styles.requestPanel}
+      backdropClassName={isSubmitting ? styles.submittingBackdrop : undefined}
     >
       <div className={styles.requestBody}>
         <p className={styles.intro}>
