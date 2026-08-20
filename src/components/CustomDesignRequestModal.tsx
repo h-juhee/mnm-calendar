@@ -175,6 +175,7 @@ export default function CustomDesignRequestModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [hasSubmissionFailed, setHasSubmissionFailed] = useState(false);
+  const [submissionWarning, setSubmissionWarning] = useState<string | null>(null);
 
   const templateName =
     TEMPLATES.find((t) => t.id === formData.templateId)?.name ??
@@ -269,20 +270,6 @@ export default function CustomDesignRequestModal({
         return image;
       };
 
-      // Drive에는 원장이 선택한 모든 규격을 원본 해상도 PNG로 저장합니다.
-      // 동일한 파일명으로 다시 제출하면 서버에서 기존 파일의 내용만 갱신합니다.
-      if (isScheduleSubmission) {
-        for (const format of formatsToRender) {
-          const formatImage = await renderFormat(format);
-          await uploadScheduleImageToDrive({
-            hospitalName: hospital.name,
-            year: formData.year,
-            month: formData.month,
-            filename: buildExportFilename(hospital.name, formData.year, formData.month, format),
-            image: formatImage,
-          });
-        }
-      }
       const calendarImage = await renderFormat(primaryFormat);
       const response = await fetch("/api/notion-custom-request", {
         method: "POST",
@@ -303,6 +290,30 @@ export default function CustomDesignRequestModal({
       } | null;
       if (!response.ok)
         throw new Error(result?.message ?? "요청을 저장하지 못했습니다.");
+
+      // 진료일정 DB 접수를 먼저 확정한 뒤 Drive 업로드를 별도로 처리합니다.
+      // Drive 장애가 이미 완료된 접수를 실패로 바꾸거나 재제출 중복을 만들지 않습니다.
+      if (isScheduleSubmission) {
+        try {
+          for (const format of formatsToRender) {
+            const formatImage = await renderFormat(format);
+            await uploadScheduleImageToDrive({
+              hospitalName: hospital.name,
+              year: formData.year,
+              month: formData.month,
+              filename: buildExportFilename(hospital.name, formData.year, formData.month, format),
+              image: formatImage,
+            });
+          }
+        } catch (driveError) {
+          console.error('진료일정 이미지를 Drive에 저장하지 못했습니다.', driveError);
+          setSubmissionWarning(
+            driveError instanceof Error
+              ? `진료일정은 접수되었지만 이미지 저장에 실패했습니다: ${driveError.message}`
+              : '진료일정은 접수되었지만 이미지를 Drive에 저장하지 못했습니다.',
+          );
+        }
+      }
 
       // 원장용 제출도 내부 다운로드와 같은 사용이력 DB에 기록합니다.
       // 주 접수는 이미 완료된 상태이므로, 이력 저장 실패가 재제출과 중복 접수로 이어지지 않게 별도로 처리합니다.
@@ -388,6 +399,7 @@ export default function CustomDesignRequestModal({
             {isScheduleSubmission ? "진료일정이" : "맞춤 디자인 요청이"} 정상적으로 접수되었습니다. 요청 내용을 확인한 후
             순차적으로 제작할 예정입니다.
           </p>
+          {submissionWarning && <p className={styles.failureText}>{submissionWarning}</p>}
           <button
             type="button"
             className={`${styles.button} ${styles.buttonPrimary}`}

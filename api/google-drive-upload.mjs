@@ -145,12 +145,96 @@ async function uploadPng(token, folderId, filename, png) {
   });
 }
 
+async function startResumableUpload(token, folderId, filename, totalSize) {
+  const existing = await findChild(token, folderId, filename, 'image/png');
+  const url = existing
+    ? `${DRIVE_UPLOAD_API}/files/${existing.id}?uploadType=resumable&supportsAllDrives=true&fields=id,name,webViewLink`
+    : `${DRIVE_UPLOAD_API}/files?uploadType=resumable&supportsAllDrives=true&fields=id,name,webViewLink`;
+  const metadata = existing ? { name: filename } : { name: filename, parents: [folderId], mimeType: 'image/png' };
+  const response = await fetch(url, {
+    method: existing ? 'PATCH' : 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json; charset=UTF-8',
+      'X-Upload-Content-Type': 'image/png',
+      'X-Upload-Content-Length': String(totalSize),
+    },
+    body: JSON.stringify(metadata),
+  });
+  if (!response.ok) {
+    const result = await response.json().catch(() => null);
+    throw Object.assign(new Error(result?.error?.message || 'Google Drive upload session failed.'), { status: response.status });
+  }
+  const uploadUrl = response.headers.get('location');
+  if (!uploadUrl) throw Object.assign(new Error('Google Drive did not return an upload session.'), { status: 502 });
+  return uploadUrl;
+}
+
+function validateUploadUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.origin === 'https://www.googleapis.com'
+      && url.pathname.startsWith('/upload/drive/v3/files')
+      && url.searchParams.get('uploadType') === 'resumable';
+  } catch {
+    return false;
+  }
+}
+
+async function uploadChunk(token, uploadUrl, offset, totalSize, chunk) {
+  const end = offset + chunk.length - 1;
+  const response = await fetch(uploadUrl, {
+    method: 'PUT',
+    redirect: 'manual',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'image/png',
+      'Content-Length': String(chunk.length),
+      'Content-Range': `bytes ${offset}-${end}/${totalSize}`,
+    },
+    body: chunk,
+  });
+  if (response.status === 200 || response.status === 201) {
+    return { done: true, nextOffset: totalSize };
+  }
+  if (response.status === 308) {
+    const received = /bytes=\d+-(\d+)/.exec(response.headers.get('range') ?? '');
+    return { done: false, nextOffset: received ? Number(received[1]) + 1 : offset + chunk.length };
+  }
+  const result = await response.json().catch(() => null);
+  throw Object.assign(new Error(result?.error?.message || 'Google Drive chunk upload failed.'), { status: response.status });
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { message: 'Method not allowed.' });
   const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || DEFAULT_ROOT_FOLDER_ID;
 
   try {
-    const { hospitalName, year, month, filename, image } = req.body || {};
+    const { action, hospitalName, year, month, filename, image, totalSize, uploadUrl, offset, chunk } = req.body || {};
+    if (action === 'chunk') {
+      if (!validateUploadUrl(uploadUrl) || !Number.isInteger(offset) || !Number.isInteger(totalSize) || totalSize <= 0 || typeof chunk !== 'string') {
+        return sendJson(res, 400, { message: 'Drive upload chunk fields are missing or invalid.' });
+      }
+      const pngChunk = Buffer.from(chunk, 'base64');
+      if (pngChunk.length === 0 || (offset + pngChunk.length < totalSize && pngChunk.length % (256 * 1024) !== 0)) {
+        return sendJson(res, 400, { message: 'Drive upload chunk size is invalid.' });
+      }
+      const token = await getAccessToken();
+      return sendJson(res, 200, await uploadChunk(token, uploadUrl, offset, totalSize, pngChunk));
+    }
+
+    if (action === 'init') {
+      if (!hospitalName || !Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12 || !filename || !Number.isInteger(totalSize) || totalSize <= 0) {
+        return sendJson(res, 400, { message: 'Drive upload session fields are missing or invalid.' });
+      }
+      const token = await getAccessToken();
+      const monthFolderName = `${year}년 ${String(month).padStart(2, '0')}월`;
+      const monthFolderId = await ensureFolder(token, rootFolderId, monthFolderName);
+      const hospitalFolderId = await ensureFolder(token, monthFolderId, String(hospitalName).trim());
+      const resumableUrl = await startResumableUpload(token, hospitalFolderId, String(filename), totalSize);
+      return sendJson(res, 200, { ok: true, uploadUrl: resumableUrl });
+    }
+
     if (!hospitalName || !Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12 || !filename || !image) {
       return sendJson(res, 400, { message: 'Drive upload fields are missing or invalid.' });
     }
