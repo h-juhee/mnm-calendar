@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type RefObject } from "react";
+import { useEffect, useState, type ChangeEvent, type RefObject } from "react";
 import type {
   DateSchedule,
   HospitalInfo,
@@ -228,6 +228,17 @@ export default function CustomDesignRequestModal({
   ].some((value) => value?.trim());
   const isScheduleSubmission = submissionMode === 'schedule';
   const canSubmit = hasOutputSize && (isScheduleSubmission || hasRequestContent) && !isSubmitting;
+  const isFinalizingSubmission = isScheduleSubmission && imageUploadProgress.status === 'uploading';
+
+  useEffect(() => {
+    if (!isFinalizingSubmission) return;
+    const preventLeaving = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', preventLeaving);
+    return () => window.removeEventListener('beforeunload', preventLeaving);
+  }, [isFinalizingSubmission]);
 
   const handleSubmit = async () => {
     if (isSubmitting || isSubmitted) return;
@@ -525,8 +536,11 @@ export default function CustomDesignRequestModal({
     return (
       <Modal
         title={isScheduleSubmission ? "진료일정 제출" : "맞춤 디자인 요청"}
-        onClose={onClose}
-        backdropClassName={imageUploadProgress.status === 'uploading' ? styles.submittingBackdrop : undefined}
+        onClose={() => {
+          if (!isFinalizingSubmission) onClose();
+        }}
+        closable={!isFinalizingSubmission}
+        backdropClassName={isFinalizingSubmission ? styles.submittingBackdrop : undefined}
       >
         <div className={styles.successWrap}>
           <img
@@ -536,16 +550,18 @@ export default function CustomDesignRequestModal({
             aria-hidden="true"
           />
           <p className={styles.successText}>
-            {isScheduleSubmission ? "진료일정이" : "맞춤 디자인 요청이"} 정상적으로 접수되었습니다. 요청 내용을 확인한 후
-            순차적으로 제작할 예정입니다.
+            {isFinalizingSubmission
+              ? "진료일정이 정상적으로 접수되었습니다. 제출을 완료하고 있으니 잠시만 기다려 주세요."
+              : `${isScheduleSubmission ? "진료일정이" : "맞춤 디자인 요청이"} 정상적으로 접수되었습니다. 요청 내용을 확인한 후 순차적으로 제작할 예정입니다.`}
           </p>
           {submissionWarning && <p className={styles.failureText}>{submissionWarning}</p>}
           <button
             type="button"
             className={`${styles.button} ${styles.buttonPrimary}`}
+            disabled={isFinalizingSubmission}
             onClick={onClose}
           >
-            확인
+            {isFinalizingSubmission ? "처리 중…" : "확인"}
           </button>
         </div>
       </Modal>

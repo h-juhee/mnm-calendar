@@ -219,6 +219,15 @@
   background: var(--color-primary-hover);
 }
 
+.button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.buttonPrimary:disabled:hover {
+  background: var(--color-primary);
+}
+
 .buttonPrimary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
