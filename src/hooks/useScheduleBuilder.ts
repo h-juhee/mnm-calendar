@@ -76,6 +76,9 @@ function createEmptyFormData(
     year,
     month,
     recurringClosedDays: keep?.recurringClosedDays ?? [],
+    recurringClosedNoMerge: keep?.recurringClosedNoMerge ?? false,
+    recurringNightDays: keep?.recurringNightDays ?? [],
+    recurringNightNoMerge: keep?.recurringNightNoMerge ?? false,
     dateSchedules: [],
     vacationStart: undefined,
     vacationEnd: undefined,
@@ -103,6 +106,9 @@ export function useScheduleBuilder(hospitalId: string) {
     return loaded
       ? {
           ...loaded,
+          recurringNightDays: loaded.recurringNightDays ?? [],
+          recurringClosedNoMerge: loaded.recurringClosedNoMerge ?? false,
+          recurringNightNoMerge: loaded.recurringNightNoMerge ?? false,
           ...clipVacationRangeToMonth(loaded.vacationStart, loaded.vacationEnd, year, month),
           designEdits: undefined,
           designEditsByFormat: normalizeDesignEditsByFormat(loaded),
@@ -135,6 +141,9 @@ export function useScheduleBuilder(hospitalId: string) {
         return loaded
           ? {
               ...loaded,
+              recurringNightDays: loaded.recurringNightDays ?? [],
+              recurringClosedNoMerge: loaded.recurringClosedNoMerge ?? false,
+              recurringNightNoMerge: loaded.recurringNightNoMerge ?? false,
               ...clipVacationRangeToMonth(loaded.vacationStart, loaded.vacationEnd, year, month),
               designEdits: undefined,
               designEditsByFormat: normalizeDesignEditsByFormat(loaded),
@@ -157,6 +166,21 @@ export function useScheduleBuilder(hospitalId: string) {
       ...prev,
       recurringClosedDays: toggleRecurringDayUtil(prev.recurringClosedDays, day),
     }));
+  }, []);
+
+  const toggleRecurringNightDay = useCallback((day: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      recurringNightDays: toggleRecurringDayUtil(prev.recurringNightDays, day),
+    }));
+  }, []);
+
+  const setRecurringClosedNoMerge = useCallback((recurringClosedNoMerge: boolean) => {
+    setFormData((prev) => ({ ...prev, recurringClosedNoMerge }));
+  }, []);
+
+  const setRecurringNightNoMerge = useCallback((recurringNightNoMerge: boolean) => {
+    setFormData((prev) => ({ ...prev, recurringNightNoMerge }));
   }, []);
 
   const setDateSchedule = useCallback((schedule: DateSchedule) => {
@@ -249,6 +273,9 @@ export function useScheduleBuilder(hospitalId: string) {
     actions: {
       setYearMonth,
       toggleRecurringDay,
+      toggleRecurringNightDay,
+      setRecurringClosedNoMerge,
+      setRecurringNightNoMerge,
       setDateSchedule,
       clearDateSchedule,
       setVacationRange,

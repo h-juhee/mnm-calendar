@@ -14,6 +14,9 @@ export function resetScheduleSettings(formData: ScheduleFormData): ScheduleFormD
   return {
     ...formData,
     recurringClosedDays: [],
+    recurringClosedNoMerge: false,
+    recurringNightDays: [],
+    recurringNightNoMerge: false,
     dateSchedules: [],
     vacationStart: undefined,
     vacationEnd: undefined,

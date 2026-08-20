@@ -114,15 +114,38 @@ function isWithinRange(date: string, start?: string, end?: string): boolean {
 }
 
 /**
- * 우선순위: 1) 사용자 개별 설정 2) 휴가 기간 3) 정기 휴진 요일 4) 기본 정상 진료
+ * 우선순위: 1) 사용자 개별 설정 2) 휴가 기간 3) 공휴일 4) 정기 휴진 요일 5) 정기 야간 진료 요일 6) 기본 정상 진료
  */
 export function resolveDateSchedule(
   dateKey: string,
   weekday: number,
-  formData: Pick<ScheduleFormData, 'dateSchedules' | 'recurringClosedDays' | 'vacationStart' | 'vacationEnd' | 'vacationBadgeColor' | 'vacationNoMerge'>,
+  formData: Pick<ScheduleFormData, 'dateSchedules' | 'recurringClosedDays' | 'recurringClosedNoMerge' | 'recurringNightDays' | 'recurringNightNoMerge' | 'vacationStart' | 'vacationEnd' | 'vacationBadgeColor' | 'vacationNoMerge'>,
 ): DateSchedule {
   const explicit = formData.dateSchedules.find((s) => s.date === dateKey);
-  if (explicit) return explicit;
+  if (explicit) {
+    const recurringEntry = formData.recurringClosedDays.includes(weekday)
+      ? { type: 'closed' as const, noMerge: formData.recurringClosedNoMerge }
+      : formData.recurringNightDays.includes(weekday)
+        ? { type: 'night' as const, noMerge: formData.recurringNightNoMerge }
+        : null;
+    if (!recurringEntry) return explicit;
+
+    // 정상 진료는 반복 휴진만 해제합니다. 야간 진료처럼 정상 진료와 함께
+    // 성립할 수 있는 반복 일정은 아래에서 추가 일정으로 합칩니다.
+    if (explicit.type === 'open' && recurringEntry.type === 'closed') return explicit;
+
+    const entries = [explicit, ...(explicit.additionalSchedules ?? [])];
+    if (entries.some((entry) => entry.type === recurringEntry.type) || entries.length >= 3) {
+      return explicit;
+    }
+    return {
+      ...explicit,
+      additionalSchedules: [
+        ...(explicit.additionalSchedules ?? []),
+        recurringEntry,
+      ],
+    };
+  }
 
   if (isWithinRange(dateKey, formData.vacationStart, formData.vacationEnd)) {
     return {
@@ -139,7 +162,11 @@ export function resolveDateSchedule(
   }
 
   if (formData.recurringClosedDays.includes(weekday)) {
-    return { date: dateKey, type: 'closed' };
+    return { date: dateKey, type: 'closed', noMerge: formData.recurringClosedNoMerge };
+  }
+
+  if (formData.recurringNightDays.includes(weekday)) {
+    return { date: dateKey, type: 'night', noMerge: formData.recurringNightNoMerge };
   }
 
   return { date: dateKey, type: 'open' };
@@ -220,11 +247,12 @@ export function clipVacationRangeToMonth(
 export function hasScheduleContent(
   formData: Pick<
     ScheduleFormData,
-    'recurringClosedDays' | 'dateSchedules' | 'vacationStart' | 'vacationEnd' | 'nextMonthEvent' | 'calendarMustInclude'
+    'recurringClosedDays' | 'recurringNightDays' | 'dateSchedules' | 'vacationStart' | 'vacationEnd' | 'nextMonthEvent' | 'calendarMustInclude'
   >,
 ): boolean {
   return (
     formData.recurringClosedDays.length > 0 ||
+    formData.recurringNightDays.length > 0 ||
     formData.dateSchedules.length > 0 ||
     Boolean(formData.vacationStart) ||
     Boolean(formData.vacationEnd) ||

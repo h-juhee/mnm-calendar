@@ -241,6 +241,51 @@
   gap: 8px;
 }
 
+.timeBadgePreview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.timeBadgePreviewItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.timeBadgePreviewItem small {
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.timeBadgePreviewItem strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-height: 24px;
+  box-sizing: border-box;
+  padding: 3px 9px;
+  color: #fff;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.timeBadgePreviewItem .timeBadgePreviewPlain {
+  padding-right: 0;
+  padding-left: 0;
+  background: transparent;
+}
+
 .colorPair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -472,4 +517,15 @@ select.input {
 .error {
   font-size: 12px;
   color: var(--color-danger);
+}
+
+@media (max-width: 520px) {
+  .scheduleList { gap: 10px; }
+  .scheduleCard { padding: 10px; }
+  .scheduleCardBody { padding-top: 9px; }
+  .rangeToggle { margin-bottom: 10px; padding-bottom: 10px; }
+  .displayModeGroup, .typeList { gap: 6px; }
+  .displayModeOption { min-height: 38px; padding: 7px 9px; font-size: 13px; }
+  .typeList { margin-bottom: 10px; }
+  .typeOption { min-height: 36px; padding: 7px 10px; font-size: 13px; }
 }

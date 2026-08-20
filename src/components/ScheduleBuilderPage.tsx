@@ -8,6 +8,8 @@ import LogoUploadField from './LogoUploadField';
 import MonthSelector from './MonthSelector';
 import CalendarLabelSelector from './CalendarLabelSelector';
 import RecurringDaySelector from './RecurringDaySelector';
+import RecurringBadgeDisplaySelector from './RecurringBadgeDisplaySelector';
+import CustomerGuideModal from './CustomerGuideModal';
 import DateScheduleModal from './DateScheduleModal';
 import VacationRangeField from './VacationRangeField';
 import TemplateSelector from './TemplateSelector';
@@ -18,6 +20,7 @@ import CustomDesignRequestModal from './CustomDesignRequestModal';
 import Modal from './Modal';
 import OutputFormatSelector from './OutputFormatSelector';
 import { getOutputFormatMeta, type OutputFormat } from '../types/outputFormat';
+import { renderNodeAsPng } from '../utils/exportUtils';
 import ClinicHoursEditor from './ClinicHoursEditor';
 import { deleteCustomBackground, loadCustomBackground, migrateCustomBackground, saveCustomBackground } from '../utils/backgroundStorage';
 import { removeHospitalData, removeHospitalInfo, saveHospitalInfo } from '../utils/storageUtils';
@@ -58,11 +61,36 @@ interface ScheduleBuilderPageProps {
 
 export default function ScheduleBuilderPage({ appMode }: ScheduleBuilderPageProps) {
   const [hospital, setHospital] = useState<HospitalInfo | null>(null);
+  const [isCustomerGuideOpen, setCustomerGuideOpen] = useState(false);
 
   const handleHospitalChange = useCallback((nextHospital: HospitalInfo) => {
     saveHospitalInfo(nextHospital);
     setHospital(nextHospital);
   }, []);
+
+  const handleHospitalSubmit = useCallback((nextHospital: HospitalInfo) => {
+    saveHospitalInfo(nextHospital);
+    setHospital(nextHospital);
+    if (appMode !== 'customer') return;
+    try {
+      if (localStorage.getItem(`mnn:customerGuideSeen:v1:${nextHospital.id}`) !== '1') {
+        setCustomerGuideOpen(true);
+      }
+    } catch {
+      setCustomerGuideOpen(true);
+    }
+  }, [appMode]);
+
+  const closeCustomerGuide = useCallback(() => {
+    if (hospital) {
+      try {
+        localStorage.setItem(`mnn:customerGuideSeen:v1:${hospital.id}`, '1');
+      } catch {
+        // 저장 공간을 사용할 수 없어도 가이드는 정상적으로 닫습니다.
+      }
+    }
+    setCustomerGuideOpen(false);
+  }, [hospital]);
 
   const handleHospitalReset = useCallback(() => {
     removeHospitalInfo();
@@ -81,19 +109,25 @@ export default function ScheduleBuilderPage({ appMode }: ScheduleBuilderPageProp
   if (!hospital) {
     return (
       <HospitalIntakeForm
-        onSubmit={handleHospitalChange}
+        onSubmit={handleHospitalSubmit}
         onDeleteHospital={handleHospitalDelete}
         showRecentHospitals={false}
       />
     );
   }
   return (
-    <ScheduleBuilderContent
-      appMode={appMode}
-      hospital={hospital}
-      onHospitalChange={handleHospitalChange}
-      onHospitalReset={handleHospitalReset}
-    />
+    <>
+      <ScheduleBuilderContent
+        appMode={appMode}
+        hospital={hospital}
+        onHospitalChange={handleHospitalChange}
+        onHospitalReset={handleHospitalReset}
+        onOpenCustomerGuide={() => setCustomerGuideOpen(true)}
+      />
+      {appMode === 'customer' && isCustomerGuideOpen && (
+        <CustomerGuideModal onClose={closeCustomerGuide} />
+      )}
+    </>
   );
 }
 
@@ -102,11 +136,13 @@ function ScheduleBuilderContent({
   hospital,
   onHospitalChange,
   onHospitalReset,
+  onOpenCustomerGuide,
 }: {
   appMode: 'customer' | 'internal';
   hospital: HospitalInfo;
   onHospitalChange: (hospital: HospitalInfo) => void;
   onHospitalReset: () => void;
+  onOpenCustomerGuide: () => void;
 }) {
   const { formData, saveStatus, resolvedSchedule, resolvedByDate, calendarMatrix, actions } = useScheduleBuilder(hospital.id);
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
@@ -120,10 +156,19 @@ function ScheduleBuilderContent({
   const [isHospitalSwitchConfirmOpen, setHospitalSwitchConfirmOpen] = useState(false);
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('square');
   const [isFormatSectionExpanded, setFormatSectionExpanded] = useState(true);
-  const [activeSettingsPanel, setActiveSettingsPanel] = useState<SettingsPanel>('basic');
+  const [activeSettingsPanel, setActiveSettingsPanel] = useState<SettingsPanel>(
+    appMode === 'customer' ? 'closed' : 'basic',
+  );
   const [expandedSettingsGroup, setExpandedSettingsGroup] = useState<SettingsGroupId>('schedule');
   const visibleSettingsGroups = appMode === 'customer'
-    ? SETTINGS_GROUPS.filter((group) => group.id !== 'design')
+    ? SETTINGS_GROUPS
+      .filter((group) => group.id !== 'design')
+      .map((group) => ({
+        ...group,
+        items: group.items
+          .filter((item) => item.id !== 'basic' && item.id !== 'vacation' && item.id !== 'hours')
+          .map((item) => item.id === 'closed' ? { ...item, label: '정기 일정' } : item),
+      }))
     : SETTINGS_GROUPS;
   const [customBackgroundUrl, setCustomBackgroundUrl] = useState<string>();
   const [customBackgroundFileName, setCustomBackgroundFileName] = useState<string>();
@@ -136,11 +181,32 @@ function ScheduleBuilderContent({
     void flushPendingUsageLogs();
   }, []);
 
-  useEffect(() => {
-    if (appMode === 'customer' && outputFormat !== 'square') {
+  const renderPreviewForFormat = useCallback(async (format: OutputFormat) => {
+    setOutputFormat(format);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        let attempts = 0;
+        const waitForRender = () => {
+          const node = exportNodeRef.current;
+          if (node?.dataset.outputFormat === format) {
+            requestAnimationFrame(() => resolve());
+            return;
+          }
+          attempts += 1;
+          if (attempts >= 60) {
+            reject(new Error(`${getOutputFormatMeta(format).label} 미리보기를 준비하지 못했습니다.`));
+            return;
+          }
+          requestAnimationFrame(waitForRender);
+        };
+        requestAnimationFrame(waitForRender);
+      });
+      if (!exportNodeRef.current) throw new Error('달력 미리보기를 준비하지 못했습니다.');
+      return await renderNodeAsPng(exportNodeRef.current, format);
+    } finally {
       setOutputFormat('square');
     }
-  }, [appMode, outputFormat]);
+  }, []);
 
   const openClinicHoursSettings = useCallback(() => {
     setActiveSettingsPanel('hours');
@@ -237,11 +303,34 @@ function ScheduleBuilderContent({
       </>
     ),
     closed: (
-      <>
-        <h2 className={styles.cardTitle}>정기 휴진 설정</h2>
+      <div className={styles.recurringSettings}>
+        <h2 className={styles.cardTitle}>{appMode === 'customer' ? '정기 일정 설정' : '정기 휴진 설정'}</h2>
         <p className={styles.cardHint}>매주 반복해서 쉬는 요일을 선택하세요.</p>
         <RecurringDaySelector selectedDays={formData.recurringClosedDays} onToggle={actions.toggleRecurringDay} />
-      </>
+        {appMode === 'customer' && (
+          <RecurringBadgeDisplaySelector
+            label="정기 휴진"
+            noMerge={formData.recurringClosedNoMerge}
+            onChange={actions.setRecurringClosedNoMerge}
+          />
+        )}
+        {appMode === 'customer' && (
+          <>
+            <h3 className={styles.recurringSectionTitle}>야간 진료</h3>
+            <p className={styles.cardHint}>매주 반복해서 야간 진료하는 요일을 선택하세요.</p>
+            <RecurringDaySelector
+              selectedDays={formData.recurringNightDays}
+              onToggle={actions.toggleRecurringNightDay}
+              ariaLabel="야간 진료 요일"
+            />
+            <RecurringBadgeDisplaySelector
+              label="야간 진료"
+              noMerge={formData.recurringNightNoMerge}
+              onChange={actions.setRecurringNightNoMerge}
+            />
+          </>
+        )}
+      </div>
     ),
     vacation: (
       <>
@@ -283,7 +372,21 @@ function ScheduleBuilderContent({
     ),
   };
 
-  const settingsContent = (
+  const settingsContent = appMode === 'customer' ? (
+      <nav className={`${styles.settingsNav} ${styles.settingsNavSingle}`} aria-label="진료 일정 설정">
+        <button
+          type="button"
+          className={styles.settingsNavActive}
+          aria-current="page"
+          onClick={() => {
+            setActiveSettingsPanel('closed');
+            setExpandedSettingsGroup('schedule');
+          }}
+        >
+          정기 설정
+        </button>
+      </nav>
+  ) : (
       <nav className={styles.settingsNav} aria-label="일정 이미지 설정">
         {visibleSettingsGroups.map((group) => (
           <div className={styles.settingsGroup} key={group.label}>
@@ -347,19 +450,24 @@ function ScheduleBuilderContent({
       <div className={styles.previewTools}>
         <div>
           <p className={styles.previewLabel}>실시간 미리보기</p>
-          <p className={styles.previewEditHint}>
-            <span aria-hidden="true">✦</span>
-            <strong>날짜별 일정 편집</strong>
-            달력에서 날짜를 눌러 휴진·공휴일 진료·야간 진료를 설정하세요.
-          </p>
+          {appMode === 'customer' && (
+            <p className={styles.previewSimpleHint}>
+              날짜별로 다른 일정이 있다면 달력에서 해당 날짜를 눌러 설정해 주세요.
+            </p>
+          )}
         </div>
         <div className={styles.previewActions}>
+          {appMode === 'customer' && (
+            <button type="button" className={styles.previewDesignButton} onClick={onOpenCustomerGuide}>
+              사용 방법
+            </button>
+          )}
           <button type="button" className={styles.previewDesignButton} onClick={() => setTemplateModalOpen(true)}>
             템플릿 변경
           </button>
         </div>
       </div>
-      <section className={styles.formatSection}>
+      {appMode === 'internal' && <section className={styles.formatSection}>
         <button
           type="button"
           className={styles.formatSectionTrigger}
@@ -369,11 +477,7 @@ function ScheduleBuilderContent({
         >
           <span>
             <strong>이미지 규격</strong>
-            <small>
-              {appMode === 'customer'
-                ? `${(formData.outputSize ?? []).length}개 선택`
-                : getOutputFormatMeta(outputFormat).label}
-            </small>
+            <small>{getOutputFormatMeta(outputFormat).label}</small>
           </span>
           <svg aria-hidden="true" viewBox="0 0 20 20">
             <path d="m5 7.5 5 5 5-5" />
@@ -382,24 +486,18 @@ function ScheduleBuilderContent({
         {isFormatSectionExpanded && (
           <div id="output-format-options" className={styles.formatSectionContent}>
             <p className={styles.cardHint}>
-              {appMode === 'customer'
-                ? '제작을 원하는 규격을 모두 선택하세요. 복수 선택할 수 있습니다.'
-                : '제작할 이미지의 크기와 용도를 선택하세요.'}
+              제작할 이미지의 크기와 용도를 선택하세요.
             </p>
             <p className={styles.formatNotice}>
-              {appMode === 'customer'
-                ? '미리보기는 인스타 팝업 규격으로 고정되며, 선택한 규격은 제출 데이터에 반영됩니다.'
-                : '미리보기는 화면에 맞춰 축소되며, PNG 저장 시 선택한 실제 픽셀 크기로 출력됩니다.'}
+              미리보기는 화면에 맞춰 축소되며, PNG 저장 시 선택한 실제 픽셀 크기로 출력됩니다.
             </p>
             <OutputFormatSelector
               value={outputFormat}
               onChange={setOutputFormat}
-              multipleValue={appMode === 'customer' ? formData.outputSize ?? [] : undefined}
-              onMultipleChange={appMode === 'customer' ? actions.setOutputSize : undefined}
             />
           </div>
         )}
-      </section>
+      </section>}
     </>
   );
 
@@ -432,10 +530,6 @@ function ScheduleBuilderContent({
           type="button"
           className={styles.secondaryButton}
           onClick={() => {
-            if (!formData.clinicHours?.confirmed) {
-              openClinicHoursSettings();
-              return;
-            }
             setCustomModalOpen(true);
           }}
         >
@@ -451,7 +545,9 @@ function ScheduleBuilderContent({
         <div className={styles.heroInner}>
           <h1 className={styles.heroTitle}>{hospital.name} 원장님, 안녕하세요!</h1>
           <p className={styles.heroSubtitle}>
-            휴진일과 진료 일정을 선택하면 진료안내 이미지를 실시간으로 만들 수 있어요.
+            {appMode === 'customer'
+              ? '휴진일과 진료 일정을 설정하고, 완성된 시안을 확인한 뒤 제출해 주세요.'
+              : '휴진일과 진료 일정을 선택하면 진료안내 이미지를 실시간으로 만들 수 있어요.'}
           </p>
           <div className={styles.heroActions}>
             <span
@@ -461,13 +557,15 @@ function ScheduleBuilderContent({
             >
               {saveStatus === 'saving' ? '저장 중…' : saveStatus === 'error' ? '저장 실패' : '자동 저장됨'}
             </span>
-            <button
-              type="button"
-              className={styles.heroChangeButton}
-              onClick={() => setHospitalSwitchConfirmOpen(true)}
-            >
-              다른 병원으로 전환
-            </button>
+            {appMode === 'internal' && (
+              <button
+                type="button"
+                className={styles.heroChangeButton}
+                onClick={() => setHospitalSwitchConfirmOpen(true)}
+              >
+                다른 병원으로 전환
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -523,7 +621,8 @@ function ScheduleBuilderContent({
               setExpandedSettingsGroup('design');
             }}
             onOpenClinicHours={openClinicHoursSettings}
-            requireClinicHoursConfirmation={appMode === 'customer'}
+            requireClinicHoursConfirmation={false}
+            designEditingEnabled={appMode === 'internal'}
             onHospitalDisplayModeChange={(displayMode) => onHospitalChange({ ...hospital, displayMode })}
           />
         ) : (
@@ -548,6 +647,7 @@ function ScheduleBuilderContent({
           onClear={() => actions.clearDateSchedule(selectedDateKey)}
           onClearDate={actions.clearDateSchedule}
           onClose={() => setSelectedDateKey(null)}
+          showClearAllAction={appMode === 'internal'}
         />
       )}
 
@@ -619,6 +719,7 @@ function ScheduleBuilderContent({
           onOutputSizeChange={actions.setOutputSize}
           previewNodeRef={exportNodeRef}
           outputFormat={outputFormat}
+          renderPreviewForFormat={renderPreviewForFormat}
           onClose={() => setCustomModalOpen(false)}
         />
       )}

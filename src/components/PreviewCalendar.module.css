@@ -616,3 +616,9 @@
   min-width: 100% !important;
   max-width: 100% !important;
 }
+
+/* 이어진 뱃지도 개별 트랙 뱃지와 같은 높이를 사용해 세로 패딩과 정렬을 맞춥니다. */
+.mergedBadgeCell > .badge.badgeSpan {
+  height: 100%;
+  min-height: 100%;
+}

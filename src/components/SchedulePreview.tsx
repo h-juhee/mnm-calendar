@@ -69,6 +69,7 @@ interface SchedulePreviewProps {
   onOpenElements: () => void;
   onOpenClinicHours: () => void;
   requireClinicHoursConfirmation?: boolean;
+  designEditingEnabled?: boolean;
   onHospitalDisplayModeChange: (mode: 'name' | 'logo') => void;
 }
 
@@ -171,6 +172,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     onOpenElements,
     onOpenClinicHours,
     requireClinicHoursConfirmation = false,
+    designEditingEnabled = true,
     onHospitalDisplayModeChange,
   },
   ref,
@@ -330,11 +332,17 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
   useEffect(() => {
     const element = wrapperRef.current;
     if (!element) return;
-    const update = () => setFitScale(element.clientWidth / renderWidth);
+    const update = () => {
+      setFitScale(element.clientWidth / renderWidth);
+    };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(element);
-    return () => observer.disconnect();
+    window.addEventListener('resize', update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', update);
+    };
   }, [renderWidth]);
 
   const Template = TEMPLATE_COMPONENTS[formData.templateId as TemplateId] ?? ScheduleATemplate;
@@ -401,6 +409,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
   };
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!designEditingEnabled) return;
     let target = (event.target as HTMLElement).closest<HTMLElement>('[data-edit-layer]');
     if (!target) {
       setCanvasElementSelected(false);
@@ -492,6 +501,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
   };
 
   const handleDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!designEditingEnabled) return;
     const target = (event.target as HTMLElement).closest<HTMLElement>('[data-edit-layer]');
     if (!target) return;
     const id = target.dataset.editLayer as EditableLayerId;
@@ -899,11 +909,16 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
         >
           <div
             ref={ref}
-            className={styles.exportNode}
+            className={`${styles.exportNode} ${!designEditingEnabled ? styles.designEditingDisabled : ''}`}
             data-output-format={outputFormat}
-            style={{ width: renderWidth, height: renderHeight, transform: `scale(${scale})` }}
+            style={{
+              width: renderWidth,
+              height: renderHeight,
+              transform: `scale(${scale})`,
+            }}
             onPointerDown={handlePointerDown}
             onPointerOver={(event) => {
+              if (!designEditingEnabled) return;
               if ((event.target as HTMLElement).closest('[data-edit-layer="calendar"]')) {
                 revealCalendarDragHint();
               }
@@ -927,11 +942,11 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
               clinicHours={displayedClinicHours}
               reserveClinicHoursSpace={false}
               designEdits={designEdits}
-              selectedLayer={canvasElementSelected ? selectedLayer : undefined}
+              selectedLayer={designEditingEnabled && canvasElementSelected ? selectedLayer : undefined}
               customBackgroundUrl={customBackgroundUrl}
             />
           </div>
-          {canvasElementSelected && selectionOverlay && (
+          {designEditingEnabled && canvasElementSelected && selectionOverlay && (
             <div
               className={styles.canvasSelectionActions}
               style={{ left: selectionOverlay.left, top: selectionOverlay.top }}

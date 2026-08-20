@@ -14,10 +14,8 @@
 
 .previewTools { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .previewLabel { color: var(--color-text); font-size: 18px; font-weight: 800; }
+.previewSimpleHint { margin: 5px 0 0; color: var(--color-text-muted); font-size: 13px; line-height: 1.5; }
 .previewActions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.previewEditHint { width: fit-content; margin: 7px 0 0; padding: 6px 13px; display: flex; align-items: center; gap: 7px; color: var(--color-text-muted); background: var(--color-primary-bg); border: 1px solid color-mix(in srgb, var(--color-primary) 25%, var(--color-border)); border-radius: var(--radius-sm); font-size: 14px; line-height: 1.45; }
-.previewEditHint > span { color: var(--color-primary); font-size: 15px; }
-.previewEditHint strong { color: var(--color-primary); white-space: nowrap; }
 .previewDesignButton { flex-shrink: 0; padding: 9px 13px; color: var(--color-primary); background: var(--color-primary-bg); border: 1px solid color-mix(in srgb, var(--color-primary) 35%, var(--color-border)); border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 600; }
 .formatSection { display: flex; flex-direction: column; padding: 10px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
 .formatSectionTrigger { width: 100%; min-height: 46px; padding: 7px 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--color-text); background: transparent; border: 0; border-radius: var(--radius-sm); cursor: pointer; text-align: left; }
@@ -32,6 +30,33 @@
 .card { min-width: 0; padding: 20px; display: flex; flex-direction: column; gap: 12px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
 .cardTitle { color: var(--color-text); font-size: 17px; font-weight: 800; }
 .cardHint { margin-top: -5px; color: var(--color-text-muted); font-size: 12px; }
+.recurringSectionTitle {
+  margin: 22px 0 8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.recurringSettings .cardTitle {
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.recurringSettings .cardHint {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.recurringSettings .recurringSectionTitle {
+  margin-top: 28px;
+  padding-top: 22px;
+  font-size: 18px;
+}
 .unsupportedNotice { padding: 18px 16px; display: flex; flex-direction: column; gap: 6px; color: var(--color-text-muted); background: var(--color-primary-bg); border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--color-border)); border-radius: var(--radius-sm); font-size: 12px; line-height: 1.5; }
 .unsupportedNotice strong { color: var(--color-text); font-size: 14px; }
 .formatNotice { margin: -2px 0 2px; color: var(--color-primary); font-size: 13px; line-height: 1.45; }
@@ -52,6 +77,19 @@
   color: #fff;
   background: var(--color-primary);
   box-shadow: none;
+}
+.settingsNav.settingsNavSingle {
+  padding: 0;
+  overflow: hidden;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.settingsNavSingle .settingsNavActive {
+  width: 100%;
+  min-height: 56px;
+  border-radius: 0;
+  font-size: 18px;
+  text-align: center;
 }
 .settingsPanel { width: 100%; height: auto; min-height: 0; align-self: start; border-radius: 0 var(--radius-lg) var(--radius-lg) 0; box-shadow: none; }
 .downloadActions { display: grid; gap: 8px; }
@@ -76,6 +114,7 @@
 
 @media (max-width: 720px) {
   .heroInner { padding-right: 0; }
+  .heroTitle { font-size: 20px; line-height: 1.35; letter-spacing: -.2px; }
   .heroActions { position: static; align-items: flex-start; margin-top: 8px; transform: none; }
   .previewTools { align-items: flex-start; flex-direction: column; }
   .previewEditHint { width: 100%; align-items: flex-start; flex-wrap: wrap; }
@@ -92,4 +131,32 @@
   .settingsNav .settingsNavActive { box-shadow: none; }
   .settingsPanel { width: 100%; min-height: 0; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
   .templateSelectModal { width: 100%; max-width: 520px; max-height: calc(100dvh - 32px); padding: 20px; }
+}
+
+@media (max-width: 520px) {
+  .settingsNavSingle .settingsNavActive {
+    min-height: 46px;
+    font-size: 16px;
+  }
+
+  .settingsPanel {
+    padding: 15px;
+  }
+
+  .recurringSettings .cardTitle {
+    margin-bottom: 6px;
+    font-size: 16px;
+  }
+
+  .recurringSettings .cardHint {
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+
+  .recurringSettings .recurringSectionTitle {
+    margin-top: 20px;
+    margin-bottom: 6px;
+    padding-top: 16px;
+    font-size: 16px;
+  }
 }

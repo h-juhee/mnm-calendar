@@ -85,6 +85,9 @@ export interface ScheduleFormData {
   year: number;
   month: number; // 1-12
   recurringClosedDays: number[]; // 0=일 ... 6=토
+  recurringClosedNoMerge: boolean;
+  recurringNightDays: number[]; // 0=일 ... 6=토
+  recurringNightNoMerge: boolean;
   dateSchedules: DateSchedule[]; // 사용자가 개별적으로 지정한 날짜만 포함
   vacationStart?: string;
   vacationEnd?: string;

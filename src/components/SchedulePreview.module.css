@@ -830,6 +830,11 @@
   touch-action: none;
 }
 
+.exportNode.designEditingDisabled [data-edit-layer] {
+  cursor: default;
+  touch-action: auto;
+}
+
 .exportNode [data-edit-layer][data-dragging='true'] {
   cursor: grabbing;
 }

@@ -4,11 +4,12 @@ import styles from './RecurringDaySelector.module.css';
 interface RecurringDaySelectorProps {
   selectedDays: number[];
   onToggle: (day: number) => void;
+  ariaLabel?: string;
 }
 
-export default function RecurringDaySelector({ selectedDays, onToggle }: RecurringDaySelectorProps) {
+export default function RecurringDaySelector({ selectedDays, onToggle, ariaLabel = '정기 휴진 요일' }: RecurringDaySelectorProps) {
   return (
-    <div className={styles.group} role="group" aria-label="정기 휴진 요일">
+    <div className={styles.group} role="group" aria-label={ariaLabel}>
       {WEEKDAY_LABELS.map((label, day) => {
         const selected = selectedDays.includes(day);
         return (

@@ -14,7 +14,7 @@ import { buildExportFilename, renderNodeAsPng } from "../utils/exportUtils";
 import { ensureFontLoaded } from "../utils/fontLoader";
 import { getValidClinicHoursRows, hasValidLunchHours } from "../utils/clinicHoursUtils";
 import type { FontId } from "../types/font";
-import type { OutputFormat } from "../types/outputFormat";
+import { OUTPUT_FORMATS, type OutputFormat } from "../types/outputFormat";
 import Modal from "./Modal";
 import AdditionalInfoFields from "./AdditionalInfoFields";
 import OutputSizeSelector from "./OutputSizeSelector";
@@ -31,6 +31,7 @@ interface CustomDesignRequestModalProps {
   onOutputSizeChange: (value: string[]) => void;
   previewNodeRef: RefObject<HTMLDivElement | null>;
   outputFormat: OutputFormat;
+  renderPreviewForFormat?: (format: OutputFormat) => Promise<string>;
   onClose: () => void;
 }
 
@@ -162,6 +163,7 @@ export default function CustomDesignRequestModal({
   onOutputSizeChange,
   previewNodeRef,
   outputFormat,
+  renderPreviewForFormat,
   onClose,
 }: CustomDesignRequestModalProps) {
   const [requestDetails, setRequestDetails] = useState("");
@@ -244,10 +246,22 @@ export default function CustomDesignRequestModal({
           "달력 미리보기를 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.",
         );
       await ensureFontLoaded(formData.fontId as FontId | undefined);
-      const calendarImage = await renderNodeAsPng(
-        previewNodeRef.current,
-        outputFormat,
+      const selectedFormats = (formData.outputSize ?? []).filter(
+        (id): id is OutputFormat => OUTPUT_FORMATS.some((format) => format.id === id),
       );
+      const formatsToRender = selectedFormats.length > 0 ? selectedFormats : [outputFormat];
+      const primaryFormat = formatsToRender.includes('square') ? 'square' : formatsToRender[0];
+      const renderedImages = new Map<OutputFormat, string>();
+      const renderFormat = async (format: OutputFormat) => {
+        const existing = renderedImages.get(format);
+        if (existing) return existing;
+        const image = renderPreviewForFormat
+          ? await renderPreviewForFormat(format)
+          : await renderNodeAsPng(previewNodeRef.current!, format);
+        renderedImages.set(format, image);
+        return image;
+      };
+      const calendarImage = await renderFormat(primaryFormat);
       const response = await fetch("/api/notion-custom-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -258,7 +272,7 @@ export default function CustomDesignRequestModal({
             hospital.name,
             formData.year,
             formData.month,
-            outputFormat,
+            primaryFormat,
           ),
         }),
       });
@@ -271,40 +285,46 @@ export default function CustomDesignRequestModal({
       // 원장용 제출도 내부 다운로드와 같은 사용이력 DB에 기록합니다.
       // 주 접수는 이미 완료된 상태이므로, 이력 저장 실패가 재제출과 중복 접수로 이어지지 않게 별도로 처리합니다.
       if (isScheduleSubmission) {
-        await postUsageLogReliably({
+        const usageDetails = {
+          ...buildCustomerUsageDetails(formData, resolvedSchedule),
+          scheduleData: record.scheduleData,
+          closedDates: record.closedDates,
+          nextMonthEvent: record.nextMonthEvent,
+          calendarMustInclude: record.calendarMustInclude,
+          lunchHours: record.lunchHours,
+          clinicHoursRaw: record.clinicHoursSummary,
+          clinicHoursNote: record.clinicHoursNote,
+          otherRequests: [record.requestDetails, record.specialNotes].filter(Boolean).join("\n"),
+          vacationRange: formData.vacationStart && formData.vacationEnd
+            ? `${formData.vacationStart} ~ ${formData.vacationEnd}`
+            : "",
+        };
+        for (const format of formatsToRender) {
+          try {
+            const formatImage = await renderFormat(format);
+            await postUsageLogReliably({
             hospitalId: hospital.id,
             hospitalName: hospital.name,
             directorName: hospital.directorName,
             year: formData.year,
             month: formData.month,
             templateId: formData.templateId,
-            outputFormat,
+            outputFormat: format,
             outputSizes: record.outputSize,
             exportType: "png",
-            calendarImage,
+            calendarImage: formatImage,
             calendarImageFilename: buildExportFilename(
               hospital.name,
               formData.year,
               formData.month,
-              outputFormat,
+              format,
             ),
-            details: {
-              ...buildCustomerUsageDetails(formData, resolvedSchedule),
-              scheduleData: record.scheduleData,
-              closedDates: record.closedDates,
-              nextMonthEvent: record.nextMonthEvent,
-              calendarMustInclude: record.calendarMustInclude,
-              lunchHours: record.lunchHours,
-              clinicHoursRaw: record.clinicHoursSummary,
-              clinicHoursNote: record.clinicHoursNote,
-              otherRequests: [record.requestDetails, record.specialNotes].filter(Boolean).join("\n"),
-              vacationRange: formData.vacationStart && formData.vacationEnd
-                ? `${formData.vacationStart} ~ ${formData.vacationEnd}`
-                : "",
-            },
-        }).catch((usageError) => {
-          console.error("사용이력 저장을 보류했습니다. 다음 실행 때 다시 시도합니다.", usageError);
-        });
+            details: usageDetails,
+            });
+          } catch (usageError) {
+            console.error(`${format} 사용이력 이미지 저장을 보류했습니다.`, usageError);
+          }
+        }
       }
 
       // Keep a local copy for this browser as well, after Notion accepts the request.
@@ -442,13 +462,6 @@ export default function CustomDesignRequestModal({
           </dl>
         </section>
 
-        <AdditionalInfoFields
-          nextMonthEvent={formData.nextMonthEvent ?? ""}
-          onNextMonthEventChange={onNextMonthEventChange}
-          calendarMustInclude={formData.calendarMustInclude ?? ""}
-          onCalendarMustIncludeChange={onCalendarMustIncludeChange}
-        />
-
         <OutputSizeSelector
           value={formData.outputSize ?? []}
           onChange={(value) => {
@@ -456,6 +469,13 @@ export default function CustomDesignRequestModal({
             if (value.length > 0) setOutputSizeError(null);
           }}
           error={outputSizeError}
+        />
+
+        <AdditionalInfoFields
+          nextMonthEvent={formData.nextMonthEvent ?? ""}
+          onNextMonthEventChange={onNextMonthEventChange}
+          calendarMustInclude={formData.calendarMustInclude ?? ""}
+          onCalendarMustIncludeChange={onCalendarMustIncludeChange}
         />
 
         <div className={styles.field}>

@@ -81,6 +81,9 @@ function baseFormData(overrides: Partial<ScheduleFormData> = {}): ScheduleFormDa
     year: 2026,
     month: 8,
     recurringClosedDays: [],
+    recurringClosedNoMerge: false,
+    recurringNightDays: [],
+    recurringNightNoMerge: false,
     dateSchedules: [],
     templateId: 'basic',
     ...overrides,
@@ -492,6 +495,67 @@ test('노션 거래처 진료시간을 동일 시간대의 요일별 행으로 �
     { id: 'notion-hours-2', days: [6], startTime: '10:00', endTime: '14:00' },
   ]);
   assert.equal(parsed.confirmed, true);
+});
+
+test('정상 진료를 지정해도 반복 야간 진료는 추가 일정으로 함께 표시된다', () => {
+  const formData = baseFormData({
+    recurringNightDays: [0],
+    dateSchedules: [{ date: '2026-08-02', type: 'open' }],
+  });
+  const resolved = resolveDateSchedule('2026-08-02', 0, formData);
+  assert.equal(resolved.type, 'open');
+  assert.deepEqual(resolved.additionalSchedules?.map((entry) => entry.type), ['night']);
+});
+
+test('반복 야간 진료 날짜의 개별 일정은 기존 야간 진료와 함께 표시된다', () => {
+  const formData = baseFormData({
+    recurringNightDays: [1],
+    dateSchedules: [{ date: '2026-08-10', type: 'morningClosed' }],
+  });
+  const resolved = resolveDateSchedule('2026-08-10', 1, formData);
+  assert.equal(resolved.type, 'morningClosed');
+  assert.deepEqual(resolved.additionalSchedules?.map((entry) => entry.type), ['night']);
+});
+
+test('반복 일정과 개별 일정을 합쳐도 날짜당 최대 3개를 넘지 않는다', () => {
+  const formData = baseFormData({
+    recurringNightDays: [1],
+    dateSchedules: [{
+      date: '2026-08-10',
+      type: 'morningClosed',
+      additionalSchedules: [
+        { type: 'afternoonClosed' },
+        { type: 'shortened', endTime: '13:00' },
+      ],
+    }],
+  });
+  const resolved = resolveDateSchedule('2026-08-10', 1, formData);
+  assert.equal(1 + (resolved.additionalSchedules?.length ?? 0), 3);
+  assert.equal(resolved.additionalSchedules?.some((entry) => entry.type === 'night'), false);
+});
+
+test('야간 진료 요일을 선택하면 같은 요일에 기존 야간 진료 뱃지가 반복 적용된다', () => {
+  const formData = baseFormData({ recurringNightDays: [2] });
+  const resolved = resolveMonthSchedule(formData);
+  const tuesdays = resolved.filter((schedule) => new Date(schedule.date).getDay() === 2);
+  assert.ok(tuesdays.length >= 4);
+  tuesdays.forEach((schedule) => assert.equal(schedule.type, 'night'));
+});
+
+test('같은 요일에 정기 휴진과 야간 진료가 겹치면 휴진이 우선한다', () => {
+  const formData = baseFormData({ recurringClosedDays: [2], recurringNightDays: [2] });
+  assert.equal(resolveDateSchedule('2026-08-04', 2, formData).type, 'closed');
+});
+
+test('정기 휴진과 야간 진료의 개별 뱃지 설정이 각각 일정에 반영된다', () => {
+  const formData = baseFormData({
+    recurringClosedDays: [0],
+    recurringClosedNoMerge: true,
+    recurringNightDays: [2],
+    recurringNightNoMerge: true,
+  });
+  assert.equal(resolveDateSchedule('2026-08-02', 0, formData).noMerge, true);
+  assert.equal(resolveDateSchedule('2026-08-04', 2, formData).noMerge, true);
 });
 
 test('해석할 수 없는 노션 진료시간은 적용하지 않는다', () => {

@@ -202,6 +202,9 @@ function EntryEditor({
   };
 
   const timeError = getTimeError(entry);
+  const timePreviewText = entry.startTime && entry.endTime
+    ? `${entry.startTime}~${entry.endTime}`
+    : '09:30~18:30';
   const summary = [
     entry.type === 'custom' && entry.label?.trim() ? entry.label.trim() : SCHEDULE_TYPE_META[entry.type].label,
     entry.startTime && entry.endTime ? `${entry.startTime}~${entry.endTime}` : '',
@@ -336,7 +339,7 @@ function EntryEditor({
               checked={entry.showTimeBadge !== false}
               onChange={(event) => onChange({ ...entry, showTimeBadge: event.target.checked })}
             />
-            시간 배지 채우기
+            진료시간에 배경색 넣기
           </label>
         </div>
         <div className={styles.timeRange}>
@@ -361,6 +364,16 @@ function EntryEditor({
             aria-label={`일정 ${index + 1} 종료 시간`}
             onChange={(event) => onChange({ ...entry, endTime: formatTimeInput(event.target.value) || undefined })}
           />
+        </div>
+        <div className={styles.timeBadgePreview} aria-label="진료시간 배경색 표시 예시">
+          <span className={styles.timeBadgePreviewItem}>
+            <small>배경색 있음</small>
+            <strong style={{ backgroundColor: displayedBadgeColor }}>{timePreviewText}</strong>
+          </span>
+          <span className={styles.timeBadgePreviewItem}>
+            <small>배경색 없음</small>
+            <strong className={styles.timeBadgePreviewPlain} style={{ color: displayedBadgeColor }}>{timePreviewText}</strong>
+          </span>
         </div>
         {timeError && <p className={styles.error}>{timeError}</p>}
       </div>
@@ -506,6 +519,7 @@ interface DateScheduleModalProps {
   onClear: () => void;
   onClearDate: (dateKey: string) => void;
   onClose: () => void;
+  showClearAllAction?: boolean;
 }
 
 export default function DateScheduleModal({
@@ -520,6 +534,7 @@ export default function DateScheduleModal({
   onClear,
   onClearDate,
   onClose,
+  showClearAllAction = true,
 }: DateScheduleModalProps) {
   const defaultLabelFontSize = DEFAULT_LABEL_FONT_SIZE[outputFormat];
   const initialFirst = currentSchedule.type === 'closed' && currentSchedule.label === '휴가'
@@ -818,18 +833,20 @@ export default function DateScheduleModal({
       </div>
       <div className={styles.footer}>
         <button type="button" className={styles.button} onClick={onClose}>취소</button>
-        <button
-          type="button"
-          className={`${styles.button} ${styles.buttonSecondary}`}
-          disabled={!hasOverride}
-          onClick={() => {
-            onClear();
-            cleanupPropagatedSeries(entries.map((_, index) => index));
-            onClose();
-          }}
-        >
-          기본 일정 불러오기
-        </button>
+        {showClearAllAction && (
+          <button
+            type="button"
+            className={`${styles.button} ${styles.buttonSecondary}`}
+            disabled={!hasOverride}
+            onClick={() => {
+              onClear();
+              cleanupPropagatedSeries(entries.map((_, index) => index));
+              onClose();
+            }}
+          >
+            기본 일정 불러오기
+          </button>
+        )}
         <button
           type="button"
           className={`${styles.button} ${styles.buttonPrimary}`}
