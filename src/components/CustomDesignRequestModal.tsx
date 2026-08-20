@@ -541,13 +541,13 @@ export default function CustomDesignRequestModal({
           </p>
           {isScheduleSubmission && imageUploadProgress.status === 'uploading' && (
             <p className={styles.uploadProgress} role="status">
-              이미지 저장 중 {imageUploadProgress.completed}/{imageUploadProgress.total}
-              <span>이 페이지를 그대로 두면 백그라운드에서 완료됩니다.</span>
+              제출 자료를 마무리하고 있습니다.
+              <span>확인을 눌러도 계속 진행됩니다.</span>
             </p>
           )}
           {isScheduleSubmission && imageUploadProgress.status === 'complete' && (
             <p className={styles.uploadComplete} role="status">
-              선택한 이미지 {imageUploadProgress.total}개를 모두 저장했습니다.
+              제출 처리가 모두 완료되었습니다.
             </p>
           )}
           {submissionWarning && <p className={styles.failureText}>{submissionWarning}</p>}
