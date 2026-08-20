@@ -259,6 +259,8 @@ export interface CustomDesignRequestRecord {
   scheduleData: string;
   /** Notion의 `휴진일` 속성에 전달할 일반 휴진 날짜 목록입니다. */
   closedDates: string;
+  /** 휴진·휴가·세미나 휴진만 추린 사람이 읽을 수 있는 상세 일정입니다. */
+  closedReason?: string;
 }
 
 export function saveCustomDesignRequest(record: CustomDesignRequestRecord): boolean {

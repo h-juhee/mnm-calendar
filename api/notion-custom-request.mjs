@@ -11,6 +11,8 @@ const FIELD_CANDIDATES = {
   specialNotes: ['\uD2B9\uC774\uC0AC\uD56D/\uBCD1\uC6D0\uC694\uCCAD', '\uD2B9\uC774\uC0AC\uD56D / \uBCD1\uC6D0 \uC694\uCCAD\uC0AC\uD56D', '\uD2B9\uC774\uC0AC\uD56D', '\uBE44\uACE0'],
   requestDetails: ['\uAE30\uD0C0\uC694\uCCAD', '\uAE30\uD0C0 \uC694\uCCAD', '\uC694\uCCAD \uB0B4\uC6A9', '\uC694\uCCAD\uC0AC\uD56D'],
   calendarMustInclude: [
+    '\uD544\uC218\uD45C\uAE30',
+    '\uD544\uC218 \uD45C\uAE30',
     '\uB2EC\uB825 \uD45C\uAE30 \uD544\uC218\uB0B4\uC6A9',
     '\uB2EC\uB825 \uD45C\uAE30 \uD544\uC218 \uB0B4\uC6A9',
     '\uB2EC\uB825 \uD544\uC218 \uD3EC\uD568',
@@ -26,6 +28,12 @@ const FIELD_CANDIDATES = {
   ],
   scheduleData: ['\uC77C\uC815\uB370\uC774\uD130', '\uC77C\uC815 \uB370\uC774\uD130'],
   closedDates: ['\uD734\uC9C4\uC77C', '\uD734\uC9C4 \uC77C'],
+  closedReason: [
+    '\uD734\uC9C4 \uC77C\uC815 \uC6D0\uBB38',
+    '\uD734\uC9C4\uC77C\uC815 \uC6D0\uBB38',
+    '\uD734\uC9C4\uC0AC\uC720',
+    '\uD734\uC9C4 \uC0AC\uC720',
+  ],
   morningHours: ['\uC624\uC804\uC9C4\uB8CC', '\uC624\uC804 \uC9C4\uB8CC'],
   afternoonHours: ['\uC624\uD6C4\uC9C4\uB8CC', '\uC624\uD6C4 \uC9C4\uB8CC'],
   nightSchedules: ['\uC57C\uAC04\uC9C4\uB8CC \uD45C\uAE30\uBB38\uAD6C', '\uC57C\uAC04\uC9C4\uB8CC_\uBCC0\uACBD', '\uC57C\uAC04\uC9C4\uB8CC \uC2DC\uAC04'],
@@ -145,6 +153,49 @@ function findSchemaPropertyNames(schema, candidates) {
   const propertyNames = Object.keys(schema);
   const normalizedCandidates = new Set(candidates.map(normalizePropertyName));
   return propertyNames.filter((name) => normalizedCandidates.has(normalizePropertyName(name)));
+}
+
+function plainTitle(property) {
+  return (property?.title ?? []).map((item) => item.plain_text ?? '').join('').trim();
+}
+
+function normalizeClientName(value) {
+  return String(value ?? '')
+    .normalize('NFKC')
+    .toLocaleLowerCase('ko-KR')
+    .replace(/[^\p{L}\p{N}]/gu, '')
+    .replace(/\uCE58\uACFC(?:\uBCD1\uC6D0|\uC758\uC6D0)/gu, '\uCE58\uACFC')
+    .replace(/(?:\uBCD1\uC6D0|\uC758\uC6D0)$/u, '');
+}
+
+async function findRelatedClientPageId(relationProperty, hospitalName) {
+  const dataSourceId = relationProperty?.relation?.data_source_id;
+  const query = String(hospitalName ?? '').trim();
+  if (!dataSourceId || !query) return null;
+
+  const dataSource = await notion(`/data_sources/${dataSourceId}`);
+  const titlePropertyName = Object.entries(dataSource.properties ?? {}).find(([, property]) => property.type === 'title')?.[0];
+  if (!titlePropertyName) return null;
+
+  const runQuery = (matchType, value, pageSize) => notion(`/data_sources/${dataSourceId}/query`, {
+    method: 'POST',
+    body: JSON.stringify({
+      page_size: pageSize,
+      filter: { property: titlePropertyName, title: { [matchType]: value } },
+    }),
+  });
+
+  const exact = await runQuery('equals', query, 2);
+  if (exact.results?.length === 1) return exact.results[0].id;
+  if ((exact.results?.length ?? 0) > 1) return null;
+
+  const relaxedQuery = query.replace(/(?:\uBCD1\uC6D0|\uC758\uC6D0)$/u, '').trim() || query;
+  const candidates = await runQuery('contains', relaxedQuery, 20);
+  const normalizedQuery = normalizeClientName(query);
+  const matches = (candidates.results ?? []).filter(
+    (page) => normalizeClientName(plainTitle(page.properties?.[titlePropertyName])) === normalizedQuery,
+  );
+  return matches.length === 1 ? matches[0].id : null;
 }
 
 function blocksFor(request) {
@@ -293,6 +344,14 @@ export default async function handler(req, res) {
     const title = Object.entries(schema).find(([, property]) => property.type === 'title');
     if (!title) throw new Error('연결한 Notion DB에 제목(Title) 속성이 없습니다.');
     properties[title[0]] = propertyValue(title[1], pageTitle(request));
+
+    const clientRelationName = Object.keys(schema).find(
+      (name) => normalizePropertyName(name) === normalizePropertyName('\uAC70\uB798\uCC98') && schema[name].type === 'relation',
+    );
+    if (clientRelationName) {
+      const relatedPageId = await findRelatedClientPageId(schema[clientRelationName], request.hospitalName);
+      if (relatedPageId) properties[clientRelationName] = { relation: [{ id: relatedPageId }] };
+    }
 
     for (const [field, candidates] of Object.entries(FIELD_CANDIDATES)) {
       const rawValue = fieldValue(request, field);

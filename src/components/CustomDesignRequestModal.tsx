@@ -64,6 +64,12 @@ function formatClosedDates(resolvedSchedule: DateSchedule[]) {
     .join(", ");
 }
 
+function formatClosedScheduleDetails(resolvedSchedule: DateSchedule[]) {
+  return formatScheduleData(
+    resolvedSchedule.filter((schedule) => ['closed', 'vacation', 'seminarClosed'].includes(schedule.type)),
+  );
+}
+
 function formatHolidaySchedules(resolvedSchedule: DateSchedule[]) {
   const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
   return resolvedSchedule
@@ -242,6 +248,7 @@ export default function CustomDesignRequestModal({
       specialNotes: specialNotes.trim(),
       scheduleData: formatScheduleData(resolvedSchedule),
       closedDates: formatClosedDates(resolvedSchedule),
+      closedReason: formatClosedScheduleDetails(resolvedSchedule),
     };
 
     try {
