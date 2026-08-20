@@ -124,11 +124,12 @@ export function resolveDateSchedule(
   const explicit = formData.dateSchedules.find((s) => s.date === dateKey);
   if (explicit) {
     const recurringEntry = formData.recurringClosedDays.includes(weekday)
-      ? { type: 'closed' as const, noMerge: formData.recurringClosedNoMerge }
+      ? { type: 'closed' as const, noMerge: formData.recurringClosedNoMerge, isRecurring: true }
       : formData.recurringNightDays.includes(weekday)
-        ? { type: 'night' as const, noMerge: formData.recurringNightNoMerge }
+        ? { type: 'night' as const, noMerge: formData.recurringNightNoMerge, isRecurring: true }
         : null;
     if (!recurringEntry) return explicit;
+    if (explicit.suppressedRecurringTypes?.includes(recurringEntry.type)) return explicit;
 
     // 정상 진료는 반복 휴진만 해제합니다. 야간 진료처럼 정상 진료와 함께
     // 성립할 수 있는 반복 일정은 아래에서 추가 일정으로 합칩니다.
@@ -162,11 +163,11 @@ export function resolveDateSchedule(
   }
 
   if (formData.recurringClosedDays.includes(weekday)) {
-    return { date: dateKey, type: 'closed', noMerge: formData.recurringClosedNoMerge };
+    return { date: dateKey, type: 'closed', noMerge: formData.recurringClosedNoMerge, isRecurring: true };
   }
 
   if (formData.recurringNightDays.includes(weekday)) {
-    return { date: dateKey, type: 'night', noMerge: formData.recurringNightNoMerge };
+    return { date: dateKey, type: 'night', noMerge: formData.recurringNightNoMerge, isRecurring: true };
   }
 
   return { date: dateKey, type: 'open' };

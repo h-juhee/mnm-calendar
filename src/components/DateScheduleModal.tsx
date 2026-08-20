@@ -37,6 +37,7 @@ function formatTimeInput(value: string) {
 function normalizeEntry(entry: DateScheduleEntry): DateScheduleEntry {
   return {
     type: entry.type,
+    isRecurring: entry.isRecurring,
     badgeColor: entry.badgeColor,
     startTime: entry.startTime,
     endTime: entry.endTime,
@@ -568,6 +569,9 @@ export default function DateScheduleModal({
   const [entries, setEntries] = useState<DateScheduleEntry[]>(initialEntries);
   const [entryRanges, setEntryRanges] = useState<EntryRange[]>(initialEntryRanges);
   const [entryIds, setEntryIds] = useState<string[]>(initialEntryIds);
+  const [suppressedRecurringTypes, setSuppressedRecurringTypes] = useState<ScheduleType[]>(
+    currentSchedule.suppressedRecurringTypes ?? [],
+  );
   const [expandedIndex, setExpandedIndex] = useState(0);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   // 드래그 중 실제로 옮겨진 위치를 동기적으로 추적합니다(React state는 이벤트 사이에 갱신이 지연될 수 있어 ref로 별도 관리).
@@ -648,13 +652,18 @@ export default function DateScheduleModal({
     setDraggedIndex(null);
   };
 
-  const buildSchedule = (nextEntries: DateScheduleEntry[], targetDateKey: string = dateKey): DateSchedule | null => {
+  const buildSchedule = (
+    nextEntries: DateScheduleEntry[],
+    targetDateKey: string = dateKey,
+    suppressedTypes: ScheduleType[] = suppressedRecurringTypes,
+  ): DateSchedule | null => {
     const [first, ...additionalSchedules] = nextEntries;
     if (!first) return null;
     return {
       date: targetDateKey,
       ...first,
       label: first.type === 'custom' ? first.label?.trim() || undefined : undefined,
+      suppressedRecurringTypes: suppressedTypes.length ? suppressedTypes : undefined,
       additionalSchedules: additionalSchedules.length
         ? additionalSchedules.map((entry) => ({
             ...entry,
@@ -792,8 +801,20 @@ export default function DateScheduleModal({
             onDragOver={() => handleDragOver(index)}
             onDragEnd={handleDragEnd}
             onRemove={() => {
+              const removedEntry = entries[index];
+              const nextSuppressedRecurringTypes = removedEntry.isRecurring
+                ? [...new Set([...suppressedRecurringTypes, removedEntry.type])]
+                : suppressedRecurringTypes;
+              setSuppressedRecurringTypes(nextSuppressedRecurringTypes);
               if (entries.length === 1) {
-                if (isAutomaticHoliday) {
+                if (removedEntry.isRecurring) {
+                  onSave({
+                    date: dateKey,
+                    type: 'open',
+                    hideBadge: true,
+                    suppressedRecurringTypes: nextSuppressedRecurringTypes,
+                  });
+                } else if (isAutomaticHoliday) {
                   onSave({ date: dateKey, type: 'open', hideBadge: true });
                 } else {
                   onClear();
@@ -819,7 +840,7 @@ export default function DateScheduleModal({
               setEntries(entries.filter((_, itemIndex) => itemIndex !== index));
               setEntryRanges(remainingRanges);
               setEntryIds(remainingIds);
-              const schedule = buildSchedule(remainingEntries);
+              const schedule = buildSchedule(remainingEntries, dateKey, nextSuppressedRecurringTypes);
               if (schedule) onSave(schedule);
 
               // 삭제한 항목이 다른 날짜로 전파되어 있었다면 그 흔적도 정리합니다.

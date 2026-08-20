@@ -154,6 +154,51 @@ test('정기 휴진 요일이어도 개별 설정으로 정상 진료로 overrid
   assert.equal(resolved.type, 'open');
 });
 
+test('개별 일정에 반복 야간진료가 추가될 때 반복 일정임을 구분한다', () => {
+  const formData = baseFormData({
+    recurringNightDays: [5],
+    dateSchedules: [{ date: '2026-08-28', type: 'shortened' }],
+  });
+  const resolved = resolveDateSchedule('2026-08-28', 5, formData);
+  assert.equal(resolved.type, 'shortened');
+  assert.equal(resolved.additionalSchedules?.[0]?.type, 'night');
+  assert.equal(resolved.additionalSchedules?.[0]?.isRecurring, true);
+});
+
+test('특정 날짜에서 삭제한 반복 야간진료는 그 날짜에만 다시 생성되지 않는다', () => {
+  const formData = baseFormData({
+    recurringNightDays: [5],
+    dateSchedules: [{
+      date: '2026-08-28',
+      type: 'shortened',
+      suppressedRecurringTypes: ['night'],
+    }],
+  });
+  const excludedDate = resolveDateSchedule('2026-08-28', 5, formData);
+  const nextFriday = resolveDateSchedule('2026-08-21', 5, formData);
+  assert.equal(excludedDate.type, 'shortened');
+  assert.equal(excludedDate.additionalSchedules, undefined);
+  assert.equal(nextFriday.type, 'night');
+});
+
+test('특정 날짜의 반복 휴진을 삭제하면 정상 진료 배지 없이 빈 날짜로 표시한다', () => {
+  const formData = baseFormData({
+    recurringClosedDays: [0],
+    dateSchedules: [{
+      date: '2026-08-16',
+      type: 'open',
+      hideBadge: true,
+      suppressedRecurringTypes: ['closed'],
+    }],
+  });
+  const excludedSunday = resolveDateSchedule('2026-08-16', 0, formData);
+  const otherSunday = resolveDateSchedule('2026-08-23', 0, formData);
+  assert.equal(excludedSunday.type, 'open');
+  assert.equal(excludedSunday.hideBadge, true);
+  assert.equal(excludedSunday.additionalSchedules, undefined);
+  assert.equal(otherSunday.type, 'closed');
+});
+
 // 5. 휴가 기간이 독립된 휴가 유형으로 표시되는지
 test('휴가 기간에 포함된 날짜는 휴가로 계산된다', () => {
   const formData = baseFormData({ vacationStart: '2026-08-10', vacationEnd: '2026-08-12' });

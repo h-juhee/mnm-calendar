@@ -36,6 +36,8 @@ export type DesignEdits = Partial<Record<EditableLayerId, LayerEdit>>;
 
 export interface DateScheduleEntry {
   type: ScheduleType;
+  /** 반복 요일 규칙에서 계산되어 붙은 항목인지 나타내는 런타임 표식입니다. */
+  isRecurring?: boolean;
   /** 일정 라벨에만 적용하는 선택 색상. 비워두면 유형별 기본색을 사용합니다. */
   badgeColor?: string;
   startTime?: string; // HH:mm, shortened schedule start time
@@ -64,6 +66,8 @@ export interface DateSchedule extends DateScheduleEntry {
   date: string; // YYYY-MM-DD
   /** 같은 날짜에 추가로 표시할 일정입니다. 첫 일정과 합쳐 최대 3개까지 사용합니다. */
   additionalSchedules?: DateScheduleEntry[];
+  /** 해당 날짜에서만 자동 반복 일정 유형을 제외합니다. */
+  suppressedRecurringTypes?: ScheduleType[];
 }
 
 export interface HospitalInfo {
