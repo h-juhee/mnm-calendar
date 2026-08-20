@@ -204,15 +204,16 @@ function blocksFor(request) {
     request.lunchHours ? `- 휴게시간 : ${request.lunchHours}` : '',
   ].filter(Boolean).join('\n');
   const entries = [
-    ['원장명', request.directorName], ['일정 요약', request.scheduleSummary],
-    ['상세 일정', request.scheduleData],
-    ['수정 항목', request.editItems?.join(', ')], ['요청 내용', request.requestDetails],
-    ['색상 변경 요청', request.colorRequest], ['문구 수정 요청', request.textRequest],
-    ['이미지 교체 파일', request.replacementImageFilename],
-    ['다음달 이벤트', request.nextMonthEvent], ['규격', fieldValue(request, 'outputSize')],
+    ['요청 내용', request.requestDetails],
+    ['다음달 이벤트', request.nextMonthEvent],
     ['캘린더 필수 포함', request.calendarMustInclude],
-    ['기본 진료 일정', basicClinicHours],
     ['특이사항', request.specialNotes],
+    ['진료시간', basicClinicHours],
+    ['상세 일정', request.scheduleData],
+    ['수정 항목', request.editItems?.join(', ')],
+    ['색상 변경 요청', request.colorRequest],
+    ['문구 수정 요청', request.textRequest],
+    ['이미지 교체 파일', request.replacementImageFilename],
   ].filter(([, value]) => value);
 
   return entries.map(([label, value]) => {
