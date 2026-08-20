@@ -539,17 +539,6 @@ export default function CustomDesignRequestModal({
             {isScheduleSubmission ? "진료일정이" : "맞춤 디자인 요청이"} 정상적으로 접수되었습니다. 요청 내용을 확인한 후
             순차적으로 제작할 예정입니다.
           </p>
-          {isScheduleSubmission && imageUploadProgress.status === 'uploading' && (
-            <p className={styles.uploadProgress} role="status">
-              제출 자료를 마무리하고 있습니다.
-              <span>확인을 눌러도 계속 진행됩니다.</span>
-            </p>
-          )}
-          {isScheduleSubmission && imageUploadProgress.status === 'complete' && (
-            <p className={styles.uploadComplete} role="status">
-              제출 처리가 모두 완료되었습니다.
-            </p>
-          )}
           {submissionWarning && <p className={styles.failureText}>{submissionWarning}</p>}
           <button
             type="button"

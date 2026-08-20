@@ -246,32 +246,6 @@
   color: var(--color-text);
 }
 
-.uploadProgress,
-.uploadComplete {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  line-height: 1.5;
-  text-align: center;
-}
-
-.uploadProgress {
-  color: var(--color-primary);
-  background: var(--color-primary-bg);
-}
-
-.uploadProgress span {
-  display: block;
-  color: var(--color-text-muted);
-  font-size: 12px;
-}
-
-.uploadComplete {
-  color: #16794a;
-  background: #edf9f2;
-}
-
 .failureWrap {
   display: flex;
   flex-direction: column;
