@@ -129,6 +129,26 @@ NOTION_DATA_SOURCE_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 - 서버 전용 시크릿이므로 변수명 앞에 `VITE_`를 붙이지 마세요.
 - Vercel 배포 시 같은 값을 프로젝트의 Environment Variables에 등록해야 합니다.
 
+원장용 진료일정 제출 시 선택한 모든 규격의 원본 PNG를 Google Drive에도 저장하려면 다음 서버 환경 변수를 추가합니다.
+
+```env
+GOOGLE_DRIVE_ROOT_FOLDER_ID=1sAjzdO4MUSYD5lewJzYiGcZdiZthbKwE
+GOOGLE_OAUTH_CLIENT_ID=xxxxxxxx.apps.googleusercontent.com
+GOOGLE_OAUTH_CLIENT_SECRET=xxxxxxxx
+GOOGLE_OAUTH_REFRESH_TOKEN=xxxxxxxx
+```
+
+위 링크처럼 일반 **내 드라이브** 폴더에는 폴더 소유 Google 계정의 OAuth 값을 사용하는 구성을 권장합니다. Google Cloud에서 Drive API를 활성화하고 OAuth 클라이언트를 만든 뒤, `drive` 범위로 발급한 refresh token을 등록합니다.
+
+Google Workspace의 **공유 드라이브**를 사용하는 경우에는 아래 서비스 계정 방식도 사용할 수 있습니다. 이 경우 루트 폴더를 서비스 계정 이메일에 **콘텐츠 관리자** 이상으로 공유합니다.
+
+```env
+GOOGLE_SERVICE_ACCOUNT_EMAIL=calendar-uploader@your-project.iam.gserviceaccount.com
+GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+```
+
+업로드 시 `YYYY년 MM월/병원명` 폴더가 자동 생성되며, 같은 파일명으로 재제출하면 기존 이미지가 원본 해상도로 갱신됩니다.
+
 데이터베이스 연결과 권한 설정에 관한 자세한 내용은 [Notion 설정 안내](docs/notion-setup.md)를 참고하세요.
 
 Notion 환경 변수가 없거나 API가 배포되지 않은 환경에서는 맞춤 디자인 요청 전송이 실패할 수 있습니다. 일정 편집과 PNG 다운로드는 계속 사용할 수 있습니다.

@@ -20,6 +20,7 @@ import AdditionalInfoFields from "./AdditionalInfoFields";
 import OutputSizeSelector from "./OutputSizeSelector";
 import styles from "./CustomDesignRequestModal.module.css";
 import { postUsageLogReliably } from "../utils/usageLogUtils";
+import { uploadScheduleImageToDrive } from "../utils/googleDriveUtils";
 
 interface CustomDesignRequestModalProps {
   submissionMode?: 'schedule' | 'customDesign';
@@ -142,7 +143,8 @@ function formatClinicHoursModalSummary(formData: ScheduleFormData) {
       .filter((day) => row.days.includes(day))
       .map((day) => CLINIC_DAY_LABELS[day])
       .join("·");
-    return `${days} ${row.startTime}~${row.endTime}`;
+    const note = row.note?.trim() ? ` · ${row.note.trim()}` : "";
+    return `${days} ${row.startTime}~${row.endTime}${note}`;
   }).join("\n");
 }
 
@@ -266,6 +268,21 @@ export default function CustomDesignRequestModal({
         renderedImages.set(format, image);
         return image;
       };
+
+      // Drive에는 원장이 선택한 모든 규격을 원본 해상도 PNG로 저장합니다.
+      // 동일한 파일명으로 다시 제출하면 서버에서 기존 파일의 내용만 갱신합니다.
+      if (isScheduleSubmission) {
+        for (const format of formatsToRender) {
+          const formatImage = await renderFormat(format);
+          await uploadScheduleImageToDrive({
+            hospitalName: hospital.name,
+            year: formData.year,
+            month: formData.month,
+            filename: buildExportFilename(hospital.name, formData.year, formData.month, format),
+            image: formatImage,
+          });
+        }
+      }
       const calendarImage = await renderFormat(primaryFormat);
       const response = await fetch("/api/notion-custom-request", {
         method: "POST",

@@ -23,7 +23,7 @@ import { renderNodeAsPng } from '../utils/exportUtils';
 import ClinicHoursEditor from './ClinicHoursEditor';
 import { deleteCustomBackground, loadCustomBackground, migrateCustomBackground, saveCustomBackground } from '../utils/backgroundStorage';
 import { removeHospitalData, removeHospitalInfo, saveHospitalInfo } from '../utils/storageUtils';
-import { getClinicHoursWithExample, parseNotionClinicHours } from '../utils/clinicHoursUtils';
+import { findClinicHoursByHospitalName, getClinicHoursWithExample, parseNotionClinicHours } from '../utils/clinicHoursUtils';
 import { flushPendingUsageLogs } from '../utils/usageLogUtils';
 import styles from './ScheduleBuilderPage.module.css';
 
@@ -224,6 +224,27 @@ function ScheduleBuilderContent({
   }, []);
 
   useEffect(() => {
+    const excelHours = findClinicHoursByHospitalName(hospital.name);
+    if (excelHours) {
+      const currentHours = formData.clinicHours;
+      const looksLikePreviousAutoMatch = Boolean(
+        currentHours?.confirmed
+        && !currentHours.note.trim()
+        && currentHours.rows.length === excelHours.rows.length
+        && currentHours.rows.every((row) => row.id.startsWith('notion-hours-') && !row.note?.trim()),
+      );
+      const sameCoreHours = looksLikePreviousAutoMatch && currentHours?.rows.every((row, index) => {
+        const nextRow = excelHours.rows[index];
+        return nextRow
+          && row.startTime === nextRow.startTime
+          && row.endTime === nextRow.endTime
+          && [...row.days].sort().join(',') === [...nextRow.days].sort().join(',');
+      });
+      if (!currentHours?.confirmed || sameCoreHours) setClinicHours(excelHours);
+      return;
+    }
+    if (formData.clinicHours?.confirmed) return;
+
     const controller = new AbortController();
     void fetch(`/api/notion-clinic-hours?hospitalName=${encodeURIComponent(hospital.name)}`, {
       signal: controller.signal,
@@ -237,7 +258,7 @@ function ScheduleBuilderContent({
       })
       .catch(() => undefined);
     return () => controller.abort();
-  }, [formData.month, formData.year, hospital.name, setClinicHours]);
+  }, [formData.clinicHours?.confirmed, hospital.name, setClinicHours]);
 
   useEffect(() => {
     let active = true;

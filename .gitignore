@@ -15,6 +15,7 @@ dist
 dist-ssr
 build
 coverage
+outputs/
 
 # Hospital logo assets are committed so production deployments can serve them.
 

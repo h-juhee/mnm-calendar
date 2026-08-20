@@ -1,4 +1,5 @@
 import type { ClinicHours, ClinicHoursRow } from '../types/schedule';
+import clinicHoursData from '../data/clinicHours.json';
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -17,16 +18,45 @@ export function createExampleClinicHours(): ClinicHours {
   };
 }
 
+const KOREAN_WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'] as const;
 const KOREAN_WEEKDAY_NUMBER: Record<string, number> = {
-  '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6,
+  월: 1, 화: 2, 수: 3, 목: 4, 금: 5, 토: 6, 일: 0,
 };
 
-/** Parses strings such as `월 10:00~19:00, 화 10:00~21:00` from the client DB. */
-export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHours | null {
-  const grouped = new Map<string, { days: number[]; startTime: string; endTime: string }>();
-  const entryPattern = /([월화수목금토일])(?:요일)?\s*(\d{1,2}):([0-5]\d)\s*[~～\-–—]\s*(\d{1,2}):([0-5]\d)/g;
+function expandDays(label: string): number[] {
+  label = label.replaceAll('공휴일', '');
+  if (label.includes('평일')) return [1, 2, 3, 4, 5];
+  if (label.includes('주말')) return [6, 0];
 
-  for (const match of text.matchAll(entryPattern)) {
+  const days = new Set<number>();
+  for (const match of label.matchAll(/([월화수목금토일])(?:\s*~\s*([월화수목금토일]))?/gu)) {
+    const startIndex = KOREAN_WEEKDAYS.indexOf(match[1] as (typeof KOREAN_WEEKDAYS)[number]);
+    const endIndex = match[2]
+      ? KOREAN_WEEKDAYS.indexOf(match[2] as (typeof KOREAN_WEEKDAYS)[number])
+      : startIndex;
+    if (startIndex < 0 || endIndex < startIndex) continue;
+    for (let index = startIndex; index <= endIndex; index += 1) {
+      days.add(KOREAN_WEEKDAY_NUMBER[KOREAN_WEEKDAYS[index]]);
+    }
+  }
+  return [...days];
+}
+
+/** Parses compact Korean clinic-hour strings used by Notion and the Excel source. */
+export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHours | null {
+  const grouped = new Map<string, { days: number[]; startTime: string; endTime: string; note?: string }>();
+  const entries = text
+    .split('|', 1)[0]
+    .split(/\/|,\s*(?=[월화수목금토일평주])/u)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  for (const entry of entries) {
+    if (entry.includes('휴게') || entry.includes('휴진')) continue;
+    const match = /^(.*?)\s+(\d{1,2}):([0-5]\d)\s*[~～\-–—]\s*(\d{1,2}):([0-5]\d)/u.exec(entry);
+    if (!match) continue;
+    const days = expandDays(match[1]);
+    if (days.length === 0) continue;
     const startHour = Number(match[2]);
     const endHour = Number(match[4]);
     if (startHour > 23 || endHour > 23) continue;
@@ -35,12 +65,13 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
     if (endTime <= startTime) continue;
     const key = `${startTime}-${endTime}`;
     const existing = grouped.get(key) ?? { days: [], startTime, endTime };
-    existing.days.push(KOREAN_WEEKDAY_NUMBER[match[1]]);
+    existing.days = [...new Set([...existing.days, ...days])];
     grouped.set(key, existing);
   }
 
   if (grouped.size === 0) return null;
-  const lunchMatch = /(\d{1,2}):([0-5]\d)\s*[~～\-–—]\s*(\d{1,2}):([0-5]\d)/.exec(lunchText);
+  const embeddedLunchText = entries.find((entry) => entry.includes('휴게')) ?? '';
+  const lunchMatch = /(\d{1,2}):([0-5]\d)\s*[~～\-–—]\s*(\d{1,2}):([0-5]\d)/u.exec(lunchText || embeddedLunchText);
   const lunchStart = lunchMatch && Number(lunchMatch[1]) <= 23
     ? `${String(Number(lunchMatch[1])).padStart(2, '0')}:${lunchMatch[2]}`
     : '';
@@ -48,6 +79,22 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
     ? `${String(Number(lunchMatch[3])).padStart(2, '0')}:${lunchMatch[4]}`
     : '';
   const hasLunchHours = Boolean(lunchStart && lunchEnd && lunchEnd > lunchStart);
+  const lunchKey = hasLunchHours ? `${lunchStart}-${lunchEnd}` : '';
+
+  for (const entry of entries.filter((item) => item.includes('휴게'))) {
+    const breakDays = expandDays(entry.slice(0, entry.indexOf('휴게')));
+    for (const match of entry.matchAll(/(\d{1,2}):([0-5]\d)\s*[~～\-–—]\s*(\d{1,2}):([0-5]\d)/gu)) {
+      const startTime = `${String(Number(match[1])).padStart(2, '0')}:${match[2]}`;
+      const endTime = `${String(Number(match[3])).padStart(2, '0')}:${match[4]}`;
+      if (`${startTime}-${endTime}` === lunchKey || endTime <= startTime) continue;
+      for (const row of grouped.values()) {
+        if (breakDays.length > 0 && !row.days.some((day) => breakDays.includes(day))) continue;
+        const note = `휴게 ${startTime}~${endTime}`;
+        row.note = row.note ? `${row.note} / ${note}` : note;
+      }
+    }
+  }
+
   return {
     rows: [...grouped.values()].map((row, index) => ({ id: `notion-hours-${index}`, ...row })),
     lunchStart: hasLunchHours ? lunchStart : '',
@@ -57,6 +104,25 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
     confirmed: true,
     note: '',
   };
+}
+
+function normalizeHospitalName(value: string): string {
+  return value
+    .normalize('NFC')
+    .toLocaleLowerCase('ko-KR')
+    .replace(/[\s_.·,()\[\]{}-]/gu, '')
+    .replace(/치과(?:병원|의원)/gu, '치과')
+    .replace(/(?:병원|의원)$/u, '');
+}
+
+export function findClinicHoursByHospitalName(hospitalName: string): ClinicHours | null {
+  const normalizedName = normalizeHospitalName(hospitalName);
+  if (!normalizedName) return null;
+  const matches = clinicHoursData.filter(
+    (entry) => normalizeHospitalName(entry.name) === normalizedName,
+  );
+  if (matches.length !== 1) return null;
+  return parseNotionClinicHours(matches[0].hours);
 }
 
 export function getClinicHoursWithExample(value?: ClinicHours): ClinicHours {

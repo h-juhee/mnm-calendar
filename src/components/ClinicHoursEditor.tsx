@@ -185,6 +185,7 @@ export default function ClinicHoursEditor({ value, onChange, showConfirmationAct
               <span key={row.id}>
                 <b>{formatDays(row.days) || '요일 미선택'}</b>
                 {row.startTime && row.endTime ? `${row.startTime} ~ ${row.endTime}` : '시간 미입력'}
+                {row.note?.trim() ? ` · ${row.note.trim()}` : ''}
               </span>
             ))}
             <span>
