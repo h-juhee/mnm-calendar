@@ -427,11 +427,11 @@ export default function CustomDesignRequestModal({
             }
 
             const failedFormats: string[] = [];
-            // 제출 완료 화면은 이미 표시되므로 Drive 업로드는 안정성을 우선해 규격별로 처리합니다.
-            // 한 규격이 실패해도 나머지 이미지 저장은 계속 시도합니다.
-            for (const format of formatsToRender) {
+            const formatsToUpload = formatsToRender.includes(primaryFormat)
+              ? [primaryFormat, ...formatsToRender.filter((format) => format !== primaryFormat)]
+              : formatsToRender;
+            const uploadRenderedFormat = async (format: OutputFormat, image: string): Promise<boolean> => {
               try {
-                const image = await renderCurrentFormat(format);
                 await uploadScheduleImageToDrive({
                   hospitalName: hospital.name,
                   year: formData.year,
@@ -447,13 +447,42 @@ export default function CustomDesignRequestModal({
                   ...current,
                   completed: Math.min(current.completed + 1, current.total),
                 }));
+                return true;
               } catch (formatError) {
                 console.error(`${format} Drive 이미지 저장에 실패했습니다.`, formatError);
                 const formatLabel = OUTPUT_FORMATS.find((item) => item.id === format)?.label ?? format;
                 const reason = formatError instanceof Error ? formatError.message : '알 수 없는 오류';
                 failedFormats.push(`${formatLabel}: ${reason}`);
+                return false;
+              }
+            };
+
+            // 첫 업로드로 연/월/병원 폴더를 확정한 뒤, 이미지 생성과 네트워크 업로드를
+            // 겹쳐 수행합니다. 캡처는 화면 충돌을 막기 위해 순차, 업로드는 최대 2개 병렬입니다.
+            let folderReady = false;
+            const pendingUploads: Promise<boolean>[] = [];
+            for (const format of formatsToUpload) {
+              let image: string;
+              try {
+                image = await renderCurrentFormat(format);
+              } catch (renderError) {
+                const formatLabel = OUTPUT_FORMATS.find((item) => item.id === format)?.label ?? format;
+                const reason = renderError instanceof Error ? renderError.message : '알 수 없는 오류';
+                failedFormats.push(`${formatLabel}: ${reason}`);
+                continue;
+              }
+
+              if (!folderReady) {
+                folderReady = await uploadRenderedFormat(format, image);
+                continue;
+              }
+
+              pendingUploads.push(uploadRenderedFormat(format, image));
+              if (pendingUploads.length >= 2) {
+                await Promise.all(pendingUploads.splice(0, pendingUploads.length));
               }
             }
+            await Promise.all(pendingUploads);
             if (failedFormats.length > 0) {
               throw new Error(failedFormats.join(' / '));
             }
