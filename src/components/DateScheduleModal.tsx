@@ -606,7 +606,21 @@ export default function DateScheduleModal({
   const maxRangeEnd = `${year}-${month}-${String(lastDayOfMonth).padStart(2, '0')}`;
 
   const updateEntry = (index: number, entry: DateScheduleEntry) => {
-    setEntries((current) => current.map((item, itemIndex) => itemIndex === index ? entry : item));
+    const previousEntry = entries[index];
+    const isReplacingRecurring = previousEntry?.isRecurring && previousEntry.type !== entry.type;
+
+    // 정기 일정의 유형을 바꾸는 것은 새 일정을 추가하는 동작이 아니라
+    // 이 날짜에서 기존 정기 일정을 새 유형으로 교체하는 동작입니다.
+    if (isReplacingRecurring) {
+      setSuppressedRecurringTypes((types) => (
+        types.includes(previousEntry.type) ? types : [...types, previousEntry.type]
+      ));
+    }
+    setEntries((current) => current.map((item, itemIndex) => (
+      itemIndex === index
+        ? { ...entry, isRecurring: isReplacingRecurring ? false : entry.isRecurring }
+        : item
+    )));
   };
 
   const updateEntryRange = (index: number, range: EntryRange) => {

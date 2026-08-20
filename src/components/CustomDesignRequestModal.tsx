@@ -182,6 +182,11 @@ export default function CustomDesignRequestModal({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [hasSubmissionFailed, setHasSubmissionFailed] = useState(false);
   const [submissionWarning, setSubmissionWarning] = useState<string | null>(null);
+  const [imageUploadProgress, setImageUploadProgress] = useState<{
+    completed: number;
+    total: number;
+    status: 'idle' | 'uploading' | 'complete' | 'failed';
+  }>({ completed: 0, total: 0, status: 'idle' });
 
   const templateName =
     TEMPLATES.find((t) => t.id === formData.templateId)?.name ??
@@ -252,11 +257,13 @@ export default function CustomDesignRequestModal({
     };
 
     try {
-      if (!previewNodeRef.current)
+      if (!isScheduleSubmission && !previewNodeRef.current)
         throw new Error(
           "달력 미리보기를 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.",
         );
-      await ensureFontLoaded(formData.fontId as FontId | undefined);
+      if (!isScheduleSubmission) {
+        await ensureFontLoaded(formData.fontId as FontId | undefined);
+      }
       const selectedFormats = (formData.outputSize ?? []).filter(
         (id): id is OutputFormat => OUTPUT_FORMATS.some((format) => format.id === id),
       );
@@ -277,19 +284,27 @@ export default function CustomDesignRequestModal({
         return image;
       };
 
-      const calendarImage = await renderFormat(primaryFormat);
+      // 진료일정 제출은 DB 접수가 우선입니다. 이미지는 Notion 요청에 포함하지 않고
+      // 접수 성공 화면을 먼저 보여준 뒤 Google Drive와 사용이력을 백그라운드 처리합니다.
+      const calendarImage = isScheduleSubmission
+        ? null
+        : await renderFormat(primaryFormat);
       const response = await fetch("/api/notion-custom-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...record,
-          calendarImage,
-          calendarImageFilename: buildExportFilename(
-            hospital.name,
-            formData.year,
-            formData.month,
-            primaryFormat,
-          ),
+          ...(calendarImage
+            ? {
+                calendarImage,
+                calendarImageFilename: buildExportFilename(
+                  hospital.name,
+                  formData.year,
+                  formData.month,
+                  primaryFormat,
+                ),
+              }
+            : {}),
         }),
       });
       const result = (await response.json().catch(() => null)) as {
@@ -298,32 +313,6 @@ export default function CustomDesignRequestModal({
       if (!response.ok)
         throw new Error(result?.message ?? "요청을 저장하지 못했습니다.");
 
-      // 진료일정 DB 접수를 먼저 확정한 뒤 Drive 업로드를 별도로 처리합니다.
-      // Drive 장애가 이미 완료된 접수를 실패로 바꾸거나 재제출 중복을 만들지 않습니다.
-      if (isScheduleSubmission) {
-        try {
-          for (const format of formatsToRender) {
-            const formatImage = await renderFormat(format);
-            await uploadScheduleImageToDrive({
-              hospitalName: hospital.name,
-              year: formData.year,
-              month: formData.month,
-              filename: buildExportFilename(hospital.name, formData.year, formData.month, format),
-              image: formatImage,
-            });
-          }
-        } catch (driveError) {
-          console.error('진료일정 이미지를 Drive에 저장하지 못했습니다.', driveError);
-          setSubmissionWarning(
-            driveError instanceof Error
-              ? `진료일정은 접수되었지만 이미지 저장에 실패했습니다: ${driveError.message}`
-              : '진료일정은 접수되었지만 이미지를 Drive에 저장하지 못했습니다.',
-          );
-        }
-      }
-
-      // 원장용 제출도 내부 다운로드와 같은 사용이력 DB에 기록합니다.
-      // 주 접수는 이미 완료된 상태이므로, 이력 저장 실패가 재제출과 중복 접수로 이어지지 않게 별도로 처리합니다.
       if (isScheduleSubmission) {
         const usageDetails = {
           ...buildCustomerUsageDetails(formData, resolvedSchedule),
@@ -339,35 +328,83 @@ export default function CustomDesignRequestModal({
             ? `${formData.vacationStart} ~ ${formData.vacationEnd}`
             : "",
         };
-        for (const format of formatsToRender) {
+
+        // 접수 결과는 이미지 생성·업로드를 기다리지 않고 즉시 사용자에게 알립니다.
+        saveCustomDesignRequest(record);
+        setImageUploadProgress({ completed: 0, total: formatsToRender.length, status: 'uploading' });
+        setIsSubmitted(true);
+
+        void (async () => {
           try {
-            const formatImage = await renderFormat(format);
-            await postUsageLogReliably({
-            hospitalId: hospital.id,
-            hospitalName: hospital.name,
-            directorName: hospital.directorName,
-            year: formData.year,
-            month: formData.month,
-            templateId: formData.templateId,
-            outputFormat: format,
-            outputSizes: record.outputSize,
-            exportType: "png",
-            calendarImage: formatImage,
-            calendarImageFilename: buildExportFilename(
-              hospital.name,
-              formData.year,
-              formData.month,
-              format,
-            ),
-            details: usageDetails,
-            });
-          } catch (usageError) {
-            console.error(`${format} 사용이력 이미지 저장을 보류했습니다.`, usageError);
+            if (!previewNodeRef.current) {
+              throw new Error("달력 미리보기를 준비하지 못했습니다.");
+            }
+            await ensureFontLoaded(formData.fontId as FontId | undefined);
+            // 미리보기 DOM은 한 번에 한 규격만 렌더링하되, Drive 업로드는 두 개씩 병렬 처리합니다.
+            for (let index = 0; index < formatsToRender.length; index += 2) {
+              const batch = formatsToRender.slice(index, index + 2);
+              const renderedBatch: Array<{ format: OutputFormat; image: string }> = [];
+              for (const format of batch) {
+                renderedBatch.push({ format, image: await renderFormat(format) });
+              }
+              await Promise.all(renderedBatch.map(async ({ format, image }) => {
+                await uploadScheduleImageToDrive({
+                  hospitalName: hospital.name,
+                  year: formData.year,
+                  month: formData.month,
+                  filename: buildExportFilename(hospital.name, formData.year, formData.month, format),
+                  image,
+                });
+                setImageUploadProgress((current) => ({
+                  ...current,
+                  completed: Math.min(current.completed + 1, current.total),
+                }));
+              }));
+            }
+            setImageUploadProgress((current) => ({ ...current, status: 'complete' }));
+          } catch (driveError) {
+            console.error('진료일정 이미지를 Drive에 저장하지 못했습니다.', driveError);
+            setImageUploadProgress((current) => ({ ...current, status: 'failed' }));
+            setSubmissionWarning(
+              driveError instanceof Error
+                ? `진료일정은 접수되었지만 일부 이미지 저장에 실패했습니다: ${driveError.message}`
+                : '진료일정은 접수되었지만 일부 이미지를 Drive에 저장하지 못했습니다.',
+            );
           }
-        }
+
+          // 사용이력은 주 접수와 Drive 저장 결과에 영향을 주지 않도록 마지막에 기록합니다.
+          // Drive가 중간에 실패해 캐시되지 않은 규격도 있으므로 DOM 렌더링은 순차 실행합니다.
+          for (const format of formatsToRender) {
+            try {
+              const formatImage = await renderFormat(format);
+              await postUsageLogReliably({
+                hospitalId: hospital.id,
+                hospitalName: hospital.name,
+                directorName: hospital.directorName,
+                year: formData.year,
+                month: formData.month,
+                templateId: formData.templateId,
+                outputFormat: format,
+                outputSizes: record.outputSize,
+                exportType: "png",
+                calendarImage: formatImage,
+                calendarImageFilename: buildExportFilename(
+                  hospital.name,
+                  formData.year,
+                  formData.month,
+                  format,
+                ),
+                details: usageDetails,
+              });
+            } catch (usageError) {
+              console.error(`${format} 사용이력 이미지 저장을 보류했습니다.`, usageError);
+            }
+          }
+        })();
+        return;
       }
 
-      // Keep a local copy for this browser as well, after Notion accepts the request.
+      // 맞춤 디자인 요청은 기존처럼 대표 이미지까지 저장된 뒤 완료 처리합니다.
       saveCustomDesignRequest(record);
       setIsSubmitted(true);
     } catch (submissionError) {
@@ -406,6 +443,17 @@ export default function CustomDesignRequestModal({
             {isScheduleSubmission ? "진료일정이" : "맞춤 디자인 요청이"} 정상적으로 접수되었습니다. 요청 내용을 확인한 후
             순차적으로 제작할 예정입니다.
           </p>
+          {isScheduleSubmission && imageUploadProgress.status === 'uploading' && (
+            <p className={styles.uploadProgress} role="status">
+              이미지 저장 중 {imageUploadProgress.completed}/{imageUploadProgress.total}
+              <span>이 페이지를 그대로 두면 백그라운드에서 완료됩니다.</span>
+            </p>
+          )}
+          {isScheduleSubmission && imageUploadProgress.status === 'complete' && (
+            <p className={styles.uploadComplete} role="status">
+              선택한 이미지 {imageUploadProgress.total}개를 모두 저장했습니다.
+            </p>
+          )}
           {submissionWarning && <p className={styles.failureText}>{submissionWarning}</p>}
           <button
             type="button"
