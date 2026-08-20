@@ -113,6 +113,16 @@ async function ensureFolder(token, parentId, name) {
   return folder.id;
 }
 
+async function ensureScheduleFolder(token, rootFolderId, year, month, hospitalName) {
+  const yearFolderId = await ensureFolder(token, rootFolderId, String(year));
+  const monthFolderId = await ensureFolder(
+    token,
+    yearFolderId,
+    `${String(month).padStart(2, '0')}월`,
+  );
+  return ensureFolder(token, monthFolderId, String(hospitalName).trim());
+}
+
 function decodePng(dataUrl) {
   const match = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl || '');
   if (!match) throw Object.assign(new Error('Invalid PNG image data.'), { status: 400 });
@@ -224,9 +234,7 @@ export default async function handler(req, res) {
         return sendJson(res, 400, { message: 'Drive upload session fields are missing or invalid.' });
       }
       const token = await getAccessToken();
-      const monthFolderName = `${year}년 ${String(month).padStart(2, '0')}월`;
-      const monthFolderId = await ensureFolder(token, rootFolderId, monthFolderName);
-      const hospitalFolderId = await ensureFolder(token, monthFolderId, String(hospitalName).trim());
+      const hospitalFolderId = await ensureScheduleFolder(token, rootFolderId, year, month, hospitalName);
       const resumableUrl = await startResumableUpload(token, hospitalFolderId, String(filename), totalSize);
       return sendJson(res, 200, { ok: true, uploadUrl: resumableUrl });
     }
@@ -236,9 +244,7 @@ export default async function handler(req, res) {
     }
     const png = decodePng(image);
     const token = await getAccessToken();
-    const monthFolderName = `${year}년 ${String(month).padStart(2, '0')}월`;
-    const monthFolderId = await ensureFolder(token, rootFolderId, monthFolderName);
-    const hospitalFolderId = await ensureFolder(token, monthFolderId, String(hospitalName).trim());
+    const hospitalFolderId = await ensureScheduleFolder(token, rootFolderId, year, month, hospitalName);
     const file = await uploadPng(token, hospitalFolderId, String(filename), png);
     return sendJson(res, 200, { ok: true, fileId: file.id, filename: file.name });
   } catch (error) {
