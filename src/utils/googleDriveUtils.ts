@@ -7,8 +7,9 @@ export interface DriveScheduleImage {
   signal?: AbortSignal;
 }
 
-// Base64와 JSON 인코딩 후에도 Vercel 요청 본문 제한에 여유가 있도록 1MB로 나눕니다.
-const DRIVE_CHUNK_SIZE = 1024 * 1024;
+// Base64와 JSON 인코딩 후에도 Vercel 요청 본문 제한 이내인 2MB 단위로 전송합니다.
+// 일반적인 출력 이미지는 한 번의 조각 요청으로 끝나 API 왕복 횟수를 줄일 수 있습니다.
+const DRIVE_CHUNK_SIZE = 2 * 1024 * 1024;
 const MAX_REQUEST_ATTEMPTS = 3;
 
 function wait(milliseconds: number) {

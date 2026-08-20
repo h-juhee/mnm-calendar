@@ -371,33 +371,46 @@ export default function CustomDesignRequestModal({
             if (result?.id) {
               try {
                 const notionPreviewImage = await renderCurrentFormat(primaryFormat);
-                const previewResponse = await fetch('/api/notion-custom-request', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  signal: uploadController.signal,
-                  body: JSON.stringify({
-                    action: 'attach-calendar-image',
-                    pageId: result.id,
-                    calendarImage: notionPreviewImage,
-                    calendarImageFilename: buildExportFilename(
-                      hospital.name,
-                      formData.year,
-                      formData.month,
-                      primaryFormat,
-                    ),
-                  }),
-                });
-                const previewResult = await previewResponse.json().catch(() => null) as { message?: string } | null;
-                if (!previewResponse.ok) {
-                  throw new Error(previewResult?.message ?? `Notion 시안 저장 실패 (HTTP ${previewResponse.status})`);
-                }
+                // Notion의 네트워크 업로드는 Drive 이미지 생성·저장과 동시에 진행합니다.
+                void (async () => {
+                  try {
+                    const previewResponse = await fetch('/api/notion-custom-request', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      signal: uploadController.signal,
+                      body: JSON.stringify({
+                        action: 'attach-calendar-image',
+                        pageId: result.id,
+                        calendarImage: notionPreviewImage,
+                        calendarImageFilename: buildExportFilename(
+                          hospital.name,
+                          formData.year,
+                          formData.month,
+                          primaryFormat,
+                        ),
+                      }),
+                    });
+                    const previewResult = await previewResponse.json().catch(() => null) as { message?: string } | null;
+                    if (!previewResponse.ok) {
+                      throw new Error(previewResult?.message ?? `Notion 시안 저장 실패 (HTTP ${previewResponse.status})`);
+                    }
+                  } catch (notionImageError) {
+                    if (uploadController.signal.aborted) return;
+                    console.error('Notion에 달력 시안을 추가하지 못했습니다.', notionImageError);
+                    const reason = notionImageError instanceof Error ? notionImageError.message : '알 수 없는 오류';
+                    setSubmissionWarning((current) => [
+                      current,
+                      `Notion 시안 저장에 실패했습니다: ${reason}`,
+                    ].filter(Boolean).join('\n'));
+                  }
+                })();
               } catch (notionImageError) {
                 if (uploadController.signal.aborted) throw notionImageError;
-                console.error('Notion에 달력 시안을 추가하지 못했습니다.', notionImageError);
+                console.error('Notion용 달력 시안을 생성하지 못했습니다.', notionImageError);
                 const reason = notionImageError instanceof Error ? notionImageError.message : '알 수 없는 오류';
                 setSubmissionWarning((current) => [
                   current,
-                  `Notion 시안 저장에 실패했습니다: ${reason}`,
+                  `Notion 시안 생성에 실패했습니다: ${reason}`,
                 ].filter(Boolean).join('\n'));
               }
             }

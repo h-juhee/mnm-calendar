@@ -167,13 +167,12 @@ function validateUploadUrl(value) {
   }
 }
 
-async function uploadChunk(token, uploadUrl, offset, totalSize, chunk) {
+async function uploadChunk(uploadUrl, offset, totalSize, chunk) {
   const end = offset + chunk.length - 1;
   const response = await fetch(uploadUrl, {
     method: 'PUT',
     redirect: 'manual',
     headers: {
-      Authorization: `Bearer ${token}`,
       'Content-Type': 'image/png',
       'Content-Length': String(chunk.length),
       'Content-Range': `bytes ${offset}-${end}/${totalSize}`,
@@ -215,8 +214,9 @@ export default async function handler(req, res) {
       if (pngChunk.length === 0 || (offset + pngChunk.length < totalSize && pngChunk.length % (256 * 1024) !== 0)) {
         return sendJson(res, 400, { message: 'Drive upload chunk size is invalid.' });
       }
-      const token = await getAccessToken();
-      return sendJson(res, 200, await uploadChunk(token, uploadUrl, offset, totalSize, pngChunk));
+      // Resumable session URL 자체가 업로드 권한을 포함하므로 조각마다 OAuth 토큰을
+      // 다시 발급받을 필요가 없습니다. URL은 validateUploadUrl로 Google 주소만 허용합니다.
+      return sendJson(res, 200, await uploadChunk(uploadUrl, offset, totalSize, pngChunk));
     }
 
     if (action === 'init') {
