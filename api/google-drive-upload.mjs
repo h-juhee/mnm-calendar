@@ -210,7 +210,17 @@ export default async function handler(req, res) {
   const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || DEFAULT_ROOT_FOLDER_ID;
 
   try {
-    const { action, hospitalName, year, month, filename, image, totalSize, uploadUrl, offset, chunk } = req.body || {};
+    let request = req.body;
+    if (!request) {
+      try {
+        const chunks = [];
+        for await (const part of req) chunks.push(part);
+        request = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      } catch {
+        return sendJson(res, 400, { message: 'Drive upload request body is invalid.' });
+      }
+    }
+    const { action, hospitalName, year, month, filename, image, totalSize, uploadUrl, offset, chunk } = request;
     if (action === 'chunk') {
       if (!validateUploadUrl(uploadUrl) || !Number.isInteger(offset) || !Number.isInteger(totalSize) || totalSize <= 0 || typeof chunk !== 'string') {
         return sendJson(res, 400, { message: 'Drive upload chunk fields are missing or invalid.' });

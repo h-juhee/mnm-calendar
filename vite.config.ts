@@ -7,6 +7,8 @@ import notionRequestHandler from './api/notion-custom-request.mjs'
 import notionUsageLogHandler from './api/notion-usage-log.mjs'
 // @ts-expect-error Vercel function is plain ESM JavaScript and is also used by the local dev server.
 import notionClinicHoursHandler from './api/notion-clinic-hours.mjs'
+// @ts-expect-error Vercel function is plain ESM JavaScript and is also used by the local dev server.
+import googleDriveUploadHandler from './api/google-drive-upload.mjs'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -20,6 +22,7 @@ export default defineConfig(({ mode }) => {
   }
   // The Notion token is used only by the local Node middleware, never exposed to Vite client code.
   Object.assign(process.env, loadEnv(mode, process.cwd(), 'NOTION_'))
+  Object.assign(process.env, loadEnv(mode, process.cwd(), 'GOOGLE_'))
 
   return {
     plugins: [
@@ -35,6 +38,9 @@ export default defineConfig(({ mode }) => {
           })
           server.middlewares.use('/api/notion-clinic-hours', (req, res) => {
             void notionClinicHoursHandler(req, res)
+          })
+          server.middlewares.use('/api/google-drive-upload', (req, res) => {
+            void googleDriveUploadHandler(req, res)
           })
         },
       },
