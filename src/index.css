@@ -32,24 +32,6 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #14161c;
-    --color-surface: #1b1e26;
-    --color-border: #2c313c;
-    --color-text: #edf0f5;
-    --color-text-muted: #9aa3b2;
-    --color-primary: #5b8ef8;
-    --color-primary-hover: #7ba3fa;
-    --color-primary-bg: rgba(91, 142, 248, 0.14);
-    --color-danger: #f2635f;
-    --color-danger-bg: rgba(224, 67, 63, 0.14);
-    --color-success: #34c98d;
-    --color-success-bg: rgba(26, 156, 107, 0.14);
-    color-scheme: dark;
-  }
-}
-
 * {
   box-sizing: border-box;
 }
