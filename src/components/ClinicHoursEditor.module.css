@@ -14,7 +14,7 @@
 .currentHoursSummary p { margin: 0; color: var(--color-text-muted); font-size: 13px; }
 .rowCard { padding: 20px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 12px; }
 .rowHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
-.rowHeader strong { font-size: 17px; font-weight: 800; line-height: 1.35; }
+.rowHeader strong { font-size: 17px; font-weight: 700; line-height: 1.35; }
 .rowToggle { min-width: 0; flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 0; color: var(--color-text); background: transparent; border: 0; cursor: pointer; text-align: left; }
 .rowToggle > span { min-width: 0; display: flex; align-items: baseline; gap: 8px; }
 .rowToggle small { overflow: hidden; color: var(--color-text-muted); font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
@@ -51,7 +51,7 @@
 .addButtonSecondary { font-size: 13px; }
 .secondaryFields { display: flex; flex-direction: column; gap: 10px; padding-top: 8px; }
 .lunchHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--color-text); font-size: 13px; }
-.lunchHeader > strong { font-size: 17px; font-weight: 800; line-height: 1.35; }
+.lunchHeader > strong { font-size: 17px; font-weight: 700; line-height: 1.35; }
 .noLunchOption { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-muted); font-size: 11px; font-weight: 600; cursor: pointer; }
 .noLunchOption input { width: 16px; min-height: 16px; accent-color: var(--color-primary); }
 .lunchFields { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: end; gap: 8px; font-size: 12px; font-weight: 600; }

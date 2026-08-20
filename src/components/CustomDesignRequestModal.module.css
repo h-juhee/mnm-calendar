@@ -26,6 +26,13 @@
   margin-bottom: 14px;
 }
 
+@media (max-width: 600px) {
+  .intro {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+}
+
 .field {
   display: flex;
   flex-direction: column;

@@ -79,7 +79,7 @@
 .sectionHeading h3 {
   color: var(--color-text);
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .sectionHeading p {
@@ -224,7 +224,7 @@
   border: 0;
   border-radius: 0;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -374,7 +374,7 @@
   align-items: baseline;
   gap: 5px;
   color: var(--color-primary);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .sliderField input[type='range'] {
@@ -708,7 +708,7 @@
 
 .clinicHoursGuide strong {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .clinicHoursGuide span {

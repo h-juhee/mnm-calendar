@@ -3,7 +3,7 @@
 .progress span { height: 5px; background: var(--color-border); border-radius: 999px; }
 .progress .progressActive { background: var(--color-primary); }
 .content { text-align: center; }
-.stepLabel { color: var(--color-primary); font-size: 12px; font-weight: 800; letter-spacing: .06em; }
+.stepLabel { color: var(--color-primary); font-size: 12px; font-weight: 700; letter-spacing: .06em; }
 .content h3 { margin: 8px 0 8px; color: var(--color-text); font-size: 21px; }
 .content p { margin: 0 auto; max-width: 420px; color: var(--color-text-muted); font-size: 14px; line-height: 1.6; }
 .visual { min-height: 150px; margin-top: 22px; padding: 24px; display: flex; align-items: center; justify-content: center; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }

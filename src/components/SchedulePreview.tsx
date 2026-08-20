@@ -877,10 +877,12 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
           <button type="button" onClick={() => setResetConfirm(activeEditor ? 'design' : 'schedule')}>
             {activeEditor ? '디자인 설정 초기화' : '일정 설정 초기화'}
           </button>
-          <details className={styles.dangerZone}>
-            <summary>위험 작업</summary>
-            <button type="button" onClick={() => setResetConfirm('all')}>현재 월 전체 작업 초기화</button>
-          </details>
+          {designEditingEnabled && (
+            <details className={styles.dangerZone}>
+              <summary>위험 작업</summary>
+              <button type="button" onClick={() => setResetConfirm('all')}>현재 월 전체 작업 초기화</button>
+            </details>
+          )}
         </div>
         )}
         </div>

@@ -142,6 +142,9 @@ interface EntryEditorProps {
   expanded: boolean;
   outputFormat: OutputFormat;
   defaultLabelFontSize: number;
+  allowBadgeTypographyEditing: boolean;
+  allowBadgeStyleEditing: boolean;
+  allowRangeMergeEditing: boolean;
   isDragging: boolean;
   isDuplicate: boolean;
   /** 해당 날짜에 이미 이 항목과 무관한 다른 일정이 최대 개수(3개)만큼 채워져 있는지 확인합니다. "이어서 표시" 범위 선택 시 어느 날짜가 채워지지 않을지 미리 알려주는 데 사용합니다. */
@@ -164,6 +167,9 @@ function EntryEditor({
   expanded,
   outputFormat,
   defaultLabelFontSize,
+  allowBadgeTypographyEditing,
+  allowBadgeStyleEditing,
+  allowRangeMergeEditing,
   isDragging,
   isDuplicate,
   isDateFull,
@@ -279,7 +285,7 @@ function EntryEditor({
           </button>
         </div>
       </div>
-      {range.dates.length > 1 && (
+      {allowRangeMergeEditing && range.dates.length > 1 && (
         <div className={styles.rangeToggle}>
           <span className={styles.rangeToggleLabel}>달력 표시</span>
           <div className={styles.displayModeGroup} role="radiogroup" aria-label={`일정 ${index + 1} 달력 표시 방식`}>
@@ -333,14 +339,14 @@ function EntryEditor({
       <div className={styles.timeField}>
         <div className={styles.timeHeader}>
           <span className={styles.timeTitle}>진료시간</span>
-          <label className={styles.toggleOption}>
+          {allowBadgeStyleEditing && <label className={styles.toggleOption}>
             <input
               type="checkbox"
               checked={entry.showTimeBadge !== false}
               onChange={(event) => onChange({ ...entry, showTimeBadge: event.target.checked })}
             />
             진료시간에 배경색 넣기
-          </label>
+          </label>}
         </div>
         <div className={styles.timeRange}>
           <input
@@ -365,7 +371,7 @@ function EntryEditor({
             onChange={(event) => onChange({ ...entry, endTime: formatTimeInput(event.target.value) || undefined })}
           />
         </div>
-        <div className={styles.timeBadgePreview} aria-label="진료시간 배경색 표시 예시">
+        {allowBadgeStyleEditing && <div className={styles.timeBadgePreview} aria-label="진료시간 배경색 표시 예시">
           <span className={styles.timeBadgePreviewItem}>
             <small>배경색 있음</small>
             <strong style={{ backgroundColor: displayedBadgeColor }}>{timePreviewText}</strong>
@@ -374,7 +380,7 @@ function EntryEditor({
             <small>배경색 없음</small>
             <strong className={styles.timeBadgePreviewPlain} style={{ color: displayedBadgeColor }}>{timePreviewText}</strong>
           </span>
-        </div>
+        </div>}
         {timeError && <p className={styles.error}>{timeError}</p>}
       </div>
 
@@ -392,7 +398,7 @@ function EntryEditor({
         </label>
       )}
 
-      <div className={styles.colorField}>
+      {allowBadgeStyleEditing && <div className={styles.colorField}>
         <div className={styles.timeHeader}>
           <span className={styles.label}>스타일</span>
           <label className={styles.toggleOption}>
@@ -441,7 +447,7 @@ function EntryEditor({
             )}
           </div>
 
-          <div className={styles.colorRow}>
+          {allowBadgeTypographyEditing && <div className={styles.colorRow}>
             <span className={styles.colorRowLabel}>글자 크기</span>
             <input
               type="number"
@@ -473,9 +479,9 @@ function EntryEditor({
                 기본 크기
               </button>
             )}
-          </div>
+          </div>}
 
-          <div className={styles.colorRow}>
+          {allowBadgeTypographyEditing && <div className={styles.colorRow}>
             <span className={styles.colorRowLabel}>글자 두께</span>
             <select
               className={`${styles.input} ${styles.colorRowInput}`}
@@ -491,7 +497,7 @@ function EntryEditor({
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
-          </div>
+          </div>}
 
           <span className={styles.colorHint}>
             {entry.fillBadge !== false
@@ -499,7 +505,7 @@ function EntryEditor({
               : '미선택 시 기본 색상이 글자색으로 적용됩니다.'}
           </span>
         </div>
-      </div>
+      </div>}
       </div>}
     </section>
   );
@@ -520,6 +526,9 @@ interface DateScheduleModalProps {
   onClearDate: (dateKey: string) => void;
   onClose: () => void;
   showClearAllAction?: boolean;
+  allowBadgeTypographyEditing?: boolean;
+  allowBadgeStyleEditing?: boolean;
+  allowRangeMergeEditing?: boolean;
 }
 
 export default function DateScheduleModal({
@@ -535,6 +544,9 @@ export default function DateScheduleModal({
   onClearDate,
   onClose,
   showClearAllAction = true,
+  allowBadgeTypographyEditing = true,
+  allowBadgeStyleEditing = true,
+  allowRangeMergeEditing = true,
 }: DateScheduleModalProps) {
   const defaultLabelFontSize = DEFAULT_LABEL_FONT_SIZE[outputFormat];
   const initialFirst = currentSchedule.type === 'closed' && currentSchedule.label === '휴가'
@@ -718,7 +730,7 @@ export default function DateScheduleModal({
         seriesId: `${dateKey}#${entryIds[index]}`,
         rangeEnd: undefined,
         applyDates: range?.dates.length > 1 ? range.dates : undefined,
-        noMerge: range && !range.merge ? true : undefined,
+        noMerge: range && (!allowRangeMergeEditing || !range.merge) ? true : undefined,
       }];
     }));
 
@@ -731,7 +743,7 @@ export default function DateScheduleModal({
       const oldDates = oldRange?.dates ?? [];
       const affectedDates = new Set([...newDates, ...oldDates]);
       affectedDates.delete(dateKey);
-      const propagatedEntry = { ...entry, applyDates: undefined, rangeEnd: undefined, noMerge: range && !range.merge ? true : undefined };
+      const propagatedEntry = { ...entry, applyDates: undefined, rangeEnd: undefined, noMerge: range && (!allowRangeMergeEditing || !range.merge) ? true : undefined };
       affectedDates.forEach((date) => {
         const baseList = updatesByDate.get(date) ?? getExistingEntriesForDate(date);
         const included = newDates.includes(date);
@@ -764,6 +776,9 @@ export default function DateScheduleModal({
             expanded={expandedIndex === index}
             outputFormat={outputFormat}
             defaultLabelFontSize={defaultLabelFontSize}
+            allowBadgeTypographyEditing={allowBadgeTypographyEditing}
+            allowBadgeStyleEditing={allowBadgeStyleEditing}
+            allowRangeMergeEditing={allowRangeMergeEditing}
             isDragging={draggedIndex === index}
             isDuplicate={duplicateIndexes.has(index)}
             isDateFull={(date) => isDateFullExcludingSeries(date, `${dateKey}#${entryIds[index]}`)}
@@ -798,7 +813,7 @@ export default function DateScheduleModal({
                     seriesId: `${dateKey}#${remainingIds[itemIndex]}`,
                     rangeEnd: undefined,
                     applyDates: range?.dates.length > 1 ? range.dates : undefined,
-                    noMerge: range && !range.merge ? true : undefined,
+                    noMerge: range && (!allowRangeMergeEditing || !range.merge) ? true : undefined,
                   };
                 });
               setEntries(entries.filter((_, itemIndex) => itemIndex !== index));

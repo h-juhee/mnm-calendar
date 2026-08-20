@@ -423,7 +423,7 @@ export default function CustomDesignRequestModal({
       <div className={styles.requestBody}>
         <p className={styles.intro}>
           {isScheduleSubmission
-            ? "입력한 진료일정과 제작 요청 내용을 확인한 뒤 제출해 주세요."
+            ? "입력하신 내용을 확인한 뒤 제출해 주세요. "
             : "신규 레이아웃 및 여러 규격 제작은 별도 견적이 필요할 수 있습니다."}
         </p>
 

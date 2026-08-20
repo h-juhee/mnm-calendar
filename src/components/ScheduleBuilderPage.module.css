@@ -1,7 +1,7 @@
 .page { min-height: 100svh; background: var(--color-bg); }
 .hero { padding: 22px 16px 18px; border-bottom: 1px solid var(--color-border); background: linear-gradient(160deg, color-mix(in srgb, var(--hero-accent, #2f6fed) 12%, var(--color-bg)), var(--color-bg) 70%); }
 .heroInner { position: relative; max-width: 1320px; margin: 0 auto; padding-right: 110px; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
-.heroTitle { margin: 0; color: var(--color-text); font-size: 26px; font-weight: 800; letter-spacing: -.4px; }
+.heroTitle { margin: 0; color: var(--color-text); font-size: 26px; font-weight: 700; letter-spacing: -.4px; }
 .heroSubtitle { max-width: 560px; margin: 0; color: var(--color-text-muted); font-size: 14px; }
 .heroActions { position: absolute; top: 50%; right: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; transform: translateY(-50%); }
 .saveStatus { color: var(--color-text-muted); font-size: 11px; font-weight: 600; }
@@ -13,7 +13,7 @@
 .container { max-width: 1320px; margin: 0 auto; padding: 16px 16px 48px; display: flex; flex-direction: column; gap: 16px; }
 
 .previewTools { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.previewLabel { color: var(--color-text); font-size: 18px; font-weight: 800; }
+.previewLabel { color: var(--color-text); font-size: 18px; font-weight: 700; }
 .previewSimpleHint { margin: 5px 0 0; color: var(--color-text-muted); font-size: 13px; line-height: 1.5; }
 .previewActions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .previewDesignButton { flex-shrink: 0; padding: 9px 13px; color: var(--color-primary); background: var(--color-primary-bg); border: 1px solid color-mix(in srgb, var(--color-primary) 35%, var(--color-border)); border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 600; }
@@ -21,14 +21,14 @@
 .formatSectionTrigger { width: 100%; min-height: 46px; padding: 7px 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--color-text); background: transparent; border: 0; border-radius: var(--radius-sm); cursor: pointer; text-align: left; }
 .formatSectionTrigger:hover { background: var(--color-primary-bg); }
 .formatSectionTrigger > span { display: flex; align-items: baseline; gap: 8px; }
-.formatSectionTrigger strong { font-size: 17px; font-weight: 800; }
+.formatSectionTrigger strong { font-size: 17px; font-weight: 700; }
 .formatSectionTrigger small { color: var(--color-primary); font-size: 11px; font-weight: 600; }
 .formatSectionTrigger svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; transition: transform 160ms ease; }
 .formatSectionTrigger[aria-expanded='true'] svg { transform: rotate(180deg); }
 .formatSectionContent { padding: 3px 8px 8px; display: flex; flex-direction: column; gap: 10px; }
 .formatSectionContent > .cardHint { font-size: 14px; }
 .card { min-width: 0; padding: 20px; display: flex; flex-direction: column; gap: 12px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
-.cardTitle { color: var(--color-text); font-size: 17px; font-weight: 800; }
+.cardTitle { color: var(--color-text); font-size: 17px; font-weight: 700; }
 .cardHint { margin-top: -5px; color: var(--color-text-muted); font-size: 12px; }
 .recurringSectionTitle {
   margin: 22px 0 8px;
@@ -36,7 +36,7 @@
   border-top: 1px solid var(--color-border);
   color: var(--color-text);
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .recurringSettings .cardTitle {
@@ -67,7 +67,7 @@
 .settingsGroup + .settingsGroup { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--color-border); }
 .settingsNav button { min-height: 40px; padding: 8px 10px; color: var(--color-text-muted); background: transparent; border: 0; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; font-weight: 600; text-align: left; }
 .settingsNav button:hover { color: var(--color-primary); background: var(--color-primary-bg); }
-.settingsNav .settingsGroupTrigger { display: flex; align-items: center; justify-content: space-between; color: var(--color-text); font-weight: 800; }
+.settingsNav .settingsGroupTrigger { display: flex; align-items: center; justify-content: space-between; color: var(--color-text); font-weight: 700; }
 .settingsGroupTrigger svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; transition: transform 160ms ease; }
 .settingsGroupTrigger[aria-expanded='true'] { color: var(--color-primary); background: var(--color-primary-bg); }
 .settingsGroupTrigger[aria-expanded='true'] svg { transform: rotate(180deg); }

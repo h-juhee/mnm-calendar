@@ -8,7 +8,6 @@ import LogoUploadField from './LogoUploadField';
 import MonthSelector from './MonthSelector';
 import CalendarLabelSelector from './CalendarLabelSelector';
 import RecurringDaySelector from './RecurringDaySelector';
-import RecurringBadgeDisplaySelector from './RecurringBadgeDisplaySelector';
 import CustomerGuideModal from './CustomerGuideModal';
 import DateScheduleModal from './DateScheduleModal';
 import VacationRangeField from './VacationRangeField';
@@ -111,7 +110,7 @@ export default function ScheduleBuilderPage({ appMode }: ScheduleBuilderPageProp
       <HospitalIntakeForm
         onSubmit={handleHospitalSubmit}
         onDeleteHospital={handleHospitalDelete}
-        showRecentHospitals={false}
+        showRecentHospitals={appMode === 'internal'}
       />
     );
   }
@@ -176,10 +175,18 @@ function ScheduleBuilderContent({
   const exportNodeRef = useRef<HTMLDivElement>(null);
   const settingsPanelRef = useRef<HTMLElement>(null);
   const setClinicHours = actions.setClinicHours;
+  const setRecurringClosedNoMerge = actions.setRecurringClosedNoMerge;
+  const setRecurringNightNoMerge = actions.setRecurringNightNoMerge;
 
   useEffect(() => {
     void flushPendingUsageLogs();
   }, []);
+
+  useEffect(() => {
+    if (appMode !== 'customer') return;
+    setRecurringClosedNoMerge(true);
+    setRecurringNightNoMerge(true);
+  }, [appMode, setRecurringClosedNoMerge, setRecurringNightNoMerge]);
 
   const renderPreviewForFormat = useCallback(async (format: OutputFormat) => {
     setOutputFormat(format);
@@ -308,13 +315,6 @@ function ScheduleBuilderContent({
         <p className={styles.cardHint}>매주 반복해서 쉬는 요일을 선택하세요.</p>
         <RecurringDaySelector selectedDays={formData.recurringClosedDays} onToggle={actions.toggleRecurringDay} />
         {appMode === 'customer' && (
-          <RecurringBadgeDisplaySelector
-            label="정기 휴진"
-            noMerge={formData.recurringClosedNoMerge}
-            onChange={actions.setRecurringClosedNoMerge}
-          />
-        )}
-        {appMode === 'customer' && (
           <>
             <h3 className={styles.recurringSectionTitle}>야간 진료</h3>
             <p className={styles.cardHint}>매주 반복해서 야간 진료하는 요일을 선택하세요.</p>
@@ -322,11 +322,6 @@ function ScheduleBuilderContent({
               selectedDays={formData.recurringNightDays}
               onToggle={actions.toggleRecurringNightDay}
               ariaLabel="야간 진료 요일"
-            />
-            <RecurringBadgeDisplaySelector
-              label="야간 진료"
-              noMerge={formData.recurringNightNoMerge}
-              onChange={actions.setRecurringNightNoMerge}
             />
           </>
         )}
@@ -586,7 +581,13 @@ function ScheduleBuilderContent({
             customBackgroundFileName={customBackgroundFileName}
             onCustomBackgroundSelect={handleCustomBackgroundSelect}
             onCustomBackgroundRemove={handleCustomBackgroundRemove}
-            onResetSchedule={actions.resetSchedule}
+            onResetSchedule={() => {
+              actions.resetSchedule();
+              if (appMode === 'customer') {
+                setRecurringClosedNoMerge(true);
+                setRecurringNightNoMerge(true);
+              }
+            }}
             onResetDesign={async () => {
               await handleCustomBackgroundRemove();
               actions.resetDesign();
@@ -648,6 +649,9 @@ function ScheduleBuilderContent({
           onClearDate={actions.clearDateSchedule}
           onClose={() => setSelectedDateKey(null)}
           showClearAllAction={appMode === 'internal'}
+          allowBadgeTypographyEditing={appMode === 'internal'}
+          allowBadgeStyleEditing={appMode === 'internal'}
+          allowRangeMergeEditing={appMode === 'internal'}
         />
       )}
 
