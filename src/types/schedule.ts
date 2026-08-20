@@ -256,7 +256,7 @@ export const SCHEDULE_TYPE_DEFAULT_BADGE_COLOR: Record<ScheduleType, string> = {
   shortened: '#6AC24A',
   night: '#4779ca',
   saturday: '#6cb3d6',
-  sunday: '#6cb3d6',
+  sunday: '#BF6CD5',
   pediatric: '#68B98C',
   custom: '#4779ca',
   open: '#6BAE89',
