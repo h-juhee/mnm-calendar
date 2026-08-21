@@ -57,6 +57,19 @@
   padding-top: 22px;
   font-size: 18px;
 }
+.recurringNextButton {
+  width: 100%;
+  margin-top: 22px;
+  padding: 12px 14px;
+  color: #fff;
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+}
+.recurringNextButton:hover { filter: brightness(.96); }
 .unsupportedNotice { padding: 18px 16px; display: flex; flex-direction: column; gap: 6px; color: var(--color-text-muted); background: var(--color-primary-bg); border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--color-border)); border-radius: var(--radius-sm); font-size: 12px; line-height: 1.5; }
 .unsupportedNotice strong { color: var(--color-text); font-size: 14px; }
 .formatNotice { margin: -2px 0 2px; color: var(--color-primary); font-size: 13px; line-height: 1.45; }
@@ -92,6 +105,27 @@
   text-align: center;
 }
 .settingsPanel { width: 100%; height: auto; min-height: 0; align-self: start; border-radius: 0 var(--radius-lg) var(--radius-lg) 0; box-shadow: none; }
+.settingsSpotlightBackdrop {
+  position: fixed;
+  z-index: 900;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse var(--settings-spotlight-radius-x) var(--settings-spotlight-radius-y)
+      at var(--settings-spotlight-x) var(--settings-spotlight-y),
+    transparent 0%,
+    transparent 58%,
+    rgba(15, 23, 42, 0.12) 72%,
+    rgba(15, 23, 42, 0.48) 100%
+  );
+  animation: settings-spotlight-backdrop 2900ms ease forwards;
+}
+
+@keyframes settings-spotlight-backdrop {
+  0% { opacity: 0; }
+  12%, 76% { opacity: 1; }
+  100% { opacity: 0; }
+}
 .downloadActions { display: grid; gap: 8px; }
 .secondaryButton { width: 100%; min-width: 0; padding: 13px 16px; color: var(--color-text); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; font-weight: 600; }
 .secondaryButton:hover { color: var(--color-primary); border-color: var(--color-primary); }

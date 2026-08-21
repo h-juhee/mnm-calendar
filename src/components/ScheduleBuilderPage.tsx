@@ -155,6 +155,12 @@ function ScheduleBuilderContent({
   const [isHospitalSwitchConfirmOpen, setHospitalSwitchConfirmOpen] = useState(false);
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('square');
   const [isFormatSectionExpanded, setFormatSectionExpanded] = useState(true);
+  const [settingsSpotlight, setSettingsSpotlight] = useState<{
+    x: number;
+    y: number;
+    radiusX: number;
+    radiusY: number;
+  } | null>(null);
   const [activeSettingsPanel, setActiveSettingsPanel] = useState<SettingsPanel>(
     appMode === 'customer' ? 'closed' : 'basic',
   );
@@ -174,6 +180,8 @@ function ScheduleBuilderContent({
   const customBackgroundObjectUrlRef = useRef<string | undefined>(undefined);
   const exportNodeRef = useRef<HTMLDivElement>(null);
   const settingsPanelRef = useRef<HTMLElement>(null);
+  const shouldFocusSettingsAfterTemplateRef = useRef(false);
+  const spotlightClearTimerRef = useRef<number | null>(null);
   const setClinicHoursFromSheet = actions.setClinicHoursFromSheet;
   const setRecurringClosedNoMerge = actions.setRecurringClosedNoMerge;
   const setRecurringNightNoMerge = actions.setRecurringNightNoMerge;
@@ -309,6 +317,57 @@ function ScheduleBuilderContent({
     if (!templateMatchesMonth) setTemplateModalOpen(true);
   }, [availableTemplates, formData.templateId]);
 
+  useEffect(() => {
+    if (
+      appMode !== 'customer'
+      || isTemplateModalOpen
+      || !selectedTemplate
+      || !shouldFocusSettingsAfterTemplateRef.current
+    ) return;
+    shouldFocusSettingsAfterTemplateRef.current = false;
+    setActiveSettingsPanel('closed');
+    setExpandedSettingsGroup('schedule');
+    const focusTimer = window.setTimeout(() => {
+      const panel = settingsPanelRef.current;
+      if (!panel) return;
+      panel.scrollIntoView({ behavior: 'auto', block: 'center' });
+      window.requestAnimationFrame(() => {
+        const settledPanel = settingsPanelRef.current;
+        if (!settledPanel) return;
+        const rect = settledPanel.getBoundingClientRect();
+        setSettingsSpotlight({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+          radiusX: rect.width / 2 + 64,
+          radiusY: rect.height / 2 + 72,
+        });
+      });
+    }, 100);
+    spotlightClearTimerRef.current = window.setTimeout(() => setSettingsSpotlight(null), 3000);
+    return () => {
+      window.clearTimeout(focusTimer);
+      if (spotlightClearTimerRef.current !== null) window.clearTimeout(spotlightClearTimerRef.current);
+    };
+  }, [appMode, isTemplateModalOpen, selectedTemplate]);
+
+  const focusCalendarAfterRecurringSettings = () => {
+    const calendar = exportNodeRef.current?.querySelector<HTMLElement>('[data-edit-layer="calendar"]');
+    if (!calendar) return;
+    if (spotlightClearTimerRef.current !== null) window.clearTimeout(spotlightClearTimerRef.current);
+    setSettingsSpotlight(null);
+    calendar.scrollIntoView({ behavior: 'auto', block: 'center' });
+    window.requestAnimationFrame(() => {
+      const rect = calendar.getBoundingClientRect();
+      setSettingsSpotlight({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+        radiusX: rect.width / 2 + 44,
+        radiusY: rect.height / 2 + 44,
+      });
+      spotlightClearTimerRef.current = window.setTimeout(() => setSettingsSpotlight(null), 3000);
+    });
+  };
+
   const panelContent: Partial<Record<SettingsPanel, ReactNode>> = {
     basic: (
       <>
@@ -331,6 +390,13 @@ function ScheduleBuilderContent({
               onToggle={actions.toggleRecurringNightDay}
               ariaLabel="야간 진료 요일"
             />
+            <button
+              type="button"
+              className={styles.recurringNextButton}
+              onClick={focusCalendarAfterRecurringSettings}
+            >
+              설정 완료 · 달력에서 날짜별 일정 추가
+            </button>
           </>
         )}
       </div>
@@ -445,7 +511,14 @@ function ScheduleBuilderContent({
   const standardPanelContent = isActiveSettingsPanelVisible
     && activeSettingsPanel !== 'background'
     && activeSettingsPanel !== 'elements'
-    ? <section ref={settingsPanelRef} className={`${styles.card} ${styles.settingsPanel}`}>{panelContent[activeSettingsPanel]}</section>
+    ? (
+      <section
+        ref={settingsPanelRef}
+        className={`${styles.card} ${styles.settingsPanel}`}
+      >
+        {panelContent[activeSettingsPanel]}
+      </section>
+    )
     : null;
 
   const previewHeader = (
@@ -572,6 +645,19 @@ function ScheduleBuilderContent({
           </div>
         </div>
       </header>
+
+      {settingsSpotlight && (
+        <div
+          className={styles.settingsSpotlightBackdrop}
+          aria-hidden="true"
+          style={{
+            '--settings-spotlight-x': `${settingsSpotlight.x}px`,
+            '--settings-spotlight-y': `${settingsSpotlight.y}px`,
+            '--settings-spotlight-radius-x': `${settingsSpotlight.radiusX}px`,
+            '--settings-spotlight-radius-y': `${settingsSpotlight.radiusY}px`,
+          } as CSSProperties}
+        />
+      )}
 
       <main className={styles.container}>
         {selectedTemplate ? (
@@ -712,6 +798,9 @@ function ScheduleBuilderContent({
               month={formData.month}
               selectedId={formData.templateId}
               onSelect={(templateId) => {
+                if (appMode === 'customer' && !hasSelectedTemplate) {
+                  shouldFocusSettingsAfterTemplateRef.current = true;
+                }
                 actions.setTemplateId(templateId);
                 setTemplateModalOpen(false);
               }}

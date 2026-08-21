@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import styles from './AdditionalInfoFields.module.css';
 
 interface AdditionalInfoFieldsProps {
@@ -5,6 +6,7 @@ interface AdditionalInfoFieldsProps {
   onNextMonthEventChange: (value: string) => void;
   calendarMustInclude: string;
   onCalendarMustIncludeChange: (value: string) => void;
+  betweenFields?: ReactNode;
 }
 
 export default function AdditionalInfoFields({
@@ -12,6 +14,7 @@ export default function AdditionalInfoFields({
   onNextMonthEventChange,
   calendarMustInclude,
   onCalendarMustIncludeChange,
+  betweenFields,
 }: AdditionalInfoFieldsProps) {
   return (
     <div className={styles.wrap}>
@@ -27,6 +30,8 @@ export default function AdditionalInfoFields({
           placeholder={'예:\n화 야간진료\n일 정기휴무\n목 정기휴무'}
         />
       </div>
+
+      {betweenFields}
 
       <div className={styles.field}>
         <label className={styles.label} htmlFor="next-month-event">

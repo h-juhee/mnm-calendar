@@ -696,30 +696,6 @@ export default function CustomDesignRequestModal({
           error={outputSizeError}
         />
 
-        <AdditionalInfoFields
-          nextMonthEvent={formData.nextMonthEvent ?? ""}
-          onNextMonthEventChange={onNextMonthEventChange}
-          calendarMustInclude={formData.calendarMustInclude ?? ""}
-          onCalendarMustIncludeChange={onCalendarMustIncludeChange}
-        />
-
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="req-details">
-            디자인 요청사항 · 선택
-          </label>
-          <textarea
-            id="req-details"
-            className={styles.textarea}
-            rows={2}
-            value={requestDetails}
-            onChange={(event) => {
-              setRequestDetails(event.target.value);
-              resizeTextarea(event);
-            }}
-            placeholder="예: 제목을 파란색으로 변경하고 로고를 오른쪽 상단에 배치"
-          />
-        </div>
-
         <div className={styles.field}>
           <label className={styles.label} htmlFor="req-special-notes">
             병원 운영 특이사항 · 선택
@@ -736,6 +712,31 @@ export default function CustomDesignRequestModal({
             placeholder="예: 정기 휴진일인 목요일에도 7월 30일은 정상 진료"
           />
         </div>
+
+        <AdditionalInfoFields
+          nextMonthEvent={formData.nextMonthEvent ?? ""}
+          onNextMonthEventChange={onNextMonthEventChange}
+          calendarMustInclude={formData.calendarMustInclude ?? ""}
+          onCalendarMustIncludeChange={onCalendarMustIncludeChange}
+          betweenFields={(
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="req-details">
+                디자인 요청사항 · 선택
+              </label>
+              <textarea
+                id="req-details"
+                className={styles.textarea}
+                rows={2}
+                value={requestDetails}
+                onChange={(event) => {
+                  setRequestDetails(event.target.value);
+                  resizeTextarea(event);
+                }}
+                placeholder="예: 제목을 파란색으로 변경하고 로고를 오른쪽 상단에 배치"
+              />
+            </div>
+          )}
+        />
 
         {!isScheduleSubmission && !hasRequestContent && (
           <p className={styles.requirementMessage}>
