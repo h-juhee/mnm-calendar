@@ -604,7 +604,7 @@ function ScheduleBuilderContent({
       {appMode === 'customer' && (
         <button
           type="button"
-          className={styles.secondaryButton}
+          className={`${styles.secondaryButton} ${styles.customerSubmitButton}`}
           onClick={() => {
             setCustomModalOpen(true);
           }}
@@ -711,6 +711,7 @@ function ScheduleBuilderContent({
             )}
             previewHeader={previewHeader}
             previewFooter={previewFooter}
+            showMobileSettingsFooter={appMode === 'customer'}
             onOpenElements={() => {
               setActiveSettingsPanel('elements');
               setExpandedSettingsGroup('design');

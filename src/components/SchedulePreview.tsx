@@ -66,6 +66,7 @@ interface SchedulePreviewProps {
   titleStyleEditor: ReactNode;
   previewHeader: ReactNode;
   previewFooter: ReactNode;
+  showMobileSettingsFooter?: boolean;
   onOpenElements: () => void;
   onOpenClinicHours: () => void;
   requireClinicHoursConfirmation?: boolean;
@@ -169,6 +170,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     titleStyleEditor,
     previewHeader,
     previewFooter,
+    showMobileSettingsFooter = false,
     onOpenElements,
     onOpenClinicHours,
     requireClinicHoursConfirmation = false,
@@ -874,6 +876,9 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
         {!activeEditor && standardPanelContent}
         {settingsPanelVisible && (
         <div className={styles.allResetRow}>
+          {showMobileSettingsFooter && (
+            <div className={styles.mobileSettingsFooter}>{previewFooter}</div>
+          )}
           <button type="button" onClick={() => setResetConfirm(activeEditor ? 'design' : 'schedule')}>
             {activeEditor ? '디자인 설정 초기화' : '일정 설정 초기화'}
           </button>
@@ -993,7 +998,9 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
           )}
         </div>
         </div>
-        {previewFooter}
+        <div className={showMobileSettingsFooter ? styles.previewFooterDesktop : undefined}>
+          {previewFooter}
+        </div>
       </div>
 
       {resetConfirm && (
