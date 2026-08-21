@@ -123,6 +123,14 @@ async function ensureScheduleFolder(token, rootFolderId, year, month, hospitalNa
   return ensureFolder(token, monthFolderId, String(hospitalName).trim());
 }
 
+async function touchFolder(token, folderId) {
+  return driveRequest(token, `/files/${encodeURIComponent(folderId)}?supportsAllDrives=true&fields=id,modifiedTime`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ modifiedTime: new Date().toISOString() }),
+  });
+}
+
 function decodePng(dataUrl) {
   const match = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl || '');
   if (!match) throw Object.assign(new Error('Invalid PNG image data.'), { status: 400 });
@@ -235,6 +243,9 @@ export default async function handler(req, res) {
       }
       const token = await getAccessToken();
       const hospitalFolderId = await ensureScheduleFolder(token, rootFolderId, year, month, hospitalName);
+      // Drive는 하위 파일이 추가되어도 부모 폴더의 수정 시간을 자동으로 바꾸지 않습니다.
+      // 재제출한 병원 폴더가 "수정 날짜" 정렬에서 최신으로 올라오도록 명시적으로 갱신합니다.
+      await touchFolder(token, hospitalFolderId);
       const resumableUrl = await startResumableUpload(token, hospitalFolderId, String(filename), totalSize);
       return sendJson(res, 200, { ok: true, uploadUrl: resumableUrl });
     }
