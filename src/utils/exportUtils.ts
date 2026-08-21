@@ -16,7 +16,7 @@ async function waitForImagesLoaded(node: HTMLElement): Promise<void> {
   const images = Array.from(node.querySelectorAll('img'));
   await Promise.all(
     images.map((img) => {
-      if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+      if (img.complete) return Promise.resolve();
       return new Promise<void>((resolve) => {
         img.addEventListener('load', () => resolve(), { once: true });
         img.addEventListener('error', () => resolve(), { once: true });
@@ -25,10 +25,39 @@ async function waitForImagesLoaded(node: HTMLElement): Promise<void> {
   );
 }
 
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error('이미지를 읽지 못했습니다.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function embedExportBackgrounds(node: HTMLElement): Promise<() => void> {
+  const backgrounds = Array.from(node.querySelectorAll<HTMLImageElement>('img[data-export-background]'));
+  const originals = backgrounds.map((image) => image.getAttribute('src') ?? '');
+  const restore = () => backgrounds.forEach((image, index) => image.setAttribute('src', originals[index]));
+  try {
+    for (const image of backgrounds) {
+      if (image.src.startsWith('data:')) continue;
+      const response = await fetch(image.src, { cache: 'force-cache' });
+      if (!response.ok) throw new Error(`배경 이미지를 불러오지 못했습니다. (HTTP ${response.status})`);
+      image.src = await blobToDataUrl(await response.blob());
+      await image.decode();
+    }
+    return restore;
+  } catch (error) {
+    restore();
+    throw error;
+  }
+}
+
 /** 지정한 출력 규격의 정확한 픽셀 크기로 PNG를 캡처합니다. */
 export async function renderNodeAsPng(node: HTMLElement, outputFormat: OutputFormat = 'square'): Promise<string> {
   await waitForFontsReady();
   await waitForImagesLoaded(node);
+  const restoreBackgrounds = await embedExportBackgrounds(node);
   const format = getOutputFormatMeta(outputFormat);
   const renderWidth = format.renderWidth ?? format.width;
   const renderHeight = format.renderHeight ?? format.height;
@@ -42,7 +71,6 @@ export async function renderNodeAsPng(node: HTMLElement, outputFormat: OutputFor
       height: renderHeight,
       pixelRatio,
       backgroundColor: '#ffffff',
-      cacheBust: true,
       style: {
         transform: 'none',
         width: `${renderWidth}px`,
@@ -50,6 +78,7 @@ export async function renderNodeAsPng(node: HTMLElement, outputFormat: OutputFor
       },
     });
   } finally {
+    restoreBackgrounds();
     selectedLayers.forEach((layer) => layer.setAttribute('data-selected', 'true'));
   }
 

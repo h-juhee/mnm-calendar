@@ -102,6 +102,7 @@ export default function ImageTemplateBase({
     >
       <div className={styles.backgroundLayer} aria-hidden="true">
         <img
+          data-export-background
           src={customBackgroundUrl ?? backgroundUrls[outputFormat]}
           alt=""
         />
