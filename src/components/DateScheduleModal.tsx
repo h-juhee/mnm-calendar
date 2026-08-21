@@ -213,7 +213,9 @@ function EntryEditor({
     ? `${entry.startTime}~${entry.endTime}`
     : '09:30~18:30';
   const summary = [
-    entry.type === 'custom' && entry.label?.trim() ? entry.label.trim() : SCHEDULE_TYPE_META[entry.type].label,
+    entry.type === 'custom'
+      ? entry.label?.trim() || (entry.startTime && entry.endTime ? '시간만 표시' : SCHEDULE_TYPE_META[entry.type].label)
+      : SCHEDULE_TYPE_META[entry.type].label,
     entry.startTime && entry.endTime ? `${entry.startTime}~${entry.endTime}` : '',
   ].filter(Boolean).join(' · ');
 
@@ -387,7 +389,7 @@ function EntryEditor({
 
       {entry.type === 'custom' && (
         <label className={styles.endTimeField}>
-          <span className={styles.label}>달력에 표시할 문구</span>
+          <span className={styles.label}>달력에 표시할 문구 (선택 사항)</span>
           <input
             type="text"
             className={styles.input}
@@ -396,6 +398,7 @@ function EntryEditor({
             placeholder="예: 그랜드 오픈"
             onChange={(event) => onChange({ ...entry, label: event.target.value })}
           />
+          <small>비워두면 달력에 진료시간만 표시됩니다.</small>
         </label>
       )}
 

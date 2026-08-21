@@ -153,7 +153,8 @@ function buildCellInfo(
         const hasTimeRow = Boolean(
           entry.endTime && scheduleStart < entry.endTime,
         );
-        const rowCount = hasTimeRow ? 2 : 1;
+        const hidesCustomLabel = entry.type === 'custom' && !entry.label?.trim() && hasTimeRow;
+        const rowCount = hasTimeRow && !hidesCustomLabel ? 2 : 1;
         if (occupiedScheduleRows + rowCount > 3) return false;
 
         occupiedScheduleRows += rowCount;
@@ -229,6 +230,19 @@ function renderScheduleBadge(
   const timeStyle = {
     '--schedule-badge-color': badgeColorVar,
   } as CSSProperties;
+  const hidesCustomLabel = entry.type === 'custom' && !entry.label?.trim() && Boolean(scheduleTime);
+  if (hidesCustomLabel) {
+    return (
+      <span key={key} className={styles.timedBadge}>
+        <span
+          className={`${styles.badge} ${styles.timeBadge} ${entry.showTimeBadge === false ? styles.badgeTimePlain : ''} ${extraBadgeClass ?? ''}`}
+          style={timeStyle}
+        >
+          {scheduleTime}
+        </span>
+      </span>
+    );
+  }
   if (scheduleTime) {
     return (
       <span key={key} className={styles.timedBadge}>

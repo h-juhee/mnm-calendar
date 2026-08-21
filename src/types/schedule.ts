@@ -134,6 +134,8 @@ export interface ClinicHours {
   hidden?: boolean;
   /** 예시값을 포함한 현재 진료시간을 사용자가 실제 운영시간으로 확인했는지 여부입니다. */
   confirmed?: boolean;
+  /** 구글시트 기본값을 사용자가 직접 수정했는지 여부입니다. */
+  userEdited?: boolean;
   note: string;
 }
 

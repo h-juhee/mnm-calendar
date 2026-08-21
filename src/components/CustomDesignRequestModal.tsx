@@ -680,6 +680,11 @@ export default function CustomDesignRequestModal({
               <dd>{formatLunchHoursSummary(formData)}</dd>
             </div>
           </dl>
+          {isScheduleSubmission && (
+            <p className={styles.clinicHoursCorrectionHint}>
+              실제 운영시간과 다르면 아래 병원 운영 특이사항에 적어 주세요.
+            </p>
+          )}
         </section>
 
         <OutputSizeSelector

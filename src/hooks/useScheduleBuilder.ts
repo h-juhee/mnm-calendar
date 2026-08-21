@@ -60,6 +60,7 @@ function normalizeClinicHours(value: ClinicHours | undefined): ClinicHours {
     lunchDisabled: value.lunchDisabled ?? false,
     hidden: false,
     confirmed: value.confirmed ?? false,
+    userEdited: value.userEdited ?? false,
     note: value.note ?? '',
   };
   return { ...normalized, confirmed: deriveClinicHoursConfirmed(normalized) };
@@ -231,6 +232,13 @@ export function useScheduleBuilder(hospitalId: string) {
     setFormData((prev) => ({ ...prev, clinicHours }));
   }, []);
 
+  const setClinicHoursFromSheet = useCallback((clinicHours: ClinicHours) => {
+    setFormData((prev) => {
+      if (prev.clinicHours?.userEdited) return prev;
+      return { ...prev, clinicHours: { ...clinicHours, userEdited: false } };
+    });
+  }, []);
+
   const setDesignEdits = useCallback((format: OutputFormat, designEdits: DesignEdits) => {
     setFormData((prev) => ({
       ...prev,
@@ -288,6 +296,7 @@ export function useScheduleBuilder(hospitalId: string) {
       setOutputSize,
       setCalendarMustInclude,
       setClinicHours,
+      setClinicHoursFromSheet,
       setDesignEdits,
       resetSchedule,
       resetDesign,

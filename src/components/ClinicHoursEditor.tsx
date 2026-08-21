@@ -108,7 +108,12 @@ export default function ClinicHoursEditor({ value, onChange, showConfirmationAct
   const [expandedRows, setExpandedRows] = useState<Set<string>>(() => new Set());
   const [detailRows, setDetailRows] = useState<Set<string>>(() => new Set());
   const [lunchTouched, setLunchTouched] = useState(false);
-  const changeValue = (next: ClinicHours) => onChange({ ...next, hidden: false, confirmed: deriveClinicHoursConfirmed({ ...next, hidden: false }) });
+  const changeValue = (next: ClinicHours) => onChange({
+    ...next,
+    hidden: false,
+    confirmed: deriveClinicHoursConfirmed({ ...next, hidden: false }),
+    userEdited: true,
+  });
 
   const updateRow = (id: string, patch: Partial<ClinicHoursRow>) => {
     setTouchedRows((current) => new Set(current).add(id));

@@ -174,7 +174,7 @@ function ScheduleBuilderContent({
   const customBackgroundObjectUrlRef = useRef<string | undefined>(undefined);
   const exportNodeRef = useRef<HTMLDivElement>(null);
   const settingsPanelRef = useRef<HTMLElement>(null);
-  const setClinicHours = actions.setClinicHours;
+  const setClinicHoursFromSheet = actions.setClinicHoursFromSheet;
   const setRecurringClosedNoMerge = actions.setRecurringClosedNoMerge;
   const setRecurringNightNoMerge = actions.setRecurringNightNoMerge;
 
@@ -227,7 +227,7 @@ function ScheduleBuilderContent({
     const controller = new AbortController();
     const applyMatchedHours = (clinicHoursText: string, lunchHours = '') => {
       const matchedHours = parseNotionClinicHours(clinicHoursText, lunchHours);
-      if (matchedHours) setClinicHours(matchedHours);
+      if (matchedHours) setClinicHoursFromSheet(matchedHours);
       return Boolean(matchedHours);
     };
 
@@ -245,7 +245,7 @@ function ScheduleBuilderContent({
 
     void loadClinicHours();
     return () => controller.abort();
-  }, [hospital.name, setClinicHours]);
+  }, [hospital.name, setClinicHoursFromSheet]);
 
   useEffect(() => {
     let active = true;
