@@ -1,5 +1,4 @@
 import type { ClinicHours, ClinicHoursRow } from '../types/schedule';
-import clinicHoursData from '../data/clinicHours.json';
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -104,25 +103,6 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
     confirmed: true,
     note: '',
   };
-}
-
-function normalizeHospitalName(value: string): string {
-  return value
-    .normalize('NFC')
-    .toLocaleLowerCase('ko-KR')
-    .replace(/[\s_.·,()\[\]{}-]/gu, '')
-    .replace(/치과(?:병원|의원)/gu, '치과')
-    .replace(/(?:병원|의원)$/u, '');
-}
-
-export function findClinicHoursByHospitalName(hospitalName: string): ClinicHours | null {
-  const normalizedName = normalizeHospitalName(hospitalName);
-  if (!normalizedName) return null;
-  const matches = clinicHoursData.filter(
-    (entry) => normalizeHospitalName(entry.name) === normalizedName,
-  );
-  if (matches.length !== 1) return null;
-  return parseNotionClinicHours(matches[0].hours);
 }
 
 export function getClinicHoursWithExample(value?: ClinicHours): ClinicHours {
