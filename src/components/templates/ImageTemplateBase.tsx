@@ -95,20 +95,17 @@ export default function ImageTemplateBase({
     <div
       className={`${styles.root} ${styles[outputFormat]} ${layoutClass} ${hasClinicHours ? styles.hasClinicHours : styles.noClinicHours} ${calendarMatrix.length === 6 ? styles.sixWeekMonth : ''}`}
       style={{
-        backgroundImage: customBackgroundUrl ? undefined : `url(${backgroundUrls[outputFormat]})`,
         '--export-font-family': fontFamily,
         '--popup-calendar-needed-height': `${popupCalendarNeededHeight}px`,
         '--a4-horizontal-calendar-needed-height': `${a4HorizontalCalendarNeededHeight}px`,
       } as CSSProperties}
     >
-      {customBackgroundUrl && (
-        <div className={styles.customBackground} aria-hidden="true">
-          <img
-            src={customBackgroundUrl}
-            alt=""
-          />
-        </div>
-      )}
+      <div className={styles.backgroundLayer} aria-hidden="true">
+        <img
+          src={customBackgroundUrl ?? backgroundUrls[outputFormat]}
+          alt=""
+        />
+      </div>
       {headerVariant === 'heroTitle' ? (
         <div className={styles.heroHeader}>
           <div className={styles.heroTitleBlock}>
