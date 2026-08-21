@@ -64,17 +64,37 @@ function relaxedClinicName(value: string): string {
     .replace(/안과의원$/u, '안과');
 }
 
+function shortenedClinicName(value: string): string {
+  return normalizeClinicName(value)
+    .replace(/(?:의원|병원)$/u, '')
+    .replace(/치과교정과$/u, '교정')
+    .replace(/교정치과$/u, '교정')
+    .replace(/치주과치과$/u, '치주')
+    .replace(/치주과$/u, '치주')
+    .replace(/치과$/u, '');
+}
+
 export function findHospitalLogoUrl(hospitalName: string): string | undefined {
   const exactName = normalizeClinicName(hospitalName);
   const exactMatches = HOSPITAL_LOGO_FILES.filter(
     (fileName) => normalizeClinicName(clinicNameFromFile(fileName)) === exactName,
   );
 
+  const relaxedMatches = exactMatches.length === 0
+    ? HOSPITAL_LOGO_FILES.filter(
+      (fileName) => relaxedClinicName(clinicNameFromFile(fileName)) === relaxedClinicName(hospitalName),
+    )
+    : [];
+  const shortenedMatches = exactMatches.length === 0 && relaxedMatches.length === 0
+    ? HOSPITAL_LOGO_FILES.filter(
+      (fileName) => shortenedClinicName(clinicNameFromFile(fileName)) === shortenedClinicName(hospitalName),
+    )
+    : [];
   const matches = exactMatches.length > 0
     ? exactMatches
-    : HOSPITAL_LOGO_FILES.filter(
-      (fileName) => relaxedClinicName(clinicNameFromFile(fileName)) === relaxedClinicName(hospitalName),
-    );
+    : relaxedMatches.length > 0
+      ? relaxedMatches
+      : shortenedMatches;
 
   // 비슷한 이름이 둘 이상이면 잘못된 로고를 자동 적용하지 않습니다.
   if (matches.length !== 1) return undefined;
