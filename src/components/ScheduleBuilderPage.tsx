@@ -23,7 +23,7 @@ import { renderNodeAsPng } from '../utils/exportUtils';
 import ClinicHoursEditor from './ClinicHoursEditor';
 import { deleteCustomBackground, loadCustomBackground, migrateCustomBackground, saveCustomBackground } from '../utils/backgroundStorage';
 import { removeHospitalData, removeHospitalInfo, saveHospitalInfo } from '../utils/storageUtils';
-import { findClinicHoursByHospitalName, getClinicHoursWithExample, parseNotionClinicHours } from '../utils/clinicHoursUtils';
+import { getClinicHoursWithExample, parseNotionClinicHours } from '../utils/clinicHoursUtils';
 import { flushPendingUsageLogs } from '../utils/usageLogUtils';
 import styles from './ScheduleBuilderPage.module.css';
 
@@ -224,41 +224,28 @@ function ScheduleBuilderContent({
   }, []);
 
   useEffect(() => {
-    const excelHours = findClinicHoursByHospitalName(hospital.name);
-    if (excelHours) {
-      const currentHours = formData.clinicHours;
-      const looksLikePreviousAutoMatch = Boolean(
-        currentHours?.confirmed
-        && !currentHours.note.trim()
-        && currentHours.rows.length === excelHours.rows.length
-        && currentHours.rows.every((row) => row.id.startsWith('notion-hours-') && !row.note?.trim()),
-      );
-      const sameCoreHours = looksLikePreviousAutoMatch && currentHours?.rows.every((row, index) => {
-        const nextRow = excelHours.rows[index];
-        return nextRow
-          && row.startTime === nextRow.startTime
-          && row.endTime === nextRow.endTime
-          && [...row.days].sort().join(',') === [...nextRow.days].sort().join(',');
-      });
-      if (!currentHours?.confirmed || sameCoreHours) setClinicHours(excelHours);
-      return;
-    }
-    if (formData.clinicHours?.confirmed) return;
-
     const controller = new AbortController();
-    void fetch(`/api/notion-clinic-hours?hospitalName=${encodeURIComponent(hospital.name)}`, {
-      signal: controller.signal,
-    })
-      .then(async (response) => response.ok ? response.json() : null)
-      .then((result) => {
-        const notionHours = result?.found
-          ? parseNotionClinicHours(result.clinicHours ?? '', result.lunchHours ?? '')
-          : null;
-        if (notionHours) setClinicHours(notionHours);
-      })
-      .catch(() => undefined);
+    const applyMatchedHours = (clinicHoursText: string, lunchHours = '') => {
+      const matchedHours = parseNotionClinicHours(clinicHoursText, lunchHours);
+      if (matchedHours) setClinicHours(matchedHours);
+      return Boolean(matchedHours);
+    };
+
+    const loadClinicHours = async () => {
+      try {
+        const response = await fetch(`/api/google-sheet-clinic-hours?hospitalName=${encodeURIComponent(hospital.name)}`, {
+          signal: controller.signal,
+        });
+        const sheetResult = response.ok ? await response.json() : null;
+        if (sheetResult?.found) applyMatchedHours(sheetResult.clinicHours ?? '');
+      } catch {
+        // 시트 조회 실패 시 부정확할 수 있는 기존 데이터로 자동 대체하지 않습니다.
+      }
+    };
+
+    void loadClinicHours();
     return () => controller.abort();
-  }, [formData.clinicHours?.confirmed, hospital.name, setClinicHours]);
+  }, [hospital.name, setClinicHours]);
 
   useEffect(() => {
     let active = true;

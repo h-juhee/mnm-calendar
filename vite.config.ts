@@ -8,6 +8,8 @@ import notionUsageLogHandler from './api/notion-usage-log.mjs'
 // @ts-expect-error Vercel function is plain ESM JavaScript and is also used by the local dev server.
 import notionClinicHoursHandler from './api/notion-clinic-hours.mjs'
 // @ts-expect-error Vercel function is plain ESM JavaScript and is also used by the local dev server.
+import googleSheetClinicHoursHandler from './api/google-sheet-clinic-hours.mjs'
+// @ts-expect-error Vercel function is plain ESM JavaScript and is also used by the local dev server.
 import googleDriveUploadHandler from './api/google-drive-upload.mjs'
 
 // https://vite.dev/config/
@@ -38,6 +40,9 @@ export default defineConfig(({ mode }) => {
           })
           server.middlewares.use('/api/notion-clinic-hours', (req, res) => {
             void notionClinicHoursHandler(req, res)
+          })
+          server.middlewares.use('/api/google-sheet-clinic-hours', (req, res) => {
+            void googleSheetClinicHoursHandler(req, res)
           })
           server.middlewares.use('/api/google-drive-upload', (req, res) => {
             void googleDriveUploadHandler(req, res)

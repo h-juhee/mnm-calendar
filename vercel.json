@@ -9,6 +9,9 @@
     "api/notion-clinic-hours.mjs": {
       "maxDuration": 10
     },
+    "api/google-sheet-clinic-hours.mjs": {
+      "maxDuration": 10
+    },
     "api/google-drive-upload.mjs": {
       "maxDuration": 30
     }
