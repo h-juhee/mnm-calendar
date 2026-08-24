@@ -23,6 +23,9 @@ async function notion(path, options = {}) {
 }
 
 async function resolveClientDataSourceId() {
+  if (process.env.NOTION_CLINIC_HOURS_DATA_SOURCE_ID) {
+    return process.env.NOTION_CLINIC_HOURS_DATA_SOURCE_ID;
+  }
   if (process.env.NOTION_CLIENT_DATA_SOURCE_ID) return process.env.NOTION_CLIENT_DATA_SOURCE_ID;
   if (!process.env.NOTION_USAGE_DATA_SOURCE_ID) return null;
 
@@ -100,7 +103,7 @@ export default async function handler(req, res) {
 
   try {
     const dataSourceId = await resolveClientDataSourceId();
-    if (!dataSourceId) return sendJson(res, 503, { message: 'Notion client data source is not configured.' });
+    if (!dataSourceId) return sendJson(res, 503, { message: 'Notion clinic hours data source is not configured.' });
 
     const dataSource = await notion(`/data_sources/${dataSourceId}`);
     const schema = dataSource.properties ?? {};

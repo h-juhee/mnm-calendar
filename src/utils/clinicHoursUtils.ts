@@ -51,7 +51,7 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
     .filter(Boolean);
 
   for (const entry of entries) {
-    if (entry.includes('휴게') || entry.includes('휴진')) continue;
+    if (entry.includes('휴게') || entry.includes('점심시간') || entry.includes('휴진')) continue;
     const match = /^(.*?)\s+(\d{1,2}):([0-5]\d)\s*[~～\-–—]\s*(\d{1,2}):([0-5]\d)/u.exec(entry);
     if (!match) continue;
     const days = expandDays(match[1]);
@@ -69,8 +69,12 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
   }
 
   if (grouped.size === 0) return null;
-  const embeddedLunchText = entries.find((entry) => entry.includes('휴게')) ?? '';
-  const lunchMatch = /(\d{1,2}):([0-5]\d)\s*[~～\-–—]\s*(\d{1,2}):([0-5]\d)/u.exec(lunchText || embeddedLunchText);
+  const embeddedBreakEntries = entries.filter((entry) => entry.includes('휴게') || entry.includes('점심시간'));
+  const globalBreakEntry = embeddedBreakEntries.length === 1
+    && [1, 2, 3, 4, 5].every((day) => expandDays(embeddedBreakEntries[0]).includes(day))
+    ? embeddedBreakEntries[0]
+    : '';
+  const lunchMatch = /(\d{1,2}):([0-5]\d)\s*[~～\-–—]\s*(\d{1,2}):([0-5]\d)/u.exec(lunchText || globalBreakEntry);
   const lunchStart = lunchMatch && Number(lunchMatch[1]) <= 23
     ? `${String(Number(lunchMatch[1])).padStart(2, '0')}:${lunchMatch[2]}`
     : '';
@@ -80,8 +84,9 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
   const hasLunchHours = Boolean(lunchStart && lunchEnd && lunchEnd > lunchStart);
   const lunchKey = hasLunchHours ? `${lunchStart}-${lunchEnd}` : '';
 
-  for (const entry of entries.filter((item) => item.includes('휴게'))) {
-    const breakDays = expandDays(entry.slice(0, entry.indexOf('휴게')));
+  for (const entry of embeddedBreakEntries) {
+    const labelIndex = entry.includes('점심시간') ? entry.indexOf('점심시간') : entry.indexOf('휴게');
+    const breakDays = expandDays(entry.slice(0, labelIndex));
     for (const match of entry.matchAll(/(\d{1,2}):([0-5]\d)\s*[~～\-–—]\s*(\d{1,2}):([0-5]\d)/gu)) {
       const startTime = `${String(Number(match[1])).padStart(2, '0')}:${match[2]}`;
       const endTime = `${String(Number(match[3])).padStart(2, '0')}:${match[4]}`;

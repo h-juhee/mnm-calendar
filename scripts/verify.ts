@@ -615,6 +615,30 @@ test('노션 페이지 본문의 점심시간을 진료시간과 함께 변환�
   assert.equal(parsed.lunchDisabled, false);
 });
 
+test('별도 진료시간 DB의 구분자와 평일 점심시간을 변환한다', () => {
+  const parsed = parseNotionClinicHours(
+    '월·수·금 09:30~18:30 / 화·목 09:30~20:30 / 토 09:30~14:30 / 평일 점심시간 13:00~14:00 / 일 휴진',
+  );
+  assert.ok(parsed);
+  assert.deepEqual(parsed.rows, [
+    { id: 'notion-hours-0', days: [1, 3, 5], startTime: '09:30', endTime: '18:30' },
+    { id: 'notion-hours-1', days: [2, 4], startTime: '09:30', endTime: '20:30' },
+    { id: 'notion-hours-2', days: [6], startTime: '09:30', endTime: '14:30' },
+  ]);
+  assert.equal(parsed.lunchStart, '13:00');
+  assert.equal(parsed.lunchEnd, '14:00');
+});
+
+test('요일마다 다른 점심시간은 해당 진료시간 행의 휴게 메모로 변환한다', () => {
+  const parsed = parseNotionClinicHours(
+    '월·목 13:00~21:00 / 화·금 10:00~19:00 / 토 09:00~14:00 / 일 10:00~14:00 / 월·목 점심시간 17:30~18:00 / 화·금 점심시간 13:30~15:00 / 수 휴진',
+  );
+  assert.ok(parsed);
+  assert.equal(parsed.lunchDisabled, true);
+  assert.equal(parsed.rows[0]?.note, '휴게 17:30~18:00');
+  assert.equal(parsed.rows[1]?.note, '휴게 13:30~15:00');
+});
+
 test('public 로고 파일과 자동 매칭 목록이 정확히 일치한다', () => {
   const logoDirectory = new URL('../public/logos/', import.meta.url);
   const actualLogoFiles = readdirSync(logoDirectory)

@@ -241,13 +241,22 @@ function ScheduleBuilderContent({
 
     const loadClinicHours = async () => {
       try {
-        const response = await fetch(`/api/google-sheet-clinic-hours?hospitalName=${encodeURIComponent(hospital.name)}`, {
+        const notionResponse = await fetch(`/api/notion-clinic-hours?hospitalName=${encodeURIComponent(hospital.name)}`, {
           signal: controller.signal,
         });
-        const sheetResult = response.ok ? await response.json() : null;
+        const notionResult = notionResponse.ok ? await notionResponse.json() : null;
+        if (
+          notionResult?.found
+          && applyMatchedHours(notionResult.clinicHours ?? '', notionResult.lunchHours ?? '')
+        ) return;
+
+        const sheetResponse = await fetch(`/api/google-sheet-clinic-hours?hospitalName=${encodeURIComponent(hospital.name)}`, {
+          signal: controller.signal,
+        });
+        const sheetResult = sheetResponse.ok ? await sheetResponse.json() : null;
         if (sheetResult?.found) applyMatchedHours(sheetResult.clinicHours ?? '');
       } catch {
-        // 시트 조회 실패 시 부정확할 수 있는 기존 데이터로 자동 대체하지 않습니다.
+        // 외부 진료시간 조회 실패 시 부정확할 수 있는 기존 데이터로 자동 대체하지 않습니다.
       }
     };
 
