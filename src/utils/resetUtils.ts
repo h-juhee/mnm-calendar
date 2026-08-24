@@ -31,6 +31,8 @@ export function resetDesignSettings(formData: ScheduleFormData): ScheduleFormDat
     ...formData,
     fontId: DEFAULT_FONT_ID,
     titleTextStyle: 'filled',
+    secondarySubtitleEnabled: false,
+    secondarySubtitleText: '',
     designEditsByFormat: {},
     designEdits: {},
   };

@@ -20,6 +20,10 @@ interface PreviewCalendarProps {
   className?: string;
   edit?: LayerEdit;
   selected?: boolean;
+  secondarySubtitle?: string;
+  secondarySubtitleEdit?: LayerEdit;
+  secondarySubtitleSelected?: boolean;
+  showSecondarySubtitle?: boolean;
 }
 
 const BADGE_CLASS: Record<string, string> = {
@@ -276,6 +280,10 @@ export default function PreviewCalendar({
   className,
   edit,
   selected,
+  secondarySubtitle,
+  secondarySubtitleEdit,
+  secondarySubtitleSelected,
+  showSecondarySubtitle = false,
 }: PreviewCalendarProps) {
   const weekdayLabels = getWeekdayLabels(labelStyle);
   const layoutClass = outputFormat === 'instagram'
@@ -388,6 +396,24 @@ export default function PreviewCalendar({
           ))}
         </div>
       </div>
+      {showSecondarySubtitle && (
+        <span
+          className={styles.secondarySubtitle}
+          data-edit-layer="secondarySubtitle"
+          data-selected={secondarySubtitleSelected || undefined}
+          style={{
+            '--secondary-subtitle-x': `${secondarySubtitleEdit?.x ?? 0}px`,
+            '--secondary-subtitle-y': `${secondarySubtitleEdit?.y ?? 0}px`,
+            '--secondary-subtitle-scale': secondarySubtitleEdit?.scale ?? 1,
+            fontSize: secondarySubtitleEdit?.fontSize,
+            fontFamily: secondarySubtitleEdit?.fontId ? getFontOption(secondarySubtitleEdit.fontId).family : undefined,
+            fontWeight: secondarySubtitleEdit?.fontWeight,
+            color: secondarySubtitleEdit?.color,
+          } as CSSProperties}
+        >
+          {secondarySubtitle}
+        </span>
+      )}
     </div>
   );
 }

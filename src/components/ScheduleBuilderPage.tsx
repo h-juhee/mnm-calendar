@@ -680,6 +680,8 @@ function ScheduleBuilderContent({
             onDateClick={setSelectedDateKey}
             outputFormat={outputFormat}
             onDesignEditsChange={(edits) => actions.setDesignEdits(outputFormat, edits)}
+            onSecondarySubtitleEnabledChange={actions.setSecondarySubtitleEnabled}
+            onSecondarySubtitleTextChange={actions.setSecondarySubtitleText}
             customBackgroundUrl={customBackgroundUrl}
             customBackgroundFileName={customBackgroundFileName}
             onCustomBackgroundSelect={handleCustomBackgroundSelect}

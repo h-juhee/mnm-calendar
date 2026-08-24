@@ -18,7 +18,7 @@ export type ScheduleType =
 export type CalendarLabelStyle = 'korean' | 'english' | 'hanja' | 'japanese';
 export type TitleTextStyle = 'outline' | 'filled';
 
-export type EditableLayerId = 'title' | 'subtitle' | 'hospital' | 'clinicHours' | 'calendar';
+export type EditableLayerId = 'title' | 'subtitle' | 'secondarySubtitle' | 'hospital' | 'clinicHours' | 'calendar';
 
 export interface LayerEdit {
   x?: number;
@@ -30,6 +30,7 @@ export interface LayerEdit {
   outlineColor?: string;
   text?: string;
   scale?: number;
+  hidden?: boolean;
 }
 
 export type DesignEdits = Partial<Record<EditableLayerId, LayerEdit>>;
@@ -104,6 +105,8 @@ export interface ScheduleFormData {
   fontId?: FontId;
   calendarLabelStyle?: CalendarLabelStyle;
   titleTextStyle?: TitleTextStyle;
+  secondarySubtitleEnabled?: boolean;
+  secondarySubtitleText?: string;
   nextMonthEvent?: string;
   outputSize?: string[];
   calendarMustInclude?: string;

@@ -853,6 +853,10 @@
   position: absolute;
 }
 
+.exportNode [data-edit-layer='secondarySubtitle'][data-selected='true'] {
+  position: absolute;
+}
+
 .exportNode [data-selected='true']::after {
   content: '';
   position: absolute;

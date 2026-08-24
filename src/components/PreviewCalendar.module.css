@@ -1,4 +1,5 @@
 .wrap {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -209,6 +210,32 @@
   max-width: 100% !important;
   box-sizing: border-box;
 }
+
+.secondarySubtitle {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  bottom: 22px;
+  width: max-content;
+  max-width: 90%;
+  padding: 5px 12px;
+  color: #111827;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  white-space: nowrap;
+  transform: translate(calc(-50% + var(--secondary-subtitle-x, 0px)), var(--secondary-subtitle-y, 0px)) scale(var(--secondary-subtitle-scale, 1));
+  transform-origin: center;
+}
+
+.square:not(.instagram) .secondarySubtitle { bottom: -48px; }
+.instagram .secondarySubtitle { bottom: -55px; font-size: 24px; }
+.a4 .secondarySubtitle { bottom: 34px; font-size: 30px; }
+.a4:not(.a4Horizontal) .secondarySubtitle { bottom: -72px; }
+.a4Horizontal.a4 .secondarySubtitle { bottom: -54px; }
+.didHorizontal .secondarySubtitle { bottom: -95px; font-size: 48px; }
+.didVertical .secondarySubtitle { bottom: -120px; font-size: 44px; }
 
 .timedBadge {
   display: flex;

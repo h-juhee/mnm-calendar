@@ -39,6 +39,8 @@ export default function ImageTemplateBase({
   textColor,
   headerVariant = 'standard',
   titleOutlineColor,
+  secondarySubtitleEnabled = false,
+  secondarySubtitleText = '',
   outputFormat,
   clinicHours,
   reserveClinicHoursSpace = false,
@@ -179,6 +181,10 @@ export default function ImageTemplateBase({
         outputFormat={outputFormat}
         edit={designEdits.calendar}
         selected={selectedLayer === 'calendar'}
+        secondarySubtitle={secondarySubtitleText || '추가 부제목을 입력해 주세요'}
+        secondarySubtitleEdit={designEdits.secondarySubtitle}
+        secondarySubtitleSelected={selectedLayer === 'secondarySubtitle'}
+        showSecondarySubtitle={secondarySubtitleEnabled}
       />
     </div>
   );

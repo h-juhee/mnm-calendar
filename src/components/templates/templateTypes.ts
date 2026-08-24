@@ -14,6 +14,8 @@ export interface TemplateProps {
   fontFamily: string;
   calendarLabelStyle?: CalendarLabelStyle;
   titleTextStyle?: TitleTextStyle;
+  secondarySubtitleEnabled?: boolean;
+  secondarySubtitleText?: string;
   outputFormat: OutputFormat;
   clinicHours?: ClinicHours;
   /** 편집 안내를 표시할 때 실제 진료시간 영역만큼 레이아웃 공간을 확보합니다. */

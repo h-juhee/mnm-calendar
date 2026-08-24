@@ -71,6 +71,20 @@ function normalizeClinicHours(value: ClinicHours | undefined): ClinicHours {
   return { ...normalized, confirmed: deriveClinicHoursConfirmed(normalized) };
 }
 
+function normalizeSecondarySubtitle(value?: Partial<ScheduleFormData>) {
+  const layers = [
+    value?.designEdits?.secondarySubtitle,
+    ...Object.values(value?.designEditsByFormat ?? {}).map((edits) => edits?.secondarySubtitle),
+  ].filter(Boolean);
+  return {
+    secondarySubtitleEnabled: value?.secondarySubtitleEnabled
+      ?? layers.some((layer) => layer?.hidden === false),
+    secondarySubtitleText: value?.secondarySubtitleText
+      ?? layers.map((layer) => layer?.text?.trim()).find(Boolean)
+      ?? '',
+  };
+}
+
 function createEmptyFormData(
   hospitalId: string,
   year: number,
@@ -94,6 +108,8 @@ function createEmptyFormData(
     fontId: keep?.fontId ?? DEFAULT_FONT_ID,
     calendarLabelStyle: keep?.calendarLabelStyle ?? 'korean',
     titleTextStyle: keep?.titleTextStyle ?? 'filled',
+    secondarySubtitleEnabled: false,
+    secondarySubtitleText: '',
     nextMonthEvent: '',
     outputSize: normalizeOutputSizes(keep?.outputSize),
     calendarMustInclude: keep?.calendarMustInclude ?? '',
@@ -121,6 +137,7 @@ export function useScheduleBuilder(hospitalId: string) {
           templateId: normalizeTemplateId(loaded.templateId),
           outputSize: normalizeOutputSizes(loaded.outputSize),
           clinicHours: normalizeClinicHours(loaded.clinicHours),
+          ...normalizeSecondarySubtitle(loaded),
         }
       : createEmptyFormData(hospitalId, year, month);
   });
@@ -158,6 +175,7 @@ export function useScheduleBuilder(hospitalId: string) {
               // same when moving between monthly schedule drafts.
               fontId: prev.fontId,
               titleTextStyle: prev.titleTextStyle,
+              ...normalizeSecondarySubtitle(loaded),
               outputSize: normalizeOutputSizes(loaded.outputSize),
               clinicHours: normalizeClinicHours(loaded.clinicHours),
             }
@@ -219,6 +237,14 @@ export function useScheduleBuilder(hospitalId: string) {
 
   const setTitleTextStyle = useCallback((titleTextStyle: TitleTextStyle) => {
     setFormData((prev) => ({ ...prev, titleTextStyle }));
+  }, []);
+
+  const setSecondarySubtitleEnabled = useCallback((secondarySubtitleEnabled: boolean) => {
+    setFormData((prev) => ({ ...prev, secondarySubtitleEnabled }));
+  }, []);
+
+  const setSecondarySubtitleText = useCallback((secondarySubtitleText: string) => {
+    setFormData((prev) => ({ ...prev, secondarySubtitleText }));
   }, []);
 
   const setNextMonthEvent = useCallback((nextMonthEvent: string) => {
@@ -303,6 +329,8 @@ export function useScheduleBuilder(hospitalId: string) {
       setTemplateId,
       setCalendarLabelStyle,
       setTitleTextStyle,
+      setSecondarySubtitleEnabled,
+      setSecondarySubtitleText,
       setNextMonthEvent,
       setOutputSize,
       setCalendarMustInclude,

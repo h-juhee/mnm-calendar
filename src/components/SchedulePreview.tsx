@@ -72,6 +72,8 @@ interface SchedulePreviewProps {
   requireClinicHoursConfirmation?: boolean;
   designEditingEnabled?: boolean;
   onHospitalDisplayModeChange: (mode: 'name' | 'logo') => void;
+  onSecondarySubtitleEnabledChange: (enabled: boolean) => void;
+  onSecondarySubtitleTextChange: (text: string) => void;
 }
 
 type VisibleLayerId = EditableLayerId;
@@ -79,6 +81,7 @@ type VisibleLayerId = EditableLayerId;
 const LAYER_LABELS: Record<VisibleLayerId, string> = {
   title: '제목',
   subtitle: '부제목',
+  secondarySubtitle: '추가 부제목',
   hospital: '병원 표시',
   clinicHours: '진료시간',
   calendar: '달력',
@@ -97,12 +100,12 @@ const TEMPLATE_COMPONENTS: Record<TemplateId, typeof ScheduleATemplate> = {
 };
 
 const DEFAULT_FONT_SIZES: Record<OutputFormat, Record<VisibleLayerId, number>> = {
-  square: { title: 96, subtitle: 26, hospital: 30, clinicHours: 32, calendar: 0 },
-  instagram: { title: 92, subtitle: 28, hospital: 40, clinicHours: 30, calendar: 0 },
-  a4: { title: 100, subtitle: 36, hospital: 65, clinicHours: 36, calendar: 0 },
-  a4Horizontal: { title: 142, subtitle: 36, hospital: 62, clinicHours: 38, calendar: 0 },
-  didHorizontal: { title: 190, subtitle: 64, hospital: 70, clinicHours: 54, calendar: 0 },
-  didVertical: { title: 175, subtitle: 56, hospital: 75, clinicHours: 54, calendar: 0 },
+  square: { title: 96, subtitle: 26, secondarySubtitle: 22, hospital: 30, clinicHours: 32, calendar: 0 },
+  instagram: { title: 92, subtitle: 28, secondarySubtitle: 24, hospital: 40, clinicHours: 30, calendar: 0 },
+  a4: { title: 100, subtitle: 36, secondarySubtitle: 30, hospital: 65, clinicHours: 36, calendar: 0 },
+  a4Horizontal: { title: 142, subtitle: 36, secondarySubtitle: 30, hospital: 62, clinicHours: 38, calendar: 0 },
+  didHorizontal: { title: 190, subtitle: 64, secondarySubtitle: 48, hospital: 70, clinicHours: 54, calendar: 0 },
+  didVertical: { title: 175, subtitle: 56, secondarySubtitle: 44, hospital: 75, clinicHours: 54, calendar: 0 },
 };
 
 const MAX_BACKGROUND_SIZE = 10 * 1024 * 1024;
@@ -176,6 +179,8 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     requireClinicHoursConfirmation = false,
     designEditingEnabled = true,
     onHospitalDisplayModeChange,
+    onSecondarySubtitleEnabledChange,
+    onSecondarySubtitleTextChange,
   },
   ref,
 ) {
@@ -373,6 +378,8 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     ? selectedEdit.text ?? getCalendarTitle(formData.month, formData.calendarLabelStyle)
     : selectedLayer === 'subtitle'
       ? selectedEdit.text ?? getCalendarSubtitle(formData.calendarLabelStyle)
+      : selectedLayer === 'secondarySubtitle'
+        ? formData.secondarySubtitleText ?? ''
       : selectedLayer === 'hospital'
         ? selectedEdit.text ?? hospital.name
         : '';
@@ -519,7 +526,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     }
     onOpenElements();
 
-    if (target.querySelector('img') || !['title', 'subtitle', 'hospital'].includes(id)) {
+    if (target.querySelector('img') || !['title', 'subtitle', 'secondarySubtitle', 'hospital'].includes(id)) {
       event.preventDefault();
       event.stopPropagation();
       return;
@@ -542,6 +549,10 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     if (!target.matches('[data-edit-layer][contenteditable="true"]')) return;
     const id = target.dataset.editLayer as EditableLayerId;
     target.contentEditable = 'false';
+    if (id === 'secondarySubtitle') {
+      onSecondarySubtitleTextChange((target.textContent ?? '').trim());
+      return;
+    }
     changeDesignEdits({
       ...designEdits,
       [id]: {
@@ -639,6 +650,29 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
                 </button>
                 {expandedLayer === id && (
                   <div id={`layer-controls-${id}`} className={styles.elementControls}>
+                    {selectedLayer === 'secondarySubtitle' && (
+                      <div className={styles.displayModeField}>
+                        <span>표시</span>
+                        <div className={styles.displayModeSegments}>
+                          <button
+                            type="button"
+                            className={!formData.secondarySubtitleEnabled ? styles.displayModeActive : undefined}
+                            aria-pressed={!formData.secondarySubtitleEnabled}
+                            onClick={() => onSecondarySubtitleEnabledChange(false)}
+                          >
+                            숨김
+                          </button>
+                          <button
+                            type="button"
+                            className={formData.secondarySubtitleEnabled ? styles.displayModeActive : undefined}
+                            aria-pressed={formData.secondarySubtitleEnabled}
+                            onClick={() => onSecondarySubtitleEnabledChange(true)}
+                          >
+                            표시
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     {selectedLayer === 'hospital' && (
                       <div className={styles.hospitalLogoEditor}>
                         <div className={styles.displayModeField}>
@@ -676,7 +710,14 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
                         <textarea
                           rows={2}
                           value={selectedText}
-                          onChange={(event) => updateSelected({ text: event.target.value })}
+                          onChange={(event) => {
+                            if (selectedLayer === 'secondarySubtitle') {
+                              onSecondarySubtitleTextChange(event.target.value);
+                              if (event.target.value.trim()) onSecondarySubtitleEnabledChange(true);
+                            } else {
+                              updateSelected({ text: event.target.value });
+                            }
+                          }}
                           onInput={(event) => {
                             event.currentTarget.style.height = 'auto';
                             event.currentTarget.style.height = `${event.currentTarget.scrollHeight}px`;
@@ -945,6 +986,8 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
               fontFamily={fontOption.family}
               calendarLabelStyle={formData.calendarLabelStyle}
               titleTextStyle={formData.titleTextStyle}
+              secondarySubtitleEnabled={formData.secondarySubtitleEnabled}
+              secondarySubtitleText={formData.secondarySubtitleText}
               outputFormat={outputFormat}
               clinicHours={displayedClinicHours}
               reserveClinicHoursSpace={false}
