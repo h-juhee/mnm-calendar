@@ -130,6 +130,11 @@ export function resolveDateSchedule(
         : null;
     if (!recurringEntry) return explicit;
     if (explicit.suppressedRecurringTypes?.includes(recurringEntry.type)) return explicit;
+    // 공휴일 기본 휴진을 사용자가 다른 일정으로 직접 바꾼 경우, 공휴일 우선순위에
+    // 가려져 있던 반복 일정이 변경 직후 갑자기 추가되지 않도록 합니다.
+    const isHolidayOverride = getKoreanHolidays(Number(dateKey.slice(0, 4)))
+      .some((item) => item.date === dateKey);
+    if (isHolidayOverride) return explicit;
 
     // 정상 진료는 반복 휴진만 해제합니다. 야간 진료처럼 정상 진료와 함께
     // 성립할 수 있는 반복 일정은 아래에서 추가 일정으로 합칩니다.

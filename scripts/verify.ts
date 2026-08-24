@@ -181,6 +181,19 @@ test('특정 날짜에서 삭제한 반복 야간진료는 그 날짜에만 다�
   assert.equal(nextFriday.type, 'night');
 });
 
+test('공휴일을 공휴일 진료로 바꾼 날짜에서는 숨겨졌던 반복 야간진료가 다시 생기지 않는다', () => {
+  const formData = baseFormData({
+    recurringNightDays: [5],
+    dateSchedules: [{
+      date: '2026-09-25',
+      type: 'shortened',
+    }],
+  });
+  const resolved = resolveDateSchedule('2026-09-25', 5, formData);
+  assert.equal(resolved.type, 'shortened');
+  assert.equal(resolved.additionalSchedules?.some((entry) => entry.type === 'night') ?? false, false);
+});
+
 test('특정 날짜의 반복 휴진을 삭제하면 정상 진료 배지 없이 빈 날짜로 표시한다', () => {
   const formData = baseFormData({
     recurringClosedDays: [0],

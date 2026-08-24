@@ -520,6 +520,8 @@ interface DateScheduleModalProps {
   currentSchedule: DateSchedule;
   hasOverride: boolean;
   isAutomaticHoliday?: boolean;
+  /** 공휴일 우선순위에 가려져 현재 화면에는 보이지 않는 이 날짜의 반복 일정입니다. 공휴일을 직접 바꿀 때 갑자기 다시 나타나지 않도록 제외합니다. */
+  hiddenRecurringTypes?: ScheduleType[];
   outputFormat: OutputFormat;
   /** 같은 달의 다른 날짜에 이미 적용된 일정을 조회하기 위해 사용합니다. "여러 날짜에 한 번에 적용"이 다른 날짜의 기존 일정을 덮어쓰지 않고 덧붙이도록 하는 데 필요합니다. */
   resolvedByDate: Map<string, DateSchedule>;
@@ -540,6 +542,7 @@ export default function DateScheduleModal({
   currentSchedule,
   hasOverride,
   isAutomaticHoliday = false,
+  hiddenRecurringTypes = [],
   outputFormat,
   resolvedByDate,
   explicitDateKeys,
@@ -611,6 +614,10 @@ export default function DateScheduleModal({
   const updateEntry = (index: number, entry: DateScheduleEntry) => {
     const previousEntry = entries[index];
     const isReplacingRecurring = previousEntry?.isRecurring && previousEntry.type !== entry.type;
+    const isReplacingAutomaticHoliday = isAutomaticHoliday
+      && index === 0
+      && previousEntry?.type === 'closed'
+      && previousEntry.type !== entry.type;
 
     // 정기 일정의 유형을 바꾸는 것은 새 일정을 추가하는 동작이 아니라
     // 이 날짜에서 기존 정기 일정을 새 유형으로 교체하는 동작입니다.
@@ -618,6 +625,9 @@ export default function DateScheduleModal({
       setSuppressedRecurringTypes((types) => (
         types.includes(previousEntry.type) ? types : [...types, previousEntry.type]
       ));
+    }
+    if (isReplacingAutomaticHoliday && hiddenRecurringTypes.length > 0) {
+      setSuppressedRecurringTypes((types) => [...new Set([...types, ...hiddenRecurringTypes])]);
     }
     setEntries((current) => current.map((item, itemIndex) => (
       itemIndex === index

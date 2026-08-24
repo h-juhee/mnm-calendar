@@ -314,6 +314,9 @@ function ScheduleBuilderContent({
   };
 
   const selectedResolvedSchedule = selectedDateKey ? resolvedByDate.get(selectedDateKey) : undefined;
+  const selectedWeekday = selectedDateKey
+    ? new Date(`${selectedDateKey}T00:00:00Z`).getUTCDay()
+    : null;
   const selectedHasOverride = selectedDateKey
     ? formData.dateSchedules.some((schedule) => schedule.date === selectedDateKey)
     : false;
@@ -753,6 +756,10 @@ function ScheduleBuilderContent({
             && selectedResolvedSchedule.type === 'closed'
             && Boolean(selectedResolvedSchedule.label)
           }
+          hiddenRecurringTypes={selectedWeekday === null ? [] : [
+            ...(formData.recurringClosedDays.includes(selectedWeekday) ? ['closed' as const] : []),
+            ...(formData.recurringNightDays.includes(selectedWeekday) ? ['night' as const] : []),
+          ]}
           resolvedByDate={resolvedByDate}
           explicitDateKeys={explicitDateKeys}
           onSave={actions.setDateSchedule}
