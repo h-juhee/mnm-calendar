@@ -237,7 +237,6 @@ export default function CustomDesignRequestModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [hasSubmissionFailed, setHasSubmissionFailed] = useState(false);
-  const [submissionWarning, setSubmissionWarning] = useState<string | null>(null);
   const [imageUploadProgress, setImageUploadProgress] = useState<{
     completed: number;
     total: number;
@@ -395,10 +394,8 @@ export default function CustomDesignRequestModal({
             : "",
         };
 
-        // 접수 결과는 이미지 생성·업로드를 기다리지 않고 즉시 사용자에게 알립니다.
-        saveCustomDesignRequest(record);
+        // 내용은 먼저 접수하되, 모든 제작 파일 저장이 끝난 뒤에만 완료 화면을 표시합니다.
         setImageUploadProgress({ completed: 0, total: formatsToRender.length, status: 'uploading' });
-        setIsSubmitted(true);
 
         const uploadJobKey = `${hospital.id}:${formData.year}-${formData.month}`;
         activeScheduleUploadJobs.get(uploadJobKey)?.abort();
@@ -411,7 +408,8 @@ export default function CustomDesignRequestModal({
           return image;
         });
 
-        void (async () => {
+        await (async () => {
+          let finalizationError: Error | null = null;
           try {
             if (!previewNodeRef.current) {
               throw new Error("달력 미리보기를 준비하지 못했습니다.");
@@ -448,21 +446,11 @@ export default function CustomDesignRequestModal({
                   } catch (notionImageError) {
                     if (uploadController.signal.aborted) return;
                     console.error('Notion에 달력 시안을 추가하지 못했습니다.', notionImageError);
-                    const reason = notionImageError instanceof Error ? notionImageError.message : '알 수 없는 오류';
-                    setSubmissionWarning((current) => [
-                      current,
-                      `Notion 시안 저장에 실패했습니다: ${reason}`,
-                    ].filter(Boolean).join('\n'));
                   }
                 })();
               } catch (notionImageError) {
                 if (uploadController.signal.aborted) throw notionImageError;
                 console.error('Notion용 달력 시안을 생성하지 못했습니다.', notionImageError);
-                const reason = notionImageError instanceof Error ? notionImageError.message : '알 수 없는 오류';
-                setSubmissionWarning((current) => [
-                  current,
-                  `Notion 시안 생성에 실패했습니다: ${reason}`,
-                ].filter(Boolean).join('\n'));
               }
             }
 
@@ -528,21 +516,15 @@ export default function CustomDesignRequestModal({
             }
             setImageUploadProgress((current) => ({ ...current, status: 'complete' }));
           } catch (driveError) {
-            if (uploadController.signal.aborted) return;
+            if (uploadController.signal.aborted) throw driveError;
             console.error('진료일정 이미지를 Drive에 저장하지 못했습니다.', driveError);
             setImageUploadProgress((current) => ({ ...current, status: 'failed' }));
-            setSubmissionWarning(
-              (current) => [current, driveError instanceof Error
-                ? `진료일정은 접수되었지만 일부 이미지 저장에 실패했습니다: ${driveError.message}`
-                : '진료일정은 접수되었지만 일부 이미지를 Drive에 저장하지 못했습니다.']
-                .filter(Boolean)
-                .join('\n'),
-            );
+            finalizationError = new Error('제출을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.');
           }
 
           // 사용이력은 주 접수와 Drive 저장 결과에 영향을 주지 않도록 마지막에 기록합니다.
           // Drive가 중간에 실패해 캐시되지 않은 규격도 있으므로 DOM 렌더링은 순차 실행합니다.
-          for (const format of formatsToRender) {
+          for (const format of finalizationError ? [] : formatsToRender) {
             if (uploadController.signal.aborted) break;
             try {
               const formatImage = await renderCurrentFormat(format);
@@ -572,7 +554,10 @@ export default function CustomDesignRequestModal({
           if (activeScheduleUploadJobs.get(uploadJobKey) === uploadController) {
             activeScheduleUploadJobs.delete(uploadJobKey);
           }
+          if (finalizationError) throw finalizationError;
         })();
+        saveCustomDesignRequest(record);
+        setIsSubmitted(true);
         return;
       }
 
@@ -601,6 +586,29 @@ export default function CustomDesignRequestModal({
       event.currentTarget.scrollHeight > 180 ? "auto" : "hidden";
   };
 
+  if (isFinalizingSubmission) {
+    return (
+      <Modal
+        title="진료일정 제출 중"
+        onClose={() => undefined}
+        closable={false}
+        backdropClassName={styles.submittingBackdrop}
+      >
+        <div className={styles.successWrap} role="status" aria-live="polite">
+          <p className={styles.successText}>
+            진료일정을 제출하고 있습니다.<br />완료될 때까지 잠시만 기다려 주세요.
+          </p>
+          <p className={styles.preparationProgress}>
+            제출 자료 준비 중 · {imageUploadProgress.completed}/{imageUploadProgress.total}
+          </p>
+          <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} disabled>
+            제출 중…
+          </button>
+        </div>
+      </Modal>
+    );
+  }
+
   if (isSubmitted) {
     return (
       <Modal
@@ -619,18 +627,14 @@ export default function CustomDesignRequestModal({
             aria-hidden="true"
           />
           <p className={styles.successText}>
-            {isFinalizingSubmission
-              ? "진료일정이 정상적으로 접수되었습니다. 제출을 완료하고 있으니 잠시만 기다려 주세요."
-              : `${isScheduleSubmission ? "진료일정이" : "맞춤 디자인 요청이"} 정상적으로 접수되었습니다. 요청 내용을 확인한 후 순차적으로 제작할 예정입니다.`}
+            {`${isScheduleSubmission ? "진료일정이" : "맞춤 디자인 요청이"} 정상적으로 접수되었습니다. 요청 내용을 확인한 후 순차적으로 제작할 예정입니다.`}
           </p>
-          {submissionWarning && <p className={styles.failureText}>{submissionWarning}</p>}
           <button
             type="button"
             className={`${styles.button} ${styles.buttonPrimary}`}
-            disabled={isFinalizingSubmission}
             onClick={onClose}
           >
-            {isFinalizingSubmission ? "처리 중…" : "확인"}
+            확인
           </button>
         </div>
       </Modal>
