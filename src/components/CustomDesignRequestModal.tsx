@@ -570,10 +570,18 @@ export default function CustomDesignRequestModal({
             finalizationError = new Error('제출을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.');
           }
 
-          // 사용이력은 주 접수와 Drive 저장 결과에 영향을 주지 않도록 마지막에 기록합니다.
-          // Drive가 중간에 실패해 캐시되지 않은 규격도 있으므로 DOM 렌더링은 순차 실행합니다.
-          for (const format of finalizationError ? [] : formatsToRender) {
-            if (uploadController.signal.aborted) break;
+          if (activeScheduleUploadJobs.get(uploadJobKey) === uploadController) {
+            activeScheduleUploadJobs.delete(uploadJobKey);
+          }
+          if (finalizationError) throw finalizationError;
+        })();
+        saveCustomDesignRequest(record);
+        setIsSubmitted(true);
+
+        // 원장이 선택한 제작 파일은 이미 모두 Drive에 저장되었습니다.
+        // 운영용 사용이력 기록은 완료 화면을 지연시키지 않고 캐시된 이미지를 이용해 이어서 처리합니다.
+        void (async () => {
+          for (const format of formatsToRender) {
             try {
               const formatImage = await renderCurrentFormat(format);
               await postUsageLogReliably({
@@ -599,13 +607,7 @@ export default function CustomDesignRequestModal({
               console.error(`${format} 사용이력 이미지 저장을 보류했습니다.`, usageError);
             }
           }
-          if (activeScheduleUploadJobs.get(uploadJobKey) === uploadController) {
-            activeScheduleUploadJobs.delete(uploadJobKey);
-          }
-          if (finalizationError) throw finalizationError;
         })();
-        saveCustomDesignRequest(record);
-        setIsSubmitted(true);
         return;
       }
 
