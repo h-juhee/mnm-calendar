@@ -70,8 +70,21 @@ function richText(content) {
   return value ? [{ type: 'text', text: { content: value.slice(0, 2000) } }] : [];
 }
 
+function koreaDate(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return koreaDate(new Date());
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const part = (type) => parts.find((item) => item.type === type)?.value;
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
 function pageTitle(request) {
-  return `${request.hospitalName} ${request.year}년 ${request.month}월 캘린더`;
+  return `${request.hospitalName} ${request.year}년 ${request.month}월 캘린더 ${request.usageDate}`;
 }
 
 function templateLabel(templateId) {
@@ -439,6 +452,7 @@ export default async function handler(req, res) {
   let request;
   try {
     request = await readBody(req);
+    request.usageDate = koreaDate(request.loggedAt);
   } catch {
     return sendJson(res, 400, { message: 'Invalid request body.' });
   }

@@ -43,10 +43,26 @@ function savePendingLogs(logs: UsageLogPayload[]) {
   }
 }
 
+function usageDate(payload: UsageLogPayload) {
+  const date = new Date(typeof payload.loggedAt === 'string' ? payload.loggedAt : Date.now());
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value;
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+function usageLogKey(payload: UsageLogPayload) {
+  return `${payload.hospitalId ?? payload.hospitalName}-${payload.year}-${payload.month}-${usageDate(payload)}`;
+}
+
 function queueUsageLog(payload: UsageLogPayload) {
   const compactPayload = { ...payload, calendarImage: undefined };
-  const key = `${payload.hospitalId ?? payload.hospitalName}-${payload.year}-${payload.month}`;
-  const others = loadPendingLogs().filter((item) => `${item.hospitalId ?? item.hospitalName}-${item.year}-${item.month}` !== key);
+  const key = usageLogKey(payload);
+  const others = loadPendingLogs().filter((item) => usageLogKey(item) !== key);
   savePendingLogs([...others, compactPayload]);
 }
 
@@ -65,11 +81,14 @@ export async function flushPendingUsageLogs() {
 }
 
 export async function postUsageLogReliably(payload: UsageLogPayload) {
+  const timestampedPayload = payload.loggedAt
+    ? payload
+    : { ...payload, loggedAt: new Date().toISOString() };
   await flushPendingUsageLogs();
   try {
-    await sendUsageLog(payload);
+    await sendUsageLog(timestampedPayload);
   } catch (error) {
-    queueUsageLog(payload);
+    queueUsageLog(timestampedPayload);
     throw error;
   }
 }
