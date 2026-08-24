@@ -650,6 +650,7 @@ test('요일마다 다른 점심시간은 해당 진료시간 행의 휴게 메�
   assert.equal(parsed.lunchDisabled, true);
   assert.equal(parsed.rows[0]?.note, '점심시간 17:30~18:00');
   assert.equal(parsed.rows[1]?.note, '점심시간 13:30~15:00');
+  assert.deepEqual(parsed.closedDays, [3]);
 });
 
 test('평일 점심시간과 공휴일 진료 정보를 함께 유지한다', () => {

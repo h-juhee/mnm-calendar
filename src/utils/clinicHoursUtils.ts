@@ -49,6 +49,9 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
     .split(/\/|,\s*(?=[월화수목금토일평주])/u)
     .map((entry) => entry.trim())
     .filter(Boolean);
+  const closedDays = [...new Set(entries
+    .filter((entry) => entry.includes('휴진'))
+    .flatMap((entry) => expandDays(entry.slice(0, entry.indexOf('휴진')))))];
 
   for (const entry of entries) {
     if (entry.includes('휴게') || entry.includes('점심시간') || entry.includes('휴진')) continue;
@@ -115,6 +118,7 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
 
   return {
     rows: [...grouped.values()].map((row, index) => ({ id: `notion-hours-${index}`, ...row })),
+    closedDays,
     lunchStart: hasLunchHours ? lunchStart : '',
     lunchEnd: hasLunchHours ? lunchEnd : '',
     lunchDisabled: !hasLunchHours,
@@ -171,6 +175,7 @@ function normalizeRowForComparison(row: ClinicHoursRow) {
 function normalizeClinicHoursForComparison(value: ClinicHours) {
   return {
     rows: value.rows.map(normalizeRowForComparison),
+    closedDays: [...(value.closedDays ?? [])].sort((a, b) => a - b),
     lunchStart: value.lunchStart || '',
     lunchEnd: value.lunchEnd || '',
     lunchDisabled: Boolean(value.lunchDisabled),

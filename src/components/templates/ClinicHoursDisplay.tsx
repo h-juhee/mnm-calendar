@@ -20,6 +20,7 @@ export default function ClinicHoursDisplay({ value, outputFormat, edit, selected
   if (outputFormat === 'square' || !value || value.hidden) return null;
 
   const rows = getValidClinicHoursRows(value);
+  const closedDays = DAY_ORDER.filter((day) => value.closedDays?.includes(day));
   const hasLunch = hasValidLunchHours(value);
   if (rows.length === 0 && !hasLunch && !value.note.trim()) return null;
 
@@ -52,6 +53,14 @@ export default function ClinicHoursDisplay({ value, outputFormat, edit, selected
             {row.note?.trim() && <small className={styles.itemNote}>({row.note.trim()})</small>}
           </div>
         ))}
+        {closedDays.length > 0 && (
+          <div className={styles.item}>
+            <div className={styles.itemMain}>
+              <strong>{closedDays.map((day) => DAY_LABELS[day]).join(',')}</strong>
+              <span>휴진</span>
+            </div>
+          </div>
+        )}
         {hasLunch && (
           <div className={styles.item}>
             <div className={styles.itemMain}>

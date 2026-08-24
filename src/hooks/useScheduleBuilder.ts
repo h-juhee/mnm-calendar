@@ -60,6 +60,9 @@ function normalizeClinicHours(value: ClinicHours | undefined): ClinicHours {
           note: row.note?.replace(/(^|\/\s*)휴게\s+/gu, '$1점심시간 '),
         }))
       : [],
+    closedDays: Array.isArray(value.closedDays)
+      ? [...new Set(value.closedDays.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))]
+      : [],
     lunchStart: value.lunchStart ?? '',
     lunchEnd: value.lunchEnd ?? '',
     lunchDisabled: value.lunchDisabled ?? false,

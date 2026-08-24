@@ -131,6 +131,8 @@ export interface ClinicHoursRow {
 
 export interface ClinicHours {
   rows: ClinicHoursRow[];
+  /** 진료시간 원문에 `수 휴진`처럼 명시된 정기 휴진 요일입니다. */
+  closedDays?: number[];
   lunchStart: string;
   lunchEnd: string;
   lunchDisabled?: boolean;
