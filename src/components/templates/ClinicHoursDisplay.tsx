@@ -8,6 +8,17 @@ import { getFontOption } from '../../types/font';
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
+function formatDayGroup(days: number[], includesHolidays = false) {
+  const orderedDays = DAY_ORDER.filter((day) => days.includes(day));
+  let label = orderedDays.length === 5 && [1, 2, 3, 4, 5].every((day) => days.includes(day))
+    ? '평일'
+    : orderedDays.length === 2 && days.includes(6) && days.includes(0)
+      ? '주말'
+      : orderedDays.map((day) => DAY_LABELS[day]).join(',');
+  if (includesHolidays) label = [label, '공휴일'].filter(Boolean).join('·');
+  return label;
+}
+
 interface ClinicHoursDisplayProps {
   value?: ClinicHours;
   outputFormat: OutputFormat;
@@ -64,11 +75,23 @@ export default function ClinicHoursDisplay({ value, outputFormat, edit, selected
         {hasLunch && (
           <div className={styles.item}>
             <div className={styles.itemMain}>
-              <strong>점심시간</strong>
+              <strong>
+                {value.lunchDays?.length
+                  ? `${formatDayGroup(value.lunchDays, value.lunchIncludesHolidays)} 점심시간`
+                  : '점심시간'}
+              </strong>
               <span>{value.lunchStart} ~ {value.lunchEnd}</span>
             </div>
           </div>
         )}
+        {(value.additionalLunchHours ?? []).map((lunch, index) => (
+          <div className={styles.item} key={`additional-lunch-${index}`}>
+            <div className={styles.itemMain}>
+              <strong>{formatDayGroup(lunch.days, lunch.includesHolidays)} 점심시간</strong>
+              <span>{lunch.startTime} ~ {lunch.endTime}</span>
+            </div>
+          </div>
+        ))}
       </div>
       {value.note.trim() && <p>*{value.note.trim().replace(/^\*/, '')}</p>}
     </div>

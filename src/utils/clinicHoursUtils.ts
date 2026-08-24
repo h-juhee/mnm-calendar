@@ -23,6 +23,8 @@ const KOREAN_WEEKDAY_NUMBER: Record<string, number> = {
 };
 
 function expandDays(label: string): number[] {
+  // `목요일`의 `목`과 `요일` 끝의 `일`을 각각 요일로 중복 인식하지 않도록 먼저 축약합니다.
+  label = label.replace(/([월화수목금토일])요일/gu, '$1');
   label = label.replaceAll('공휴일', '');
   if (label.includes('평일')) return [1, 2, 3, 4, 5];
   if (label.includes('주말')) return [6, 0];
@@ -84,7 +86,16 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
     ? `${String(Number(lunchMatch[3])).padStart(2, '0')}:${lunchMatch[4]}`
     : '';
   const hasLunchHours = Boolean(lunchStart && lunchEnd && lunchEnd > lunchStart);
+  const lunchDays = hasLunchHours
+    ? (expandDays(globalBreakEntry).length > 0 ? expandDays(globalBreakEntry) : [1, 2, 3, 4, 5])
+    : [];
   const lunchKey = hasLunchHours ? `${lunchStart}-${lunchEnd}` : '';
+  const additionalLunchHours: Array<{
+    days: number[];
+    startTime: string;
+    endTime: string;
+    includesHolidays?: boolean;
+  }> = [];
 
   for (const entry of embeddedBreakEntries) {
     const labelIndex = entry.includes('점심시간') ? entry.indexOf('점심시간') : entry.indexOf('휴게');
@@ -93,10 +104,13 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
       const startTime = `${String(Number(match[1])).padStart(2, '0')}:${match[2]}`;
       const endTime = `${String(Number(match[3])).padStart(2, '0')}:${match[4]}`;
       if (`${startTime}-${endTime}` === lunchKey || endTime <= startTime) continue;
-      for (const row of grouped.values()) {
-        if (breakDays.length > 0 && !row.days.some((day) => breakDays.includes(day))) continue;
-        const note = `점심시간 ${startTime}~${endTime}`;
-        row.note = row.note ? `${row.note} / ${note}` : note;
+      if (breakDays.length > 0 || entry.includes('공휴일')) {
+        additionalLunchHours.push({
+          days: breakDays,
+          startTime,
+          endTime,
+          ...(entry.includes('공휴일') ? { includesHolidays: true } : {}),
+        });
       }
     }
   }
@@ -121,6 +135,9 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
     closedDays,
     lunchStart: hasLunchHours ? lunchStart : '',
     lunchEnd: hasLunchHours ? lunchEnd : '',
+    lunchDays,
+    lunchIncludesHolidays: globalBreakEntry.includes('공휴일') || undefined,
+    additionalLunchHours,
     lunchDisabled: !hasLunchHours,
     hidden: false,
     confirmed: true,
@@ -178,6 +195,14 @@ function normalizeClinicHoursForComparison(value: ClinicHours) {
     closedDays: [...(value.closedDays ?? [])].sort((a, b) => a - b),
     lunchStart: value.lunchStart || '',
     lunchEnd: value.lunchEnd || '',
+    lunchDays: [...(value.lunchDays ?? [])].sort((a, b) => a - b),
+    lunchIncludesHolidays: Boolean(value.lunchIncludesHolidays),
+    additionalLunchHours: (value.additionalLunchHours ?? []).map((item) => ({
+      days: [...item.days].sort((a, b) => a - b),
+      startTime: item.startTime,
+      endTime: item.endTime,
+      includesHolidays: Boolean(item.includesHolidays),
+    })),
     lunchDisabled: Boolean(value.lunchDisabled),
     hidden: Boolean(value.hidden),
     note: value.note?.trim() || '',

@@ -141,13 +141,28 @@ function buildCustomerUsageDetails(formData: ScheduleFormData, resolvedSchedule:
 const CLINIC_DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 const CLINIC_DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
+function formatClinicDayGroup(days: ReadonlySet<number>, includesHolidays = false) {
+  const orderedDays = CLINIC_DAY_ORDER.filter((day) => days.has(day));
+  let label = orderedDays.length === 5 && [1, 2, 3, 4, 5].every((day) => days.has(day))
+    ? '평일'
+    : orderedDays.length === 2 && days.has(6) && days.has(0)
+      ? '주말'
+      : orderedDays.map((day) => CLINIC_DAY_LABELS[day]).join('·');
+  if (includesHolidays) label = [label, '공휴일'].filter(Boolean).join('·');
+  return label;
+}
+
 function formatClinicHoursSummary(formData: ScheduleFormData) {
   const rows = getValidClinicHoursRows(formData.clinicHours);
   if (rows.length === 0) return "진료시간 미입력";
+  const closedDays = new Set([
+    ...formData.recurringClosedDays,
+    ...(formData.clinicHours?.closedDays ?? []),
+  ]);
   return CLINIC_DAY_ORDER.map((day) => {
     const dayRows = rows.filter((row) => row.days.includes(day));
     if (dayRows.length === 0) {
-      return formData.recurringClosedDays.includes(day)
+      return closedDays.has(day)
         ? `- ${CLINIC_DAY_LABELS[day]} : 휴진`
         : "";
     }
@@ -163,7 +178,7 @@ function formatClinicHoursSummary(formData: ScheduleFormData) {
 function formatClinicHoursModalSummary(formData: ScheduleFormData) {
   const rows = getValidClinicHoursRows(formData.clinicHours);
   if (rows.length === 0) return "진료시간 미입력";
-  return rows.map((row) => {
+  const summaries = rows.map((row) => {
     const days = CLINIC_DAY_ORDER
       .filter((day) => row.days.includes(day))
       .map((day) => CLINIC_DAY_LABELS[day])
@@ -174,27 +189,60 @@ function formatClinicHoursModalSummary(formData: ScheduleFormData) {
       .filter((note) => note && !note.startsWith('점심시간'))
       .join(' / ');
     const note = nonLunchNotes ? ` · ${nonLunchNotes}` : "";
-    return `${days} ${row.startTime}~${row.endTime}${note}`;
-  }).join("\n");
+    return {
+      order: Math.min(...row.days.map((day) => CLINIC_DAY_ORDER.indexOf(day))),
+      text: `${days} ${row.startTime}~${row.endTime}${note}`,
+    };
+  });
+  const scheduledDays = new Set(rows.flatMap((row) => row.days));
+  const closedDays = [...new Set([
+    ...formData.recurringClosedDays,
+    ...(formData.clinicHours?.closedDays ?? []),
+  ])].filter((day) => !scheduledDays.has(day));
+  if (closedDays.length > 0) {
+    summaries.push({
+      order: Math.min(...closedDays.map((day) => CLINIC_DAY_ORDER.indexOf(day))),
+      text: `${CLINIC_DAY_ORDER.filter((day) => closedDays.includes(day))
+        .map((day) => CLINIC_DAY_LABELS[day])
+        .join('·')} 휴진`,
+    });
+  }
+  return summaries.sort((a, b) => a.order - b.order).map((item) => item.text).join("\n");
 }
 
 function formatLunchHoursSummary(formData: ScheduleFormData) {
-  const lunchByTime = new Map<string, Set<number>>();
-  for (const row of formData.clinicHours?.rows ?? []) {
+  const lunchByTime = new Map<string, { days: Set<number>; includesHolidays: boolean }>();
+  if (hasValidLunchHours(formData.clinicHours)) {
+    const time = `${formData.clinicHours!.lunchStart}~${formData.clinicHours!.lunchEnd}`;
+    lunchByTime.set(time, {
+      days: new Set(formData.clinicHours!.lunchDays?.length
+        ? formData.clinicHours!.lunchDays
+        : [1, 2, 3, 4, 5]),
+      includesHolidays: Boolean(formData.clinicHours!.lunchIncludesHolidays),
+    });
+  }
+  for (const lunch of formData.clinicHours?.additionalLunchHours ?? []) {
+    const time = `${lunch.startTime}~${lunch.endTime}`;
+    const item = lunchByTime.get(time) ?? { days: new Set<number>(), includesHolidays: false };
+    lunch.days.forEach((day) => item.days.add(day));
+    item.includesHolidays ||= Boolean(lunch.includesHolidays);
+    lunchByTime.set(time, item);
+  }
+  // 이전 버전에서 저장한 데이터에는 점심시간이 진료시간 행 메모에 남아 있을 수 있습니다.
+  // 새 구조가 있으면 정확한 요일 정보를 우선해 과거 메모의 잘못된 확장을 막습니다.
+  for (const row of formData.clinicHours?.additionalLunchHours?.length ? [] : formData.clinicHours?.rows ?? []) {
     for (const note of row.note?.split('/') ?? []) {
       const match = /^점심시간\s+(\d{1,2}:\d{2})~(\d{1,2}:\d{2})$/u.exec(note.trim());
       if (!match) continue;
       const time = `${match[1]}~${match[2]}`;
-      const days = lunchByTime.get(time) ?? new Set<number>();
-      row.days.forEach((day) => days.add(day));
-      lunchByTime.set(time, days);
+      const item = lunchByTime.get(time) ?? { days: new Set<number>(), includesHolidays: false };
+      row.days.forEach((day) => item.days.add(day));
+      lunchByTime.set(time, item);
     }
   }
   if (lunchByTime.size > 0) {
-    const summaries = [...lunchByTime.entries()].map(([time, days]) => {
-      const labels = CLINIC_DAY_ORDER.filter((day) => days.has(day))
-        .map((day) => CLINIC_DAY_LABELS[day])
-        .join('·');
+    const summaries = [...lunchByTime.entries()].map(([time, item]) => {
+      const labels = formatClinicDayGroup(item.days, item.includesHolidays);
       return `${labels} ${time}`;
     });
     const noLunch = formData.clinicHours?.note

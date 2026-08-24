@@ -65,6 +65,9 @@ function normalizeClinicHours(value: ClinicHours | undefined): ClinicHours {
       : [],
     lunchStart: value.lunchStart ?? '',
     lunchEnd: value.lunchEnd ?? '',
+    lunchDays: Array.isArray(value.lunchDays) ? value.lunchDays : undefined,
+    lunchIncludesHolidays: value.lunchIncludesHolidays ?? false,
+    additionalLunchHours: Array.isArray(value.additionalLunchHours) ? value.additionalLunchHours : undefined,
     lunchDisabled: value.lunchDisabled ?? false,
     hidden: false,
     confirmed: value.confirmed ?? false,
@@ -269,10 +272,27 @@ export function useScheduleBuilder(hospitalId: string) {
   const setClinicHoursFromSheet = useCallback((clinicHours: ClinicHours) => {
     setFormData((prev) => {
       if (prev.clinicHours?.userEdited) {
-        if (prev.clinicHours.note?.trim() || !clinicHours.note?.trim()) return prev;
+        const nextNote = prev.clinicHours.note?.trim() || !clinicHours.note?.trim()
+          ? prev.clinicHours.note
+          : clinicHours.note;
+        const nextClosedDays = clinicHours.closedDays ?? prev.clinicHours.closedDays ?? [];
+        const nextAdditionalLunchHours = clinicHours.additionalLunchHours
+          ?? prev.clinicHours.additionalLunchHours
+          ?? [];
+        const closedDaysUnchanged = JSON.stringify(prev.clinicHours.closedDays ?? [])
+          === JSON.stringify(nextClosedDays);
+        const lunchHoursUnchanged = JSON.stringify(prev.clinicHours.additionalLunchHours ?? [])
+          === JSON.stringify(nextAdditionalLunchHours);
+        if (nextNote === prev.clinicHours.note && closedDaysUnchanged && lunchHoursUnchanged) return prev;
         return {
           ...prev,
-          clinicHours: { ...prev.clinicHours, note: clinicHours.note },
+          // 시간대 직접 수정값은 보존하되, 편집 UI가 따로 없는 Notion 휴진 요일은 최신 원문을 반영합니다.
+          clinicHours: {
+            ...prev.clinicHours,
+            note: nextNote,
+            closedDays: nextClosedDays,
+            additionalLunchHours: nextAdditionalLunchHours,
+          },
         };
       }
       return { ...prev, clinicHours: { ...clinicHours, userEdited: false } };

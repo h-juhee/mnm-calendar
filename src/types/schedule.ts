@@ -135,6 +135,16 @@ export interface ClinicHours {
   closedDays?: number[];
   lunchStart: string;
   lunchEnd: string;
+  /** 공통 점심시간이 적용되는 요일입니다. 비어 있으면 과거 데이터처럼 요일 구분 없이 표시합니다. */
+  lunchDays?: number[];
+  lunchIncludesHolidays?: boolean;
+  /** 공통 점심시간과 다른 요일별 추가 점심시간입니다. */
+  additionalLunchHours?: Array<{
+    days: number[];
+    startTime: string;
+    endTime: string;
+    includesHolidays?: boolean;
+  }>;
   lunchDisabled?: boolean;
   hidden?: boolean;
   /** 예시값을 포함한 현재 진료시간을 사용자가 실제 운영시간으로 확인했는지 여부입니다. */

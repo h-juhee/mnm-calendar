@@ -640,6 +640,7 @@ test('별도 진료시간 DB의 구분자와 평일 점심시간을 변환한다
   ]);
   assert.equal(parsed.lunchStart, '13:00');
   assert.equal(parsed.lunchEnd, '14:00');
+  assert.deepEqual(parsed.lunchDays, [1, 2, 3, 4, 5]);
 });
 
 test('요일마다 다른 점심시간은 해당 진료시간 행의 휴게 메모로 변환한다', () => {
@@ -648,8 +649,10 @@ test('요일마다 다른 점심시간은 해당 진료시간 행의 휴게 메�
   );
   assert.ok(parsed);
   assert.equal(parsed.lunchDisabled, true);
-  assert.equal(parsed.rows[0]?.note, '점심시간 17:30~18:00');
-  assert.equal(parsed.rows[1]?.note, '점심시간 13:30~15:00');
+  assert.deepEqual(parsed.additionalLunchHours, [
+    { days: [1, 4], startTime: '17:30', endTime: '18:00' },
+    { days: [2, 5], startTime: '13:30', endTime: '15:00' },
+  ]);
   assert.deepEqual(parsed.closedDays, [3]);
 });
 
@@ -662,6 +665,31 @@ test('평일 점심시간과 공휴일 진료 정보를 함께 유지한다', ()
   assert.equal(parsed.lunchEnd, '14:00');
   assert.equal(parsed.lunchDisabled, false);
   assert.equal(parsed.note, '공휴일 09:30~16:00 / 토·일·공휴일 점심시간 없음');
+  assert.deepEqual(parsed.lunchDays, [1, 2, 3, 4, 5]);
+});
+
+test('목요일 점심시간의 요일 글자를 일요일로 중복 인식하지 않는다', () => {
+  const parsed = parseNotionClinicHours(
+    '월~금 09:30~18:30 / 토 09:30~14:00 / 평일 점심시간 13:30~15:00 / 목요일 점심시간 13:00~14:30 / 일 휴진',
+  );
+  assert.ok(parsed);
+  assert.deepEqual(parsed.additionalLunchHours, [
+    { days: [4], startTime: '13:00', endTime: '14:30' },
+  ]);
+  assert.deepEqual(parsed.closedDays, [0]);
+});
+
+test('주말과 공휴일 점심시간의 공휴일 적용 정보를 유지한다', () => {
+  const parsed = parseNotionClinicHours(
+    '월~금 09:30~20:00 / 토·일 09:30~17:00 / 평일 점심시간 13:00~14:30 / 토·일·공휴일 점심시간 13:00~14:00',
+  );
+  assert.ok(parsed);
+  assert.deepEqual(parsed.additionalLunchHours, [{
+    days: [6, 0],
+    startTime: '13:00',
+    endTime: '14:00',
+    includesHolidays: true,
+  }]);
 });
 
 test('public 로고 파일과 자동 매칭 목록이 정확히 일치한다', () => {
