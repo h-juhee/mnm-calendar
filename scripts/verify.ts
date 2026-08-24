@@ -635,8 +635,19 @@ test('요일마다 다른 점심시간은 해당 진료시간 행의 휴게 메�
   );
   assert.ok(parsed);
   assert.equal(parsed.lunchDisabled, true);
-  assert.equal(parsed.rows[0]?.note, '휴게 17:30~18:00');
-  assert.equal(parsed.rows[1]?.note, '휴게 13:30~15:00');
+  assert.equal(parsed.rows[0]?.note, '점심시간 17:30~18:00');
+  assert.equal(parsed.rows[1]?.note, '점심시간 13:30~15:00');
+});
+
+test('평일 점심시간과 공휴일 진료 정보를 함께 유지한다', () => {
+  const parsed = parseNotionClinicHours(
+    '월~목 09:30~20:30 / 금 09:30~18:30 / 토·일 09:30~16:00 / 공휴일 09:30~16:00 / 평일 점심시간 13:00~14:00 / 토·일·공휴일 점심시간없음',
+  );
+  assert.ok(parsed);
+  assert.equal(parsed.lunchStart, '13:00');
+  assert.equal(parsed.lunchEnd, '14:00');
+  assert.equal(parsed.lunchDisabled, false);
+  assert.equal(parsed.note, '공휴일 09:30~16:00 / 토·일·공휴일 점심시간 없음');
 });
 
 test('public 로고 파일과 자동 매칭 목록이 정확히 일치한다', () => {

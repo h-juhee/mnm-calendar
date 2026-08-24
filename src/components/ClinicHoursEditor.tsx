@@ -195,7 +195,9 @@ export default function ClinicHoursEditor({ value, onChange, showConfirmationAct
             ))}
             <span>
               <b>점심시간</b>
-              {value.lunchDisabled
+              {value.rows.some((row) => row.note?.includes('점심시간'))
+                ? '요일별 상이 · 진료시간 참고'
+                : value.lunchDisabled
                 ? '없음'
                 : value.lunchStart && value.lunchEnd
                   ? `${value.lunchStart} ~ ${value.lunchEnd}`

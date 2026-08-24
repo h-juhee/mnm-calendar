@@ -163,16 +163,53 @@ function formatClinicHoursModalSummary(formData: ScheduleFormData) {
       .filter((day) => row.days.includes(day))
       .map((day) => CLINIC_DAY_LABELS[day])
       .join("·");
-    const note = row.note?.trim() ? ` · ${row.note.trim()}` : "";
+    const nonLunchNotes = row.note
+      ?.split('/')
+      .map((note) => note.trim())
+      .filter((note) => note && !note.startsWith('점심시간'))
+      .join(' / ');
+    const note = nonLunchNotes ? ` · ${nonLunchNotes}` : "";
     return `${days} ${row.startTime}~${row.endTime}${note}`;
   }).join("\n");
 }
 
 function formatLunchHoursSummary(formData: ScheduleFormData) {
+  const lunchByTime = new Map<string, Set<number>>();
+  for (const row of formData.clinicHours?.rows ?? []) {
+    for (const note of row.note?.split('/') ?? []) {
+      const match = /^점심시간\s+(\d{1,2}:\d{2})~(\d{1,2}:\d{2})$/u.exec(note.trim());
+      if (!match) continue;
+      const time = `${match[1]}~${match[2]}`;
+      const days = lunchByTime.get(time) ?? new Set<number>();
+      row.days.forEach((day) => days.add(day));
+      lunchByTime.set(time, days);
+    }
+  }
+  if (lunchByTime.size > 0) {
+    const summaries = [...lunchByTime.entries()].map(([time, days]) => {
+      const labels = CLINIC_DAY_ORDER.filter((day) => days.has(day))
+        .map((day) => CLINIC_DAY_LABELS[day])
+        .join('·');
+      return `${labels} ${time}`;
+    });
+    const noLunch = formData.clinicHours?.note
+      ?.split('/')
+      .map((note) => note.trim())
+      .find((note) => note.includes('점심시간 없음'));
+    return [...summaries, ...(noLunch ? [noLunch] : [])].join('\n');
+  }
   if (formData.clinicHours?.lunchDisabled) return "점심시간 없음";
   return hasValidLunchHours(formData.clinicHours)
     ? `${formData.clinicHours!.lunchStart}~${formData.clinicHours!.lunchEnd}`
     : "점심시간 미입력";
+}
+
+function formatClinicHoursGuidance(formData: ScheduleFormData) {
+  return formData.clinicHours?.note
+    ?.split('/')
+    .map((note) => note.trim())
+    .filter((note) => note && !note.includes('점심시간 없음'))
+    .join(' / ') ?? '';
 }
 
 export default function CustomDesignRequestModal({
@@ -677,8 +714,14 @@ export default function CustomDesignRequestModal({
             </div>
             <div className={styles.summaryRow}>
               <dt>점심시간</dt>
-              <dd>{formatLunchHoursSummary(formData)}</dd>
+              <dd className={styles.multilineValue}>{formatLunchHoursSummary(formData)}</dd>
             </div>
+            {formatClinicHoursGuidance(formData) && (
+              <div className={styles.summaryRow}>
+                <dt>진료 안내</dt>
+                <dd className={styles.multilineValue}>{formatClinicHoursGuidance(formData)}</dd>
+              </div>
+            )}
           </dl>
           {isScheduleSubmission && (
             <p className={styles.clinicHoursCorrectionHint}>

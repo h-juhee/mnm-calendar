@@ -54,7 +54,12 @@ function normalizeTemplateId(value: unknown): TemplateId | null {
 function normalizeClinicHours(value: ClinicHours | undefined): ClinicHours {
   if (!value) return createExampleClinicHours();
   const normalized: ClinicHours = {
-    rows: Array.isArray(value.rows) ? value.rows : [],
+    rows: Array.isArray(value.rows)
+      ? value.rows.map((row) => ({
+          ...row,
+          note: row.note?.replace(/(^|\/\s*)휴게\s+/gu, '$1점심시간 '),
+        }))
+      : [],
     lunchStart: value.lunchStart ?? '',
     lunchEnd: value.lunchEnd ?? '',
     lunchDisabled: value.lunchDisabled ?? false,
@@ -234,7 +239,13 @@ export function useScheduleBuilder(hospitalId: string) {
 
   const setClinicHoursFromSheet = useCallback((clinicHours: ClinicHours) => {
     setFormData((prev) => {
-      if (prev.clinicHours?.userEdited) return prev;
+      if (prev.clinicHours?.userEdited) {
+        if (prev.clinicHours.note?.trim() || !clinicHours.note?.trim()) return prev;
+        return {
+          ...prev,
+          clinicHours: { ...prev.clinicHours, note: clinicHours.note },
+        };
+      }
       return { ...prev, clinicHours: { ...clinicHours, userEdited: false } };
     });
   }, []);

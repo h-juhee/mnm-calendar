@@ -70,10 +70,9 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
 
   if (grouped.size === 0) return null;
   const embeddedBreakEntries = entries.filter((entry) => entry.includes('휴게') || entry.includes('점심시간'));
-  const globalBreakEntry = embeddedBreakEntries.length === 1
-    && [1, 2, 3, 4, 5].every((day) => expandDays(embeddedBreakEntries[0]).includes(day))
-    ? embeddedBreakEntries[0]
-    : '';
+  const globalBreakEntry = embeddedBreakEntries.find((entry) =>
+    [1, 2, 3, 4, 5].every((day) => expandDays(entry).includes(day)),
+  ) ?? '';
   const lunchMatch = /(\d{1,2}):([0-5]\d)\s*[~～\-–—]\s*(\d{1,2}):([0-5]\d)/u.exec(lunchText || globalBreakEntry);
   const lunchStart = lunchMatch && Number(lunchMatch[1]) <= 23
     ? `${String(Number(lunchMatch[1])).padStart(2, '0')}:${lunchMatch[2]}`
@@ -93,11 +92,26 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
       if (`${startTime}-${endTime}` === lunchKey || endTime <= startTime) continue;
       for (const row of grouped.values()) {
         if (breakDays.length > 0 && !row.days.some((day) => breakDays.includes(day))) continue;
-        const note = `휴게 ${startTime}~${endTime}`;
+        const note = `점심시간 ${startTime}~${endTime}`;
         row.note = row.note ? `${row.note} / ${note}` : note;
       }
     }
   }
+
+  const holidayHoursEntry = entries.find((entry) => entry.includes('공휴일') && !entry.includes('점심시간'));
+  const holidayHoursMatch = holidayHoursEntry
+    ? /(\d{1,2}):([0-5]\d)\s*[~～\-–—]\s*(\d{1,2}):([0-5]\d)/u.exec(holidayHoursEntry)
+    : null;
+  const noLunchEntry = embeddedBreakEntries.find((entry) => entry.includes('없음')) ?? '';
+  const noLunchTargets = [
+    ...(['토', '일'] as const).filter((day) => noLunchEntry.includes(day)),
+    ...(noLunchEntry.includes('공휴일') ? ['공휴일'] : []),
+  ];
+  const holidayHoursNote = holidayHoursMatch
+    ? `공휴일 ${String(Number(holidayHoursMatch[1])).padStart(2, '0')}:${holidayHoursMatch[2]}~${String(Number(holidayHoursMatch[3])).padStart(2, '0')}:${holidayHoursMatch[4]}`
+    : '';
+  const noLunchNote = noLunchTargets.length > 0 ? `${noLunchTargets.join('·')} 점심시간 없음` : '';
+  const holidayNote = [holidayHoursNote, noLunchNote].filter(Boolean).join(' / ');
 
   return {
     rows: [...grouped.values()].map((row, index) => ({ id: `notion-hours-${index}`, ...row })),
@@ -106,7 +120,7 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
     lunchDisabled: !hasLunchHours,
     hidden: false,
     confirmed: true,
-    note: '',
+    note: holidayNote,
   };
 }
 
