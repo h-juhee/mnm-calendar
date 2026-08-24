@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type RefObject } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type RefObject } from "react";
 import type {
   DateSchedule,
   HospitalInfo,
@@ -21,6 +21,11 @@ import OutputSizeSelector from "./OutputSizeSelector";
 import styles from "./CustomDesignRequestModal.module.css";
 import { postUsageLogReliably } from "../utils/usageLogUtils";
 import { uploadScheduleImageToDrive } from "../utils/googleDriveUtils";
+import {
+  clearPendingSubmission,
+  postSubmissionReliably,
+  queuePendingSubmission,
+} from "../utils/submissionUtils";
 
 const activeScheduleUploadJobs = new Map<string, AbortController>();
 let previewRenderQueue: Promise<void> = Promise.resolve();
@@ -238,6 +243,10 @@ export default function CustomDesignRequestModal({
     total: number;
     status: 'idle' | 'uploading' | 'complete' | 'failed';
   }>({ completed: 0, total: 0, status: 'idle' });
+  const submissionIdentityRef = useRef({
+    id: `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    createdAt: new Date().toISOString(),
+  });
 
   const templateName =
     TEMPLATES.find((t) => t.id === formData.templateId)?.name ??
@@ -294,8 +303,7 @@ export default function CustomDesignRequestModal({
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
     const record: CustomDesignRequestRecord = {
-      id: `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      createdAt: new Date().toISOString(),
+      ...submissionIdentityRef.current,
       hospitalId: hospital.id,
       hospitalName: hospital.name,
       directorName: hospital.directorName ?? "",
@@ -351,10 +359,7 @@ export default function CustomDesignRequestModal({
       const calendarImage = isScheduleSubmission
         ? null
         : await renderFormat(primaryFormat);
-      const response = await fetch("/api/notion-custom-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const submissionPayload = {
           ...record,
           ...(calendarImage
             ? {
@@ -367,14 +372,12 @@ export default function CustomDesignRequestModal({
                 ),
               }
             : {}),
-        }),
-      });
-      const result = (await response.json().catch(() => null)) as {
-        id?: string;
-        message?: string;
-      } | null;
-      if (!response.ok)
-        throw new Error(result?.message ?? "요청을 저장하지 못했습니다.");
+      };
+      // 일정 제출은 네트워크가 끊겨도 다음 접속 때 복구할 수 있도록 먼저 보관합니다.
+      // 같은 id로 재시도하므로 서버에서도 중복 페이지를 만들지 않습니다.
+      if (isScheduleSubmission) queuePendingSubmission(submissionPayload);
+      const result = await postSubmissionReliably(submissionPayload);
+      if (isScheduleSubmission) clearPendingSubmission(record.id);
 
       if (isScheduleSubmission) {
         const usageDetails = {

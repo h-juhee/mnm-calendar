@@ -216,12 +216,46 @@ function blocksFor(request) {
     ['이미지 교체 파일', request.replacementImageFilename],
   ].filter(([, value]) => value);
 
-  return entries.map(([label, value]) => {
+  return [
+    ...(request.id ? [{
+      object: 'block', type: 'paragraph',
+      paragraph: { rich_text: richText(`접수 ID: ${request.id}`) },
+    }] : []),
+    ...entries.map(([label, value]) => {
     const text = String(value).includes('\n') ? `${label}:\n${value}` : `${label}: ${value}`;
     return {
       object: 'block', type: 'paragraph', paragraph: { rich_text: richText(text) },
     };
+    }),
+  ];
+}
+
+function blockPlainText(block) {
+  const richTextItems = block?.[block.type]?.rich_text ?? [];
+  return richTextItems.map((item) => item.plain_text ?? item.text?.content ?? '').join('');
+}
+
+async function findExistingSubmission(dataSource, titlePropertyName, request) {
+  if (!request.id) return null;
+  const pages = await notion(`/data_sources/${dataSource.id}/query`, {
+    method: 'POST',
+    body: JSON.stringify({
+      page_size: 20,
+      filter: { property: titlePropertyName, title: { equals: pageTitle(request) } },
+      sorts: [{ timestamp: 'created_time', direction: 'descending' }],
+    }),
   });
+  const marker = `접수 ID: ${request.id}`;
+  const requestedAt = Date.parse(request.createdAt ?? '');
+  const candidates = (pages.results ?? []).filter((page) => {
+    if (!Number.isFinite(requestedAt)) return true;
+    return Math.abs(Date.parse(page.created_time) - requestedAt) < 60 * 60 * 1000;
+  });
+  const matches = await Promise.all(candidates.map(async (page) => {
+    const children = await notion(`/blocks/${page.id}/children?page_size=10`);
+    return (children.results ?? []).some((block) => blockPlainText(block) === marker) ? page : null;
+  }));
+  return matches.find(Boolean) ?? null;
 }
 
 function calendarImageFromRequest(request) {
@@ -366,6 +400,14 @@ export default async function handler(req, res) {
   request = { ...request, ...deriveScheduleFields(request) };
 
   try {
+    const dataSource = await getDataSource();
+    const schema = dataSource.properties ?? {};
+    const title = Object.entries(schema).find(([, property]) => property.type === 'title');
+    if (!title) throw new Error('연결한 Notion DB에 제목(Title) 속성이 없습니다.');
+    const existingPage = await findExistingSubmission(dataSource, title[0], request);
+    if (existingPage) {
+      return sendJson(200, { id: existingPage.id, url: existingPage.url, duplicate: true });
+    }
     const calendarImage = calendarImageFromRequest(request);
     const replacementImage = replacementImageFromRequest(request);
     const calendarImageUploadId = calendarImage
@@ -374,11 +416,7 @@ export default async function handler(req, res) {
     const replacementImageUploadId = replacementImage
       ? await uploadCalendarImage(replacementImage, request.replacementImageFilename || 'replacement-image')
       : null;
-    const dataSource = await getDataSource();
     const properties = {};
-    const schema = dataSource.properties ?? {};
-    const title = Object.entries(schema).find(([, property]) => property.type === 'title');
-    if (!title) throw new Error('연결한 Notion DB에 제목(Title) 속성이 없습니다.');
     properties[title[0]] = propertyValue(title[1], pageTitle(request));
 
     const clientRelationName = Object.keys(schema).find(

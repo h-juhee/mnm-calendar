@@ -25,6 +25,7 @@ import { deleteCustomBackground, loadCustomBackground, migrateCustomBackground, 
 import { removeHospitalData, removeHospitalInfo, saveHospitalInfo } from '../utils/storageUtils';
 import { getClinicHoursWithExample, parseNotionClinicHours } from '../utils/clinicHoursUtils';
 import { flushPendingUsageLogs } from '../utils/usageLogUtils';
+import { flushPendingSubmissions } from '../utils/submissionUtils';
 import styles from './ScheduleBuilderPage.module.css';
 
 type SettingsPanel =
@@ -188,6 +189,10 @@ function ScheduleBuilderContent({
 
   useEffect(() => {
     void flushPendingUsageLogs();
+    void flushPendingSubmissions();
+    const retryWhenOnline = () => void flushPendingSubmissions();
+    window.addEventListener('online', retryWhenOnline);
+    return () => window.removeEventListener('online', retryWhenOnline);
   }, []);
 
   useEffect(() => {
