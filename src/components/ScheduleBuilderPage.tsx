@@ -40,7 +40,7 @@ const SETTINGS_GROUPS: { id: SettingsGroupId; label: string; items: { id: Settin
     label: '일정 설정',
     items: [
       { id: 'basic', label: '기본 설정' },
-      { id: 'closed', label: '정기 휴진' },
+      { id: 'closed', label: '정기 일정' },
       { id: 'vacation', label: '휴가 설정' },
       { id: 'hours', label: '진료시간' },
     ],
@@ -178,6 +178,8 @@ function ScheduleBuilderContent({
     : SETTINGS_GROUPS;
   const [customBackgroundUrl, setCustomBackgroundUrl] = useState<string>();
   const [customBackgroundFileName, setCustomBackgroundFileName] = useState<string>();
+  const [notionClinicHoursPageUrl, setNotionClinicHoursPageUrl] = useState('');
+  const [notionClinicHoursSpecialNotes, setNotionClinicHoursSpecialNotes] = useState('');
   const customBackgroundObjectUrlRef = useRef<string | undefined>(undefined);
   const exportNodeRef = useRef<HTMLDivElement>(null);
   const settingsPanelRef = useRef<HTMLElement>(null);
@@ -238,6 +240,8 @@ function ScheduleBuilderContent({
 
   useEffect(() => {
     const controller = new AbortController();
+    setNotionClinicHoursPageUrl('');
+    setNotionClinicHoursSpecialNotes('');
     const applyMatchedHours = (clinicHoursText: string, lunchHours = '') => {
       const matchedHours = parseNotionClinicHours(clinicHoursText, lunchHours);
       if (matchedHours) setClinicHoursFromSheet(matchedHours);
@@ -246,10 +250,16 @@ function ScheduleBuilderContent({
 
     const loadClinicHours = async () => {
       try {
-        const notionResponse = await fetch(`/api/notion-clinic-hours?hospitalName=${encodeURIComponent(hospital.name)}`, {
+        const notionQuery = new URLSearchParams({ hospitalName: hospital.name });
+        if (appMode === 'internal') notionQuery.set('includeInternalLink', '1');
+        const notionResponse = await fetch(`/api/notion-clinic-hours?${notionQuery}`, {
           signal: controller.signal,
         });
         const notionResult = notionResponse.ok ? await notionResponse.json() : null;
+        if (appMode === 'internal' && notionResult?.found) {
+          setNotionClinicHoursPageUrl(notionResult.pageUrl ?? '');
+          setNotionClinicHoursSpecialNotes(notionResult.specialNotes ?? '');
+        }
         if (
           notionResult?.found
           && applyMatchedHours(notionResult.clinicHours ?? '', notionResult.lunchHours ?? '')
@@ -267,7 +277,7 @@ function ScheduleBuilderContent({
 
     void loadClinicHours();
     return () => controller.abort();
-  }, [hospital.name, setClinicHoursFromSheet]);
+  }, [appMode, hospital.name, setClinicHoursFromSheet]);
 
   useEffect(() => {
     let active = true;
@@ -395,18 +405,17 @@ function ScheduleBuilderContent({
     ),
     closed: (
       <div className={styles.recurringSettings}>
-        <h2 className={styles.cardTitle}>{appMode === 'customer' ? '정기 일정 설정' : '정기 휴진 설정'}</h2>
+        <h2 className={styles.cardTitle}>정기 일정 설정</h2>
         <p className={styles.cardHint}>매주 반복해서 쉬는 요일을 선택하세요.</p>
         <RecurringDaySelector selectedDays={formData.recurringClosedDays} onToggle={actions.toggleRecurringDay} />
+        <h3 className={styles.recurringSectionTitle}>야간 진료</h3>
+        <p className={styles.cardHint}>매주 반복해서 야간 진료하는 요일을 선택하세요.</p>
+        <RecurringDaySelector
+          selectedDays={formData.recurringNightDays}
+          onToggle={actions.toggleRecurringNightDay}
+          ariaLabel="야간 진료 요일"
+        />
         {appMode === 'customer' && (
-          <>
-            <h3 className={styles.recurringSectionTitle}>야간 진료</h3>
-            <p className={styles.cardHint}>매주 반복해서 야간 진료하는 요일을 선택하세요.</p>
-            <RecurringDaySelector
-              selectedDays={formData.recurringNightDays}
-              onToggle={actions.toggleRecurringNightDay}
-              ariaLabel="야간 진료 요일"
-            />
             <button
               type="button"
               className={styles.recurringNextButton}
@@ -414,7 +423,6 @@ function ScheduleBuilderContent({
             >
               설정 완료 · 달력에서 날짜별 일정 추가
             </button>
-          </>
         )}
       </div>
     ),
@@ -651,13 +659,28 @@ function ScheduleBuilderContent({
               {saveStatus === 'saving' ? '저장 중…' : saveStatus === 'error' ? '저장 실패' : '자동 저장됨'}
             </span>
             {appMode === 'internal' && (
-              <button
-                type="button"
-                className={styles.heroChangeButton}
-                onClick={() => setHospitalSwitchConfirmOpen(true)}
-              >
-                다른 병원으로 전환
-              </button>
+              <div className={styles.heroButtonRow}>
+                {notionClinicHoursPageUrl && (
+                  <a
+                    className={styles.heroNotionButton}
+                    href={notionClinicHoursPageUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    노션 DB 열기 ↗
+                    {notionClinicHoursSpecialNotes && (
+                      <span title={notionClinicHoursSpecialNotes}>특이사항</span>
+                    )}
+                  </a>
+                )}
+                <button
+                  type="button"
+                  className={styles.heroChangeButton}
+                  onClick={() => setHospitalSwitchConfirmOpen(true)}
+                >
+                  다른 병원으로 전환
+                </button>
+              </div>
             )}
           </div>
         </div>

@@ -8,8 +8,13 @@
 .saveStatus::before { content: '●'; margin-right: 5px; color: #24a36a; font-size: 8px; }
 .saveStatusError { color: var(--color-danger); }
 .saveStatusError::before { color: var(--color-danger); }
+.heroButtonRow { display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
 .heroChangeButton { min-height: 38px; padding: 8px 13px; color: var(--color-text-muted); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; font-weight: 600; }
 .heroChangeButton:hover { color: var(--color-primary); border-color: var(--color-primary); }
+.heroNotionButton { min-height: 38px; padding: 8px 11px; display: inline-flex; align-items: center; gap: 6px; color: var(--color-primary); background: var(--color-primary-bg); border: 1px solid color-mix(in srgb, var(--color-primary) 35%, var(--color-border)); border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; text-decoration: none; }
+.heroNotionButton:hover { border-color: var(--color-primary); filter: brightness(.98); }
+.heroNotionButton:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.heroNotionButton span { padding: 2px 5px; color: #9a5b00; background: #fff7df; border: 1px solid #f0d58b; border-radius: 999px; font-size: 10px; }
 .container { max-width: 1320px; margin: 0 auto; padding: 16px 16px 48px; display: flex; flex-direction: column; gap: 16px; }
 
 .previewTools { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -161,6 +166,7 @@
   .heroInner { padding-right: 0; }
   .heroTitle { font-size: 20px; line-height: 1.35; letter-spacing: -.2px; }
   .heroActions { position: static; align-items: flex-start; margin-top: 8px; transform: none; }
+  .heroButtonRow { justify-content: flex-start; flex-wrap: wrap; }
   .previewTools { align-items: flex-start; flex-direction: column; }
   .previewEditHint { width: 100%; align-items: flex-start; flex-wrap: wrap; }
   .previewActions { width: 100%; }

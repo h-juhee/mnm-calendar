@@ -130,7 +130,15 @@ export default async function handler(req, res) {
     const propertyClinicHours = plainText(page.properties?.['진료시간']).trim();
     const clinicHours = propertyClinicHours || labeledValue(supplementalLines, '진료시간');
     const lunchHours = labeledValue(supplementalLines, '점심시간');
-    return sendJson(res, 200, { found: true, clinicHours, lunchHours });
+    const includeInternalLink = requestUrl.searchParams.get('includeInternalLink') === '1';
+    const specialNotes = plainText(page.properties?.['특이사항']).trim()
+      || labeledValue(supplementalLines, '특이사항');
+    return sendJson(res, 200, {
+      found: true,
+      clinicHours,
+      lunchHours,
+      ...(includeInternalLink ? { pageUrl: page.url ?? '', specialNotes } : {}),
+    });
   } catch (error) {
     console.error('Notion clinic hours lookup failed:', error);
     return sendJson(res, error.status ?? 500, { message: 'Failed to load clinic hours.' });
