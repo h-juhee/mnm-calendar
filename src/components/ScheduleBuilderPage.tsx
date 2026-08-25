@@ -251,7 +251,6 @@ function ScheduleBuilderContent({
     const loadClinicHours = async () => {
       try {
         const notionQuery = new URLSearchParams({ hospitalName: hospital.name });
-        if (appMode === 'internal') notionQuery.set('includeInternalLink', '1');
         const notionResponse = await fetch(`/api/notion-clinic-hours?${notionQuery}`, {
           signal: controller.signal,
         });

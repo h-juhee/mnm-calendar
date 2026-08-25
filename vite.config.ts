@@ -25,6 +25,8 @@ export default defineConfig(({ mode }) => {
   // The Notion token is used only by the local Node middleware, never exposed to Vite client code.
   Object.assign(process.env, loadEnv(mode, process.cwd(), 'NOTION_'))
   Object.assign(process.env, loadEnv(mode, process.cwd(), 'GOOGLE_'))
+  const serverEnv = loadEnv(mode, process.cwd(), '')
+  process.env.APP_MODE = serverEnv.APP_MODE
 
   return {
     plugins: [

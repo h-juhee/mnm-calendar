@@ -119,11 +119,13 @@ npm run preview
 
 ```env
 VITE_APP_MODE=internal
+APP_MODE=internal
 NOTION_TOKEN=ntn_...
 NOTION_DATA_SOURCE_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 - `VITE_APP_MODE`: `internal`이면 내부 직원용, `customer`이면 원장님용 앱을 표시합니다. 생략 시 내부용입니다.
+- `APP_MODE`: 서버의 내부 정보 반환 권한을 결정합니다. 내부용 Vercel은 `internal`, 원장용 Vercel은 `customer`로 반드시 각각 설정합니다.
 - `NOTION_TOKEN`: Notion Internal Integration 시크릿
 - `NOTION_DATA_SOURCE_ID`: 연결할 Notion 데이터 소스 ID
 - 서버 전용 시크릿이므로 변수명 앞에 `VITE_`를 붙이지 마세요.

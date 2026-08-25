@@ -130,7 +130,9 @@ export default async function handler(req, res) {
     const propertyClinicHours = plainText(page.properties?.['진료시간']).trim();
     const clinicHours = propertyClinicHours || labeledValue(supplementalLines, '진료시간');
     const lunchHours = labeledValue(supplementalLines, '점심시간');
-    const includeInternalLink = requestUrl.searchParams.get('includeInternalLink') === '1';
+    // Internal metadata is controlled only by a server-side deployment setting.
+    // Client-provided query parameters must never grant access to it.
+    const includeInternalLink = process.env.APP_MODE === 'internal';
     const specialNotes = plainText(page.properties?.['특이사항']).trim()
       || labeledValue(supplementalLines, '특이사항');
     return sendJson(res, 200, {
