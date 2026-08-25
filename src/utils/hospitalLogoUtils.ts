@@ -76,6 +76,12 @@ function shortenedClinicName(value: string): string {
 
 export function findHospitalLogoUrl(hospitalName: string): string | undefined {
   const exactName = normalizeClinicName(hospitalName);
+
+  // 연세바로치과교정과는 지점명이 붙어도 모든 지점이 같은 로고를 사용합니다.
+  if (exactName.includes('연세바로')) {
+    return `/logos/${encodeURIComponent('연세바로치과교정과의원.png')}`;
+  }
+
   const exactMatches = HOSPITAL_LOGO_FILES.filter(
     (fileName) => normalizeClinicName(clinicNameFromFile(fileName)) === exactName,
   );
