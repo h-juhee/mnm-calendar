@@ -216,18 +216,12 @@ function blocksFor(request) {
     ['이미지 교체 파일', request.replacementImageFilename],
   ].filter(([, value]) => value);
 
-  return [
-    ...(request.id ? [{
-      object: 'block', type: 'paragraph',
-      paragraph: { rich_text: richText(`접수 ID: ${request.id}`) },
-    }] : []),
-    ...entries.map(([label, value]) => {
+  return entries.map(([label, value]) => {
     const text = String(value).includes('\n') ? `${label}:\n${value}` : `${label}: ${value}`;
     return {
       object: 'block', type: 'paragraph', paragraph: { rich_text: richText(text) },
     };
-    }),
-  ];
+  });
 }
 
 function blockPlainText(block) {
@@ -245,15 +239,17 @@ async function findExistingSubmission(dataSource, titlePropertyName, request) {
       sorts: [{ timestamp: 'created_time', direction: 'descending' }],
     }),
   });
-  const marker = `접수 ID: ${request.id}`;
+  const expectedContent = blocksFor(request).map(blockPlainText);
+  if (expectedContent.length === 0) return null;
   const requestedAt = Date.parse(request.createdAt ?? '');
   const candidates = (pages.results ?? []).filter((page) => {
     if (!Number.isFinite(requestedAt)) return true;
     return Math.abs(Date.parse(page.created_time) - requestedAt) < 60 * 60 * 1000;
   });
   const matches = await Promise.all(candidates.map(async (page) => {
-    const children = await notion(`/blocks/${page.id}/children?page_size=10`);
-    return (children.results ?? []).some((block) => blockPlainText(block) === marker) ? page : null;
+    const children = await notion(`/blocks/${page.id}/children?page_size=100`);
+    const actualContent = new Set((children.results ?? []).map(blockPlainText).filter(Boolean));
+    return expectedContent.every((text) => actualContent.has(text)) ? page : null;
   }));
   return matches.find(Boolean) ?? null;
 }

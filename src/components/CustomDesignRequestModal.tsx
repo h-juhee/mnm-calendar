@@ -19,7 +19,6 @@ import Modal from "./Modal";
 import AdditionalInfoFields from "./AdditionalInfoFields";
 import OutputSizeSelector from "./OutputSizeSelector";
 import styles from "./CustomDesignRequestModal.module.css";
-import { postUsageLogReliably } from "../utils/usageLogUtils";
 import { uploadScheduleImageToDrive } from "../utils/googleDriveUtils";
 import {
   clearPendingSubmission,
@@ -87,55 +86,6 @@ function formatClosedScheduleDetails(resolvedSchedule: DateSchedule[]) {
   return formatScheduleData(
     resolvedSchedule.filter((schedule) => ['closed', 'vacation', 'seminarClosed'].includes(schedule.type)),
   );
-}
-
-function formatHolidaySchedules(resolvedSchedule: DateSchedule[]) {
-  const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
-  return resolvedSchedule
-    .filter((schedule) => schedule.type === "shortened")
-    .map((schedule) => {
-      const day = Number(schedule.date.slice(-2));
-      const weekday = weekdays[new Date(`${schedule.date}T00:00:00Z`).getUTCDay()];
-      const time = schedule.startTime && schedule.endTime ? ` · ${schedule.startTime}~${schedule.endTime}` : "";
-      return `${day}일(${weekday}): 공휴일 진료${time}`;
-    })
-    .join("\n");
-}
-
-function buildCustomerUsageDetails(formData: ScheduleFormData, resolvedSchedule: DateSchedule[]) {
-  const formatTypedSchedules = (types: string[]) => formatScheduleData(
-    resolvedSchedule.filter((schedule) => types.includes(schedule.type)),
-  );
-  const clinicRows = getValidClinicHoursRows(formData.clinicHours);
-  const hoursForDay = (day: number) => clinicRows
-    .filter((row) => row.days.includes(day))
-    .map((row) => {
-      const badge = row.badgeLabel?.trim() ? ` · 배지 ${row.badgeLabel.trim()}` : "";
-      const note = row.note?.trim() ? ` · 추가 안내 ${row.note.trim()}` : "";
-      return `${row.startTime}-${row.endTime}${badge}${note}`;
-    })
-    .join("\n");
-  const nightItems = resolvedSchedule.filter((schedule) => schedule.type === "night");
-  const weekdayLabels = ["일", "월", "화", "수", "목", "금", "토"];
-  return {
-    recurringClosedDays: formData.recurringClosedDays.map((day) => weekdayLabels[day]).join(", "),
-    customSchedules: formatScheduleData(formData.dateSchedules),
-    closedReason: formatTypedSchedules(["closed", "vacation", "seminarClosed"]),
-    mondayHours: hoursForDay(1),
-    tuesdayHours: hoursForDay(2),
-    wednesdayHours: hoursForDay(3),
-    thursdayHours: hoursForDay(4),
-    fridayHours: hoursForDay(5),
-    saturdayHours: hoursForDay(6),
-    sundayHours: hoursForDay(0),
-    morningHours: formatTypedSchedules(["morningClosed"]),
-    afternoonHours: formatTypedSchedules(["afternoonClosed"]),
-    nightSchedules: formatScheduleData(nightItems),
-    nightDates: nightItems.map((schedule) => `${Number(schedule.date.slice(-2))}일(${weekdayLabels[new Date(`${schedule.date}T00:00:00Z`).getUTCDay()]})`).join(", "),
-    saturdaySchedules: formatTypedSchedules(["saturday"]),
-    sundaySchedules: formatTypedSchedules(["sunday"]),
-    holidaySchedules: formatHolidaySchedules(resolvedSchedule),
-  };
 }
 
 const CLINIC_DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -386,7 +336,7 @@ export default function CustomDesignRequestModal({
       );
       const formatsToRender = selectedFormats.length > 0 ? selectedFormats : [outputFormat];
       // 원장용 진료일정 DB에는 원장이 실제로 확인한 정사각형 미리보기를 대표 이미지로 올립니다.
-      // 선택한 A4·DID 등의 규격은 아래 사용이력 저장 단계에서 각각 별도 생성합니다.
+      // 선택한 A4·DID 등의 규격은 아래 Drive 저장 단계에서 각각 별도 생성합니다.
       const primaryFormat: OutputFormat = isScheduleSubmission
         ? 'square'
         : formatsToRender.includes('square') ? 'square' : formatsToRender[0];
@@ -427,21 +377,6 @@ export default function CustomDesignRequestModal({
       if (isScheduleSubmission) clearPendingSubmission(record.id);
 
       if (isScheduleSubmission) {
-        const usageDetails = {
-          ...buildCustomerUsageDetails(formData, resolvedSchedule),
-          scheduleData: record.scheduleData,
-          closedDates: record.closedDates,
-          nextMonthEvent: record.nextMonthEvent,
-          calendarMustInclude: record.calendarMustInclude,
-          lunchHours: record.lunchHours,
-          clinicHoursRaw: record.clinicHoursSummary,
-          clinicHoursNote: record.clinicHoursNote,
-          otherRequests: [record.requestDetails, record.specialNotes].filter(Boolean).join("\n"),
-          vacationRange: formData.vacationStart && formData.vacationEnd
-            ? `${formData.vacationStart} ~ ${formData.vacationEnd}`
-            : "",
-        };
-
         // 내용은 먼저 접수하되, 모든 제작 파일 저장이 끝난 뒤에만 완료 화면을 표시합니다.
         setImageUploadProgress({ completed: 0, total: formatsToRender.length, status: 'uploading' });
 
@@ -577,37 +512,6 @@ export default function CustomDesignRequestModal({
         })();
         saveCustomDesignRequest(record);
         setIsSubmitted(true);
-
-        // 원장이 선택한 제작 파일은 이미 모두 Drive에 저장되었습니다.
-        // 운영용 사용이력 기록은 완료 화면을 지연시키지 않고 캐시된 이미지를 이용해 이어서 처리합니다.
-        void (async () => {
-          for (const format of formatsToRender) {
-            try {
-              const formatImage = await renderCurrentFormat(format);
-              await postUsageLogReliably({
-                hospitalId: hospital.id,
-                hospitalName: hospital.name,
-                directorName: hospital.directorName,
-                year: formData.year,
-                month: formData.month,
-                templateId: formData.templateId,
-                outputFormat: format,
-                outputSizes: record.outputSize,
-                exportType: "png",
-                calendarImage: formatImage,
-                calendarImageFilename: buildExportFilename(
-                  hospital.name,
-                  formData.year,
-                  formData.month,
-                  format,
-                ),
-                details: usageDetails,
-              });
-            } catch (usageError) {
-              console.error(`${format} 사용이력 이미지 저장을 보류했습니다.`, usageError);
-            }
-          }
-        })();
         return;
       }
 
