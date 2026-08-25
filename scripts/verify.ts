@@ -643,6 +643,33 @@ test('별도 진료시간 DB의 구분자와 평일 점심시간을 변환한다
   assert.deepEqual(parsed.lunchDays, [1, 2, 3, 4, 5]);
 });
 
+test('노션 진료시간의 슬래시 요일 묶음과 줄바꿈을 보존한다', () => {
+  const parsed = parseNotionClinicHours(
+    '월/목 야간진료 10:00~20:00\n화/수/금 10:00~19:00\n토 10:00~14:00\n일 휴진 / 공휴일 휴진\n평일 점심시간 13:00~14:00',
+  );
+  assert.ok(parsed);
+  assert.deepEqual(parsed.rows, [
+    { id: 'notion-hours-0', days: [1, 4], startTime: '10:00', endTime: '20:00' },
+    { id: 'notion-hours-1', days: [2, 3, 5], startTime: '10:00', endTime: '19:00' },
+    { id: 'notion-hours-2', days: [6], startTime: '10:00', endTime: '14:00' },
+  ]);
+  assert.deepEqual(parsed.closedDays, [0]);
+  assert.equal(parsed.lunchStart, '13:00');
+  assert.equal(parsed.lunchEnd, '14:00');
+  assert.deepEqual(parsed.lunchDays, [1, 2, 3, 4, 5]);
+});
+
+test('요일 표기가 없는 노션 점심시간은 평일 공통 점심시간으로 변환한다', () => {
+  const parsed = parseNotionClinicHours(
+    '월~목 10:00~18:30 / 토 10:00~14:00 / 일 10:00~17:00 / 공휴일 10:00~17:00 / 점심시간 13:00~14:00 / 금 휴진',
+  );
+  assert.ok(parsed);
+  assert.equal(parsed.lunchStart, '13:00');
+  assert.equal(parsed.lunchEnd, '14:00');
+  assert.equal(parsed.lunchDisabled, false);
+  assert.deepEqual(parsed.lunchDays, [1, 2, 3, 4, 5]);
+});
+
 test('요일마다 다른 점심시간은 해당 진료시간 행의 휴게 메모로 변환한다', () => {
   const parsed = parseNotionClinicHours(
     '월·목 13:00~21:00 / 화·금 10:00~19:00 / 토 09:00~14:00 / 일 10:00~14:00 / 월·목 점심시간 17:30~18:00 / 화·금 점심시간 13:30~15:00 / 수 휴진',

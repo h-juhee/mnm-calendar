@@ -48,7 +48,10 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
   const grouped = new Map<string, { days: number[]; startTime: string; endTime: string; note?: string }>();
   const entries = text
     .split('|', 1)[0]
-    .split(/\/|,\s*(?=[월화수목금토일평주])/u)
+    // `/` is also used inside a weekday group (`월/목`, `화/수/금`). Only a
+    // slash surrounded by whitespace is an entry separator. Notion multi-line
+    // values are handled as separate entries as well.
+    .split(/\r?\n|\s+\/\s+|,\s*(?=[월화수목금토일평주공])/u)
     .map((entry) => entry.trim())
     .filter(Boolean);
   const closedDays = [...new Set(entries
@@ -77,7 +80,7 @@ export function parseNotionClinicHours(text: string, lunchText = ''): ClinicHour
   const embeddedBreakEntries = entries.filter((entry) => entry.includes('휴게') || entry.includes('점심시간'));
   const globalBreakEntry = embeddedBreakEntries.find((entry) =>
     [1, 2, 3, 4, 5].every((day) => expandDays(entry).includes(day)),
-  ) ?? '';
+  ) ?? embeddedBreakEntries.find((entry) => expandDays(entry).length === 0) ?? '';
   const lunchMatch = /(\d{1,2}):([0-5]\d)\s*[~～\-–—]\s*(\d{1,2}):([0-5]\d)/u.exec(lunchText || globalBreakEntry);
   const lunchStart = lunchMatch && Number(lunchMatch[1]) <= 23
     ? `${String(Number(lunchMatch[1])).padStart(2, '0')}:${lunchMatch[2]}`
