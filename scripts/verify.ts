@@ -27,7 +27,7 @@ import {
   setDesignEditsForFormat,
 } from '../src/utils/designEditsUtils';
 import { parseNotionClinicHours } from '../src/utils/clinicHoursUtils';
-import { HOSPITAL_LOGO_FILES } from '../src/utils/hospitalLogoUtils';
+import { findHospitalLogoUrl, HOSPITAL_LOGO_FILES } from '../src/utils/hospitalLogoUtils';
 
 // Node 실행 환경에는 브라우저 localStorage가 없으므로 검증용 최소 메모리 구현을 주입합니다.
 class MemoryStorage {
@@ -736,6 +736,17 @@ test('public 로고 파일과 자동 매칭 목록이 정확히 일치한다', (
     new Set(HOSPITAL_LOGO_FILES).size,
     HOSPITAL_LOGO_FILES.length,
     'HOSPITAL_LOGO_FILES에 중복된 파일명이 있습니다.',
+  );
+});
+
+test('서울마인드치과 로고를 병원명으로 자동 매칭한다', () => {
+  assert.equal(
+    findHospitalLogoUrl('서울마인드치과'),
+    '/logos/%EC%84%9C%EC%9A%B8%EB%A7%88%EC%9D%B8%EB%93%9C%EC%B9%98%EA%B3%BC_%EB%A1%9C%EA%B3%A0.png',
+  );
+  assert.equal(
+    findHospitalLogoUrl('서울마인드치과의원'),
+    '/logos/%EC%84%9C%EC%9A%B8%EB%A7%88%EC%9D%B8%EB%93%9C%EC%B9%98%EA%B3%BC_%EB%A1%9C%EA%B3%A0.png',
   );
 });
 
