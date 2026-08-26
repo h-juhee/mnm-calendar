@@ -43,20 +43,8 @@ function savePendingLogs(logs: UsageLogPayload[]) {
   }
 }
 
-function usageDate(payload: UsageLogPayload) {
-  const date = new Date(typeof payload.loggedAt === 'string' ? payload.loggedAt : Date.now());
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Seoul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date);
-  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value;
-  return `${part('year')}-${part('month')}-${part('day')}`;
-}
-
 function usageLogKey(payload: UsageLogPayload) {
-  return `${payload.hospitalId ?? payload.hospitalName}-${payload.year}-${payload.month}-${usageDate(payload)}`;
+  return String(payload.usageLogId ?? payload.loggedAt ?? '');
 }
 
 function queueUsageLog(payload: UsageLogPayload) {
@@ -81,9 +69,11 @@ export async function flushPendingUsageLogs() {
 }
 
 export async function postUsageLogReliably(payload: UsageLogPayload) {
-  const timestampedPayload = payload.loggedAt
-    ? payload
-    : { ...payload, loggedAt: new Date().toISOString() };
+  const timestampedPayload = {
+    ...payload,
+    loggedAt: payload.loggedAt ?? new Date().toISOString(),
+    usageLogId: payload.usageLogId ?? crypto.randomUUID(),
+  };
   await flushPendingUsageLogs();
   try {
     await sendUsageLog(timestampedPayload);

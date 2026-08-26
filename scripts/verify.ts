@@ -28,6 +28,7 @@ import {
 } from '../src/utils/designEditsUtils';
 import { parseNotionClinicHours } from '../src/utils/clinicHoursUtils';
 import { findHospitalLogoUrl, HOSPITAL_LOGO_FILES } from '../src/utils/hospitalLogoUtils';
+import { isUsageWithinSession } from '../api/notion-usage-log.mjs';
 
 // Node 실행 환경에는 브라우저 localStorage가 없으므로 검증용 최소 메모리 구현을 주입합니다.
 class MemoryStorage {
@@ -747,6 +748,20 @@ test('서울마인드치과 로고를 병원명으로 자동 매칭한다', () =
   assert.equal(
     findHospitalLogoUrl('서울마인드치과의원'),
     '/logos/%EC%84%9C%EC%9A%B8%EB%A7%88%EC%9D%B8%EB%93%9C%EC%B9%98%EA%B3%BC_%EB%A1%9C%EA%B3%A0.png',
+  );
+});
+
+test('사용이력은 마지막 사용 후 30분 미만이면 같은 세션으로 묶는다', () => {
+  assert.equal(
+    isUsageWithinSession('2026-08-26T01:29:59.999Z', '2026-08-26T01:00:00.000Z', '2026-08-26T01:00:00.000Z'),
+    true,
+  );
+});
+
+test('사용이력은 마지막 사용 후 30분 이상이면 새 세션으로 분리한다', () => {
+  assert.equal(
+    isUsageWithinSession('2026-08-26T01:30:00.000Z', '2026-08-26T01:00:00.000Z', '2026-08-26T01:00:00.000Z'),
+    false,
   );
 });
 

@@ -1,5 +1,12 @@
 const NOTION_VERSION = '2026-03-11';
 const MAX_CALENDAR_IMAGE_BYTES = 20 * 1024 * 1024;
+const USAGE_SESSION_GAP_MS = 30 * 60 * 1000;
+const USAGE_TRACKING_PROPERTIES = {
+  '\uC138\uC158 \uC2DC\uC791': { date: {} },
+  '\uB9C8\uC9C0\uB9C9 \uC0AC\uC6A9': { date: {} },
+  '\uC0AC\uC6A9 \uD69F\uC218': { number: { format: 'number' } },
+  '\uCC98\uB9AC \uB85C\uADF8 ID': { rich_text: {} },
+};
 
 const OUTPUT_FORMAT_LABELS = {
   square: '\uC778\uC2A4\uD0C0 \uD31D\uC5C5',
@@ -83,8 +90,31 @@ function koreaDate(value = new Date()) {
   return `${part('year')}-${part('month')}-${part('day')}`;
 }
 
-function pageTitle(request) {
+function usageDateTime(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+
+function sessionTitleTime(value) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(usageDateTime(value));
+  const part = (type) => parts.find((item) => item.type === type)?.value;
+  return `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')}`;
+}
+
+function pageTitlePrefix(request) {
   return `${request.hospitalName} ${request.year}년 ${request.month}월 캘린더 ${request.usageDate}`;
+}
+
+function pageTitle(request, sessionStartedAt = request.loggedAt) {
+  return `${pageTitlePrefix(request)} ${sessionTitleTime(sessionStartedAt)}`;
 }
 
 function templateLabel(templateId) {
@@ -102,6 +132,27 @@ function propertyOptionNames(propertyValue) {
   return [];
 }
 
+function propertyPlainText(propertyValue) {
+  const items = propertyValue?.type === 'rich_text' ? propertyValue.rich_text : [];
+  return (items ?? []).map((item) => item.plain_text ?? item.text?.content ?? '').join('');
+}
+
+function processedUsageLogIds(page) {
+  return propertyPlainText(page?.properties?.['\uCC98\uB9AC \uB85C\uADF8 ID'])
+    .split('\n')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+export function isUsageWithinSession(usedAtValue, startedAtValue, lastUsedAtValue) {
+  const usedAt = usageDateTime(usedAtValue).getTime();
+  const startedAt = new Date(startedAtValue).getTime();
+  const lastUsedAt = new Date(lastUsedAtValue).getTime();
+  return Number.isFinite(startedAt) && Number.isFinite(lastUsedAt)
+    && usedAt >= startedAt
+    && usedAt - lastUsedAt < USAGE_SESSION_GAP_MS;
+}
+
 async function ensureUsedTemplatesProperty(dataSourceId, schema) {
   if (schema['\uC0AC\uC6A9 \uD15C\uD50C\uB9BF']) return schema;
   const updated = await notion(`/data_sources/${dataSourceId}`, {
@@ -111,6 +162,18 @@ async function ensureUsedTemplatesProperty(dataSourceId, schema) {
         '\uC0AC\uC6A9 \uD15C\uD50C\uB9BF': { multi_select: {} },
       },
     }),
+  });
+  return updated.properties ?? schema;
+}
+
+async function ensureUsageTrackingProperties(dataSourceId, schema) {
+  const missing = Object.fromEntries(
+    Object.entries(USAGE_TRACKING_PROPERTIES).filter(([name]) => !schema[name]),
+  );
+  if (!Object.keys(missing).length) return schema;
+  const updated = await notion(`/data_sources/${dataSourceId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ properties: missing }),
   });
   return updated.properties ?? schema;
 }
@@ -210,16 +273,20 @@ async function findExistingUsagePage(dataSourceId, schema, request) {
   const result = await notion(`/data_sources/${dataSourceId}/query`, {
     method: 'POST',
     body: JSON.stringify({
-      page_size: 1,
+      page_size: 100,
       filter: {
         property: titlePropertyName,
-        title: { equals: pageTitle(request) },
+        title: { starts_with: pageTitlePrefix(request) },
       },
       sorts: [{ timestamp: 'last_edited_time', direction: 'descending' }],
     }),
   });
 
-  return result.results?.[0] ?? null;
+  return (result.results ?? []).find((page) => {
+    const startedAt = page.properties?.['\uC138\uC158 \uC2DC\uC791']?.date?.start ?? page.created_time;
+    const lastUsedAt = page.properties?.['\uB9C8\uC9C0\uB9C9 \uC0AC\uC6A9']?.date?.start ?? page.last_edited_time;
+    return isUsageWithinSession(request.loggedAt, startedAt, lastUsedAt);
+  }) ?? null;
 }
 
 async function usageProperties(schema, request, existingPage = null) {
@@ -227,7 +294,16 @@ async function usageProperties(schema, request, existingPage = null) {
   const title = Object.entries(schema).find(([, property]) => property.type === 'title');
   if (!title) throw new Error('Usage log data source needs a title property.');
 
-  properties[title[0]] = propertyValue(title[1], pageTitle(request));
+  const sessionStartedAt = existingPage?.properties?.['\uC138\uC158 \uC2DC\uC791']?.date?.start
+    ?? existingPage?.created_time
+    ?? request.loggedAt;
+  properties[title[0]] = propertyValue(title[1], pageTitle(request, sessionStartedAt));
+  setProperty(properties, schema, '\uC138\uC158 \uC2DC\uC791', sessionStartedAt);
+  setProperty(properties, schema, '\uB9C8\uC9C0\uB9C9 \uC0AC\uC6A9', request.loggedAt);
+  const previousUsageCount = existingPage?.properties?.['\uC0AC\uC6A9 \uD69F\uC218']?.number;
+  setProperty(properties, schema, '\uC0AC\uC6A9 \uD69F\uC218', Number.isFinite(previousUsageCount) ? previousUsageCount + 1 : 1);
+  const usageLogIds = [...processedUsageLogIds(existingPage), request.usageLogId].filter(Boolean).slice(-50);
+  setProperty(properties, schema, '\uCC98\uB9AC \uB85C\uADF8 ID', usageLogIds.join('\n'));
   setProperty(properties, schema, '\uC131\uD568', request.directorName || '');
   setProperty(properties, schema, '\uC6D0\uC7A5\uBA85', request.directorName || '');
   setProperty(properties, schema, '\uB300\uC0C1 \uC5F0\uB3C4', String(request.year));
@@ -452,6 +528,7 @@ export default async function handler(req, res) {
   let request;
   try {
     request = await readBody(req);
+    request.loggedAt = usageDateTime(request.loggedAt).toISOString();
     request.usageDate = koreaDate(request.loggedAt);
   } catch {
     return sendJson(res, 400, { message: 'Invalid request body.' });
@@ -471,8 +548,12 @@ export default async function handler(req, res) {
     const dataSourceId = process.env.NOTION_USAGE_DATA_SOURCE_ID;
     const dataSource = await notion(`/data_sources/${dataSourceId}`);
     let schema = dataSource.properties ?? {};
-    const existingPage = await findExistingUsagePage(dataSourceId, schema, request);
     schema = await ensureUsedTemplatesProperty(dataSourceId, schema);
+    schema = await ensureUsageTrackingProperties(dataSourceId, schema);
+    const existingPage = await findExistingUsagePage(dataSourceId, schema, request);
+    if (request.usageLogId && processedUsageLogIds(existingPage).includes(request.usageLogId)) {
+      return sendJson(res, 200, { saved: true, updated: true, duplicate: true });
+    }
     const calendarImage = calendarImageFromRequest(request);
     const calendarImageFilename = request.calendarImageFilename || 'calendar.png';
     let calendarImageUploadId = null;
