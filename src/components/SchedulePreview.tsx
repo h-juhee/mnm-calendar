@@ -133,6 +133,8 @@ const CLINIC_HOURS_COLUMN_GAP_CONFIG: Partial<Record<OutputFormat, {
   didVertical: { min: 0, max: 500, step: 5, defaultValue: 70 },
 };
 
+const A4_HORIZONTAL_ROW_GAP_CONFIG = { min: 0, max: 120, step: 2, defaultValue: 18 };
+
 function copyDesignEdits(edits: DesignEdits | undefined): DesignEdits {
   return Object.fromEntries(
     Object.entries(edits ?? {}).map(([id, edit]) => [id, { ...edit }]),
@@ -219,6 +221,12 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     height: number;
   } | null>(null);
   const clinicHoursGapDragRef = useRef<{ startX: number; startGap: number } | null>(null);
+  const [clinicHoursRowGapHandle, setClinicHoursRowGapHandle] = useState<{
+    left: number;
+    top: number;
+    width: number;
+  } | null>(null);
+  const clinicHoursRowGapDragRef = useRef<{ startY: number; startGap: number } | null>(null);
   const [showCanvasEditHint, setShowCanvasEditHint] = useState(() => {
     try {
       return localStorage.getItem(CANVAS_EDIT_HINT_KEY) !== 'true';
@@ -328,6 +336,44 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
         left: ((firstRect.right + secondRect.left) / 2) - boxRect.left,
         top: targetRect.top - boxRect.top,
         height: targetRect.height,
+      });
+    };
+
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [canvasElementSelected, designEditingEnabled, designEdits, outputFormat, scale, selectedLayer]);
+
+  useLayoutEffect(() => {
+    if (
+      !designEditingEnabled
+      || !canvasElementSelected
+      || selectedLayer !== 'clinicHours'
+      || outputFormat !== 'a4Horizontal'
+    ) {
+      setClinicHoursRowGapHandle(null);
+      return;
+    }
+
+    const box = wrapperRef.current?.querySelector<HTMLElement>(`.${styles.scaledBox}`);
+    const target = wrapperRef.current?.querySelector<HTMLElement>('[data-edit-layer="clinicHours"]');
+    const grid = target?.firstElementChild as HTMLElement | null;
+    const firstItem = grid?.children[0] as HTMLElement | undefined;
+    const secondItem = grid?.children[1] as HTMLElement | undefined;
+    if (!box || !target || !firstItem || !secondItem) {
+      setClinicHoursRowGapHandle(null);
+      return;
+    }
+
+    const update = () => {
+      const boxRect = box.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const firstRect = firstItem.getBoundingClientRect();
+      const secondRect = secondItem.getBoundingClientRect();
+      setClinicHoursRowGapHandle({
+        left: targetRect.left - boxRect.left,
+        top: ((firstRect.bottom + secondRect.top) / 2) - boxRect.top,
+        width: targetRect.width,
       });
     };
 
@@ -1118,6 +1164,77 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
               }}
             >
               <span aria-hidden="true">↔</span>
+            </div>
+          )}
+          {clinicHoursRowGapHandle && outputFormat === 'a4Horizontal' && (
+            <div
+              className={styles.clinicHoursRowGapHandle}
+              style={{
+                left: clinicHoursRowGapHandle.left,
+                top: clinicHoursRowGapHandle.top,
+                width: clinicHoursRowGapHandle.width,
+              }}
+              role="slider"
+              aria-label="진료시간 전체 행 간격"
+              aria-valuemin={A4_HORIZONTAL_ROW_GAP_CONFIG.min}
+              aria-valuemax={A4_HORIZONTAL_ROW_GAP_CONFIG.max}
+              aria-valuenow={selectedEdit.clinicHoursRowGap ?? A4_HORIZONTAL_ROW_GAP_CONFIG.defaultValue}
+              tabIndex={0}
+              data-editor-only
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                event.currentTarget.setPointerCapture(event.pointerId);
+                clinicHoursRowGapDragRef.current = {
+                  startY: event.clientY,
+                  startGap: selectedEdit.clinicHoursRowGap ?? A4_HORIZONTAL_ROW_GAP_CONFIG.defaultValue,
+                };
+                rememberDesignState(currentDesignEditsRef.current);
+              }}
+              onPointerMove={(event) => {
+                const drag = clinicHoursRowGapDragRef.current;
+                if (!drag) return;
+                const nextGap = Math.min(
+                  A4_HORIZONTAL_ROW_GAP_CONFIG.max,
+                  Math.max(
+                    A4_HORIZONTAL_ROW_GAP_CONFIG.min,
+                    drag.startGap + ((event.clientY - drag.startY) / scale),
+                  ),
+                );
+                applyDesignEdits({
+                  ...currentDesignEditsRef.current,
+                  clinicHours: {
+                    ...currentDesignEditsRef.current.clinicHours,
+                    clinicHoursRowGap: Math.round(nextGap / A4_HORIZONTAL_ROW_GAP_CONFIG.step)
+                      * A4_HORIZONTAL_ROW_GAP_CONFIG.step,
+                  },
+                });
+              }}
+              onPointerUp={(event) => {
+                clinicHoursRowGapDragRef.current = null;
+                event.currentTarget.releasePointerCapture(event.pointerId);
+              }}
+              onPointerCancel={() => {
+                clinicHoursRowGapDragRef.current = null;
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+                event.preventDefault();
+                const direction = event.key === 'ArrowUp' ? -1 : 1;
+                const current = selectedEdit.clinicHoursRowGap ?? A4_HORIZONTAL_ROW_GAP_CONFIG.defaultValue;
+                updateSelected({
+                  clinicHoursRowGap: Math.min(
+                    A4_HORIZONTAL_ROW_GAP_CONFIG.max,
+                    Math.max(
+                      A4_HORIZONTAL_ROW_GAP_CONFIG.min,
+                      current + direction * A4_HORIZONTAL_ROW_GAP_CONFIG.step,
+                    ),
+                  ),
+                });
+              }}
+            >
+              <span aria-hidden="true">↕</span>
+              <small>전체 행 간격</small>
             </div>
           )}
           {designEditingEnabled && canvasElementSelected && selectionOverlay && (

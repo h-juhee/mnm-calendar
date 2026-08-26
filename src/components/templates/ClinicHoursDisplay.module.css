@@ -85,7 +85,7 @@
 
 .a4Horizontal .grid {
   grid-template-columns: 1fr;
-  row-gap: 18px;
+  row-gap: var(--clinic-hours-row-gap, 18px);
 }
 
 .a4Horizontal .itemNote {

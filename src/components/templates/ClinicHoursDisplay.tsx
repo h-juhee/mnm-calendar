@@ -69,6 +69,7 @@ export default function ClinicHoursDisplay({ value, outputFormat, edit, selected
         fontFamily: edit?.fontId ? getFontOption(edit.fontId).family : undefined,
         '--clinic-hours-font-weight': edit?.fontWeight,
         '--clinic-hours-column-gap': `${edit?.clinicHoursColumnGap ?? DEFAULT_COLUMN_GAPS[outputFormat] ?? 0}px`,
+        '--clinic-hours-row-gap': `${edit?.clinicHoursRowGap ?? 18}px`,
       } as CSSProperties}
     >
       <div className={styles.grid}>

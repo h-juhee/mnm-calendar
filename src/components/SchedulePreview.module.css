@@ -614,6 +614,68 @@
   outline-offset: 2px;
 }
 
+.clinicHoursRowGapHandle {
+  position: absolute;
+  z-index: 7;
+  height: 30px;
+  min-width: 70px;
+  transform: translateY(-50%);
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.clinicHoursRowGapHandle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: #2f6fed;
+  transform: translateY(-50%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9);
+}
+
+.clinicHoursRowGapHandle span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #2f6fed;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  box-shadow: 0 2px 7px rgba(20, 45, 90, 0.35);
+  font-size: 15px;
+  font-weight: 700;
+  transform: translate(-50%, -50%);
+}
+
+.clinicHoursRowGapHandle small {
+  position: absolute;
+  top: calc(50% + 20px);
+  left: 50%;
+  padding: 4px 7px;
+  color: #fff;
+  background: rgba(31, 54, 80, 0.92);
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.clinicHoursRowGapHandle:focus-visible span {
+  outline: 3px solid rgba(47, 111, 237, 0.35);
+  outline-offset: 2px;
+}
+
 .canvasEditButton {
   height: 34px;
   display: inline-flex;
