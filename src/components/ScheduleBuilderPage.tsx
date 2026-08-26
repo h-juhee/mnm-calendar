@@ -166,6 +166,9 @@ function ScheduleBuilderContent({
     appMode === 'customer' ? 'closed' : 'basic',
   );
   const [expandedSettingsGroup, setExpandedSettingsGroup] = useState<SettingsGroupId>('schedule');
+  const [recurringClosedNone, setRecurringClosedNone] = useState(false);
+  const [recurringNightNone, setRecurringNightNone] = useState(false);
+  const [recurringSettingsError, setRecurringSettingsError] = useState('');
   const visibleSettingsGroups = appMode === 'customer'
     ? SETTINGS_GROUPS
       .filter((group) => group.id !== 'design')
@@ -376,7 +379,20 @@ function ScheduleBuilderContent({
     };
   }, [appMode, isTemplateModalOpen, selectedTemplate]);
 
+  const validateRecurringSettings = () => {
+    const missing: string[] = [];
+    if (formData.recurringClosedDays.length === 0 && !recurringClosedNone) missing.push('정기 휴진');
+    if (formData.recurringNightDays.length === 0 && !recurringNightNone) missing.push('야간 진료');
+    if (missing.length > 0) {
+      setRecurringSettingsError(`${missing.join('과 ')} 요일을 선택하거나 ‘해당 없음’을 눌러 주세요.`);
+      return false;
+    }
+    setRecurringSettingsError('');
+    return true;
+  };
+
   const focusCalendarAfterRecurringSettings = () => {
+    if (!validateRecurringSettings()) return;
     const calendar = exportNodeRef.current?.querySelector<HTMLElement>('[data-edit-layer="calendar"]');
     if (!calendar) return;
     if (spotlightClearTimerRef.current !== null) window.clearTimeout(spotlightClearTimerRef.current);
@@ -406,15 +422,58 @@ function ScheduleBuilderContent({
       <div className={styles.recurringSettings}>
         <h2 className={styles.cardTitle}>정기 일정 설정</h2>
         <p className={styles.cardHint}>매주 반복해서 쉬는 요일을 선택하세요.</p>
-        <RecurringDaySelector selectedDays={formData.recurringClosedDays} onToggle={actions.toggleRecurringDay} />
+        <RecurringDaySelector
+          selectedDays={formData.recurringClosedDays}
+          onToggle={(day) => {
+            setRecurringClosedNone(false);
+            setRecurringSettingsError('');
+            actions.toggleRecurringDay(day);
+          }}
+        />
+        {appMode === 'customer' && (
+          <button
+            type="button"
+            className={`${styles.recurringNoneButton} ${recurringClosedNone ? styles.recurringNoneButtonSelected : ''}`}
+            aria-pressed={recurringClosedNone}
+            onClick={() => {
+              formData.recurringClosedDays.forEach(actions.toggleRecurringDay);
+              setRecurringClosedNone((current) => !current);
+              setRecurringSettingsError('');
+            }}
+          >
+            정기 휴진 해당 없음
+          </button>
+        )}
         <h3 className={styles.recurringSectionTitle}>야간 진료</h3>
         <p className={styles.cardHint}>매주 반복해서 야간 진료하는 요일을 선택하세요.</p>
         <RecurringDaySelector
           selectedDays={formData.recurringNightDays}
-          onToggle={actions.toggleRecurringNightDay}
+          onToggle={(day) => {
+            setRecurringNightNone(false);
+            setRecurringSettingsError('');
+            actions.toggleRecurringNightDay(day);
+          }}
           ariaLabel="야간 진료 요일"
         />
         {appMode === 'customer' && (
+          <button
+            type="button"
+            className={`${styles.recurringNoneButton} ${recurringNightNone ? styles.recurringNoneButtonSelected : ''}`}
+            aria-pressed={recurringNightNone}
+            onClick={() => {
+              formData.recurringNightDays.forEach(actions.toggleRecurringNightDay);
+              setRecurringNightNone((current) => !current);
+              setRecurringSettingsError('');
+            }}
+          >
+            야간 진료 해당 없음
+          </button>
+        )}
+        {appMode === 'customer' && (
+          <>
+            {recurringSettingsError && (
+              <p className={styles.recurringSettingsError} role="alert">{recurringSettingsError}</p>
+            )}
             <button
               type="button"
               className={styles.recurringNextButton}
@@ -422,6 +481,7 @@ function ScheduleBuilderContent({
             >
               설정 완료 · 달력에서 날짜별 일정 추가
             </button>
+          </>
         )}
       </div>
     ),
@@ -630,6 +690,12 @@ function ScheduleBuilderContent({
           type="button"
           className={`${styles.secondaryButton} ${styles.customerSubmitButton}`}
           onClick={() => {
+            if (!validateRecurringSettings()) {
+              setActiveSettingsPanel('closed');
+              setExpandedSettingsGroup('schedule');
+              requestAnimationFrame(() => settingsPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+              return;
+            }
             setCustomModalOpen(true);
           }}
         >
@@ -775,8 +841,9 @@ function ScheduleBuilderContent({
           outputFormat={outputFormat}
           isAutomaticHoliday={
             !selectedHasOverride
-            && selectedResolvedSchedule.type === 'closed'
+            && selectedResolvedSchedule.type === 'custom'
             && Boolean(selectedResolvedSchedule.label)
+            && Boolean(selectedResolvedSchedule.additionalSchedules?.some((entry) => entry.type === 'closed'))
           }
           hiddenRecurringTypes={selectedWeekday === null ? [] : [
             ...(formData.recurringClosedDays.includes(selectedWeekday) ? ['closed' as const] : []),
