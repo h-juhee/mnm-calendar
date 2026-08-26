@@ -195,6 +195,34 @@ test('공휴일을 공휴일 진료로 바꾼 날짜에서는 숨겨졌던 반�
   assert.equal(resolved.additionalSchedules?.some((entry) => entry.type === 'night') ?? false, false);
 });
 
+test('자동 공휴일은 공휴일명과 휴진을 두 개의 일정으로 표시한다', () => {
+  const formData = baseFormData({ year: 2026, month: 9 });
+  const resolved = resolveDateSchedule('2026-09-25', 5, formData);
+  assert.equal(resolved.type, 'custom');
+  assert.equal(resolved.label, '추석');
+  assert.equal(resolved.badgeColor, SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.closed);
+  assert.equal(resolved.fillBadge, false);
+  assert.deepEqual(resolved.additionalSchedules, [{ type: 'closed', noMerge: true }]);
+});
+
+test('기존에 라벨 없이 저장된 자동 공휴일도 공휴일명을 복구한다', () => {
+  const formData = baseFormData({
+    year: 2026,
+    month: 9,
+    dateSchedules: [{
+      date: '2026-09-24',
+      type: 'closed',
+      fillBadge: false,
+      additionalSchedules: [{ type: 'closed', noMerge: true }],
+    }],
+  });
+  const resolved = resolveDateSchedule('2026-09-24', 4, formData);
+  assert.equal(resolved.type, 'custom');
+  assert.equal(resolved.label, '추석 연휴');
+  assert.equal(resolved.badgeColor, SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.closed);
+  assert.equal(resolved.additionalSchedules?.[0]?.type, 'closed');
+});
+
 test('특정 날짜의 반복 휴진을 삭제하면 정상 진료 배지 없이 빈 날짜로 표시한다', () => {
   const formData = baseFormData({
     recurringClosedDays: [0],
@@ -318,9 +346,9 @@ test('formatDateKey는 YYYY-MM-DD 형식(0 패딩 포함)으로 생성된다', (
 test('일정 유형별 색상 선택기의 기본색이 달력 라벨 기본색과 일치한다', () => {
   assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.closed, '#dd4b4b');
   assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.seminarClosed, '#dd4b4b');
-  assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.shortened, '#1a9c6b');
+  assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.shortened, '#6AC24A');
   assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.saturday, '#6cb3d6');
-  assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.sunday, '#6cb3d6');
+  assert.equal(SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.sunday, '#BF6CD5');
 });
 
 test('buildExportFilename은 파일명에 사용할 수 없는 문자를 제거하고 규격대로 생성한다', () => {

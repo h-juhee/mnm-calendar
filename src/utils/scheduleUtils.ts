@@ -1,3 +1,4 @@
+import { SCHEDULE_TYPE_DEFAULT_BADGE_COLOR } from '../types/schedule';
 import type { CalendarLabelStyle, DateSchedule, ScheduleFormData, ScheduleType } from '../types/schedule';
 import { getKoreanHolidays } from './holidayProvider';
 
@@ -121,7 +122,25 @@ export function resolveDateSchedule(
   weekday: number,
   formData: Pick<ScheduleFormData, 'dateSchedules' | 'recurringClosedDays' | 'recurringClosedNoMerge' | 'recurringNightDays' | 'recurringNightNoMerge' | 'vacationStart' | 'vacationEnd' | 'vacationBadgeColor' | 'vacationNoMerge'>,
 ): DateSchedule {
-  const explicit = formData.dateSchedules.find((s) => s.date === dateKey);
+  const holiday = getKoreanHolidays(Number(dateKey.slice(0, 4))).find((item) => item.date === dateKey);
+  const storedExplicit = formData.dateSchedules.find((s) => s.date === dateKey);
+  // 이전 구현에서 자동 공휴일의 첫 항목이 라벨 없는 휴진으로 저장된 데이터를
+  // 다시 "직접 입력(공휴일명) + 휴진" 형태로 복구합니다.
+  const explicit = storedExplicit && holiday
+    ? storedExplicit.type === 'closed'
+      && !storedExplicit.label
+      && storedExplicit.fillBadge === false
+      && storedExplicit.additionalSchedules?.some((entry) => entry.type === 'closed')
+      ? {
+          ...storedExplicit,
+          type: 'custom' as const,
+          label: holiday.name,
+          badgeColor: SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.closed,
+        }
+      : storedExplicit.type === 'custom' && storedExplicit.fillBadge === false && !storedExplicit.badgeColor
+        ? { ...storedExplicit, badgeColor: SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.closed }
+        : storedExplicit
+    : storedExplicit;
   if (explicit) {
     const recurringEntry = formData.recurringClosedDays.includes(weekday)
       ? { type: 'closed' as const, noMerge: formData.recurringClosedNoMerge, isRecurring: true }
@@ -132,8 +151,7 @@ export function resolveDateSchedule(
     if (explicit.suppressedRecurringTypes?.includes(recurringEntry.type)) return explicit;
     // 공휴일 기본 휴진을 사용자가 다른 일정으로 직접 바꾼 경우, 공휴일 우선순위에
     // 가려져 있던 반복 일정이 변경 직후 갑자기 추가되지 않도록 합니다.
-    const isHolidayOverride = getKoreanHolidays(Number(dateKey.slice(0, 4)))
-      .some((item) => item.date === dateKey);
+    const isHolidayOverride = Boolean(holiday);
     if (isHolidayOverride) return explicit;
 
     // 정상 진료는 반복 휴진만 해제합니다. 야간 진료처럼 정상 진료와 함께
@@ -162,9 +180,16 @@ export function resolveDateSchedule(
     };
   }
 
-  const holiday = getKoreanHolidays(Number(dateKey.slice(0, 4))).find((item) => item.date === dateKey);
   if (holiday) {
-    return { date: dateKey, type: 'closed', label: holiday.name };
+    return {
+      date: dateKey,
+      type: 'custom',
+      label: holiday.name,
+      badgeColor: SCHEDULE_TYPE_DEFAULT_BADGE_COLOR.closed,
+      fillBadge: false,
+      noMerge: true,
+      additionalSchedules: [{ type: 'closed', noMerge: true }],
+    };
   }
 
   if (formData.recurringClosedDays.includes(weekday)) {

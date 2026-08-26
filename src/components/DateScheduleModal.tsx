@@ -557,8 +557,8 @@ export default function DateScheduleModal({
 }: DateScheduleModalProps) {
   const defaultLabelFontSize = DEFAULT_LABEL_FONT_SIZE[outputFormat];
   const initialFirst = currentSchedule.type === 'closed' && currentSchedule.label === '휴가'
-    ? { ...normalizeEntry(currentSchedule), type: 'vacation' as const }
-    : normalizeEntry(currentSchedule);
+      ? { ...normalizeEntry(currentSchedule), type: 'vacation' as const }
+      : normalizeEntry(currentSchedule);
   const rawAdditional = (currentSchedule.additionalSchedules ?? []).slice(0, MAX_SCHEDULES - 1);
   const initialEntries = [
     initialFirst,
