@@ -56,8 +56,9 @@
 }
 
 .a4 .grid {
+  grid-template-columns: max-content minmax(0, 1fr);
   row-gap: 14px;
-  column-gap: 20px;
+  column-gap: var(--clinic-hours-column-gap, 20px);
 }
 
 .a4 .item em {
@@ -110,9 +111,9 @@
 }
 
 .instagram .grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: max-content minmax(0, 1fr);
   row-gap: 12px;
-  column-gap: 30px;
+  column-gap: var(--clinic-hours-column-gap, 30px);
 }
 
 .instagram .item em {
@@ -138,8 +139,9 @@
 }
 
 .didHorizontal .grid {
-  grid-template-columns: 730px minmax(0, 1fr);
-  gap: 26px 45px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  row-gap: 26px;
+  column-gap: var(--clinic-hours-column-gap, 45px);
 }
 
 .didHorizontal .item em {
@@ -166,7 +168,8 @@
 
 .didVertical .grid {
   grid-template-columns: max-content max-content;
-  gap: 24px 70px;
+  row-gap: 24px;
+  column-gap: var(--clinic-hours-column-gap, 70px);
 }
 
 .didVertical .item em {

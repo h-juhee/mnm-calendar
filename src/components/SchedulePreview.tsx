@@ -121,6 +121,18 @@ const DEFAULT_TITLE_OUTLINE_COLORS: Partial<Record<TemplateId, string>> = {
   scheduleD: '#073a8c',
 };
 
+const CLINIC_HOURS_COLUMN_GAP_CONFIG: Partial<Record<OutputFormat, {
+  min: number;
+  max: number;
+  step: number;
+  defaultValue: number;
+}>> = {
+  instagram: { min: 0, max: 240, step: 2, defaultValue: 30 },
+  a4: { min: 0, max: 280, step: 2, defaultValue: 20 },
+  didHorizontal: { min: 0, max: 500, step: 5, defaultValue: 45 },
+  didVertical: { min: 0, max: 500, step: 5, defaultValue: 70 },
+};
+
 function copyDesignEdits(edits: DesignEdits | undefined): DesignEdits {
   return Object.fromEntries(
     Object.entries(edits ?? {}).map(([id, edit]) => [id, { ...edit }]),
@@ -201,6 +213,12 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     hintAlign: 'left' | 'right';
     hintBelow: boolean;
   } | null>(null);
+  const [clinicHoursGapHandle, setClinicHoursGapHandle] = useState<{
+    left: number;
+    top: number;
+    height: number;
+  } | null>(null);
+  const clinicHoursGapDragRef = useRef<{ startX: number; startGap: number } | null>(null);
   const [showCanvasEditHint, setShowCanvasEditHint] = useState(() => {
     try {
       return localStorage.getItem(CANVAS_EDIT_HINT_KEY) !== 'true';
@@ -279,6 +297,44 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }, [canvasElementSelected, designEdits, outputFormat, scale, selectedLayer]);
+
+  useLayoutEffect(() => {
+    if (
+      !designEditingEnabled
+      || !canvasElementSelected
+      || selectedLayer !== 'clinicHours'
+      || !CLINIC_HOURS_COLUMN_GAP_CONFIG[outputFormat]
+    ) {
+      setClinicHoursGapHandle(null);
+      return;
+    }
+
+    const box = wrapperRef.current?.querySelector<HTMLElement>(`.${styles.scaledBox}`);
+    const target = wrapperRef.current?.querySelector<HTMLElement>('[data-edit-layer="clinicHours"]');
+    const grid = target?.firstElementChild as HTMLElement | null;
+    const firstItem = grid?.children[0] as HTMLElement | undefined;
+    const secondItem = grid?.children[1] as HTMLElement | undefined;
+    if (!box || !target || !firstItem || !secondItem) {
+      setClinicHoursGapHandle(null);
+      return;
+    }
+
+    const update = () => {
+      const boxRect = box.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const firstRect = firstItem.getBoundingClientRect();
+      const secondRect = secondItem.getBoundingClientRect();
+      setClinicHoursGapHandle({
+        left: ((firstRect.right + secondRect.left) / 2) - boxRect.left,
+        top: targetRect.top - boxRect.top,
+        height: targetRect.height,
+      });
+    };
+
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [canvasElementSelected, designEditingEnabled, designEdits, outputFormat, scale, selectedLayer]);
 
   useEffect(() => {
     const formatChanged = currentOutputFormatRef.current !== outputFormat;
@@ -383,6 +439,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
       : selectedLayer === 'hospital'
         ? selectedEdit.text ?? hospital.name
         : '';
+  const clinicHoursColumnGapConfig = CLINIC_HOURS_COLUMN_GAP_CONFIG[outputFormat];
 
   const updateSelected = (patch: DesignEdits[EditableLayerId]) => {
     changeDesignEdits({
@@ -996,6 +1053,73 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
               customBackgroundUrl={customBackgroundUrl}
             />
           </div>
+          {clinicHoursGapHandle && clinicHoursColumnGapConfig && (
+            <div
+              className={styles.clinicHoursGapHandle}
+              style={{
+                left: clinicHoursGapHandle.left,
+                top: clinicHoursGapHandle.top,
+                height: clinicHoursGapHandle.height,
+              }}
+              role="slider"
+              aria-label="진료시간 좌우 간격"
+              aria-valuemin={clinicHoursColumnGapConfig.min}
+              aria-valuemax={clinicHoursColumnGapConfig.max}
+              aria-valuenow={selectedEdit.clinicHoursColumnGap ?? clinicHoursColumnGapConfig.defaultValue}
+              tabIndex={0}
+              data-editor-only
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                event.currentTarget.setPointerCapture(event.pointerId);
+                clinicHoursGapDragRef.current = {
+                  startX: event.clientX,
+                  startGap: selectedEdit.clinicHoursColumnGap ?? clinicHoursColumnGapConfig.defaultValue,
+                };
+                rememberDesignState(currentDesignEditsRef.current);
+              }}
+              onPointerMove={(event) => {
+                const drag = clinicHoursGapDragRef.current;
+                if (!drag) return;
+                const nextGap = Math.min(
+                  clinicHoursColumnGapConfig.max,
+                  Math.max(
+                    clinicHoursColumnGapConfig.min,
+                    drag.startGap + ((event.clientX - drag.startX) / scale),
+                  ),
+                );
+                applyDesignEdits({
+                  ...currentDesignEditsRef.current,
+                  clinicHours: {
+                    ...currentDesignEditsRef.current.clinicHours,
+                    clinicHoursColumnGap: Math.round(nextGap / clinicHoursColumnGapConfig.step)
+                      * clinicHoursColumnGapConfig.step,
+                  },
+                });
+              }}
+              onPointerUp={(event) => {
+                clinicHoursGapDragRef.current = null;
+                event.currentTarget.releasePointerCapture(event.pointerId);
+              }}
+              onPointerCancel={() => {
+                clinicHoursGapDragRef.current = null;
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+                event.preventDefault();
+                const direction = event.key === 'ArrowLeft' ? -1 : 1;
+                const current = selectedEdit.clinicHoursColumnGap ?? clinicHoursColumnGapConfig.defaultValue;
+                updateSelected({
+                  clinicHoursColumnGap: Math.min(
+                    clinicHoursColumnGapConfig.max,
+                    Math.max(clinicHoursColumnGapConfig.min, current + direction * clinicHoursColumnGapConfig.step),
+                  ),
+                });
+              }}
+            >
+              <span aria-hidden="true">↔</span>
+            </div>
+          )}
           {designEditingEnabled && canvasElementSelected && selectionOverlay && (
             <div
               className={styles.canvasSelectionActions}

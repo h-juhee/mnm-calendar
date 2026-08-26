@@ -567,6 +567,53 @@
   align-items: flex-start;
 }
 
+.clinicHoursGapHandle {
+  position: absolute;
+  z-index: 7;
+  width: 30px;
+  min-height: 42px;
+  transform: translateX(-50%);
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.clinicHoursGapHandle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  border-radius: 999px;
+  background: #2f6fed;
+  transform: translateX(-50%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9);
+}
+
+.clinicHoursGapHandle span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #2f6fed;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  box-shadow: 0 2px 7px rgba(20, 45, 90, 0.35);
+  font-size: 15px;
+  font-weight: 700;
+  transform: translate(-50%, -50%);
+}
+
+.clinicHoursGapHandle:focus-visible span {
+  outline: 3px solid rgba(47, 111, 237, 0.35);
+  outline-offset: 2px;
+}
+
 .canvasEditButton {
   height: 34px;
   display: inline-flex;

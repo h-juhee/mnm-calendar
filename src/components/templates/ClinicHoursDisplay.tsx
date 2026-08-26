@@ -5,6 +5,13 @@ import { getValidClinicHoursRows, hasValidLunchHours } from '../../utils/clinicH
 import styles from './ClinicHoursDisplay.module.css';
 import { getFontOption } from '../../types/font';
 
+const DEFAULT_COLUMN_GAPS: Partial<Record<OutputFormat, number>> = {
+  instagram: 30,
+  a4: 20,
+  didHorizontal: 45,
+  didVertical: 70,
+};
+
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
@@ -61,6 +68,7 @@ export default function ClinicHoursDisplay({ value, outputFormat, edit, selected
         fontSize: edit?.fontSize,
         fontFamily: edit?.fontId ? getFontOption(edit.fontId).family : undefined,
         '--clinic-hours-font-weight': edit?.fontWeight,
+        '--clinic-hours-column-gap': `${edit?.clinicHoursColumnGap ?? DEFAULT_COLUMN_GAPS[outputFormat] ?? 0}px`,
       } as CSSProperties}
     >
       <div className={styles.grid}>

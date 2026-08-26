@@ -31,6 +31,8 @@ export interface LayerEdit {
   text?: string;
   scale?: number;
   hidden?: boolean;
+  /** Two-column clinic-hours layout gap in render pixels. */
+  clinicHoursColumnGap?: number;
 }
 
 export type DesignEdits = Partial<Record<EditableLayerId, LayerEdit>>;
