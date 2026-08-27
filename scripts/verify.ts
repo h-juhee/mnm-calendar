@@ -779,6 +779,13 @@ test('서울마인드치과 로고를 병원명으로 자동 매칭한다', () =
   );
 });
 
+test('서울더공감치과 로고를 병원명으로 자동 매칭한다', () => {
+  const expectedLogoUrl = '/logos/%EC%84%9C%EC%9A%B8%EB%8D%94%EA%B3%B5%EA%B0%90%EC%B9%98%EA%B3%BC_%EB%A1%9C%EA%B3%A0.png';
+
+  assert.equal(findHospitalLogoUrl('서울더공감치과'), expectedLogoUrl);
+  assert.equal(findHospitalLogoUrl('서울더공감치과의원'), expectedLogoUrl);
+});
+
 test('사용이력은 마지막 사용 후 30분 미만이면 같은 세션으로 묶는다', () => {
   assert.equal(
     isUsageWithinSession('2026-08-26T01:29:59.999Z', '2026-08-26T01:00:00.000Z', '2026-08-26T01:00:00.000Z'),

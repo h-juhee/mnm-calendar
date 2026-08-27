@@ -19,26 +19,44 @@ async function getAccessToken() {
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
   const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
-  if (clientId && clientSecret && refreshToken) {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token',
-      }),
-    });
-    const result = await response.json();
-    if (!response.ok || !result.access_token) {
-      throw Object.assign(new Error(result.error_description || 'Google OAuth authentication failed.'), { status: response.status });
-    }
-    return result.access_token;
-  }
-
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  const hasServiceAccount = Boolean(email && privateKey);
+
+  if (clientId && clientSecret && refreshToken) {
+    try {
+      const response = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token',
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.access_token) {
+        const authError = Object.assign(
+          new Error(result.error_description || result.error || 'Google OAuth authentication failed.'),
+          { status: response.status, googleError: result.error },
+        );
+        throw authError;
+      }
+      return result.access_token;
+    } catch (error) {
+      if (!hasServiceAccount) {
+        const isRevokedToken = error.googleError === 'invalid_grant'
+          || /expired|revoked|invalid_grant/i.test(error.message ?? '');
+        const message = isRevokedToken
+          ? 'Google Drive OAuth refresh token has expired or been revoked. Regenerate GOOGLE_OAUTH_REFRESH_TOKEN in Vercel, or switch to service account credentials.'
+          : error.message || 'Google OAuth authentication failed.';
+        throw Object.assign(new Error(message), { status: error.status ?? 503 });
+      }
+      console.warn('Google OAuth failed; falling back to service account credentials.', error);
+    }
+  }
+
   if (!email || !privateKey) throw Object.assign(new Error('Google Drive authentication is not configured.'), { status: 503 });
 
   const now = Math.floor(Date.now() / 1000);
