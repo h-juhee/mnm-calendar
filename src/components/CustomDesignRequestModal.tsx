@@ -293,13 +293,11 @@ export default function CustomDesignRequestModal({
     };
 
     try {
-      if (!isScheduleSubmission && !previewNodeRef.current)
+      if (!renderPreviewForFormat && !previewNodeRef.current)
         throw new Error(
           "달력 미리보기를 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.",
         );
-      if (!isScheduleSubmission) {
-        await ensureFontLoaded(formData.fontId as FontId | undefined);
-      }
+      await ensureFontLoaded(formData.fontId as FontId | undefined);
       const selectedFormats = (formData.outputSize ?? []).filter(
         (id): id is OutputFormat => OUTPUT_FORMATS.some((format) => format.id === id),
       );
@@ -320,10 +318,7 @@ export default function CustomDesignRequestModal({
         return image;
       };
 
-      // 진료일정 제출은 텍스트 DB 접수가 우선이므로 큰 이미지는 최초 요청에 포함하지 않습니다.
-      const calendarImage = isScheduleSubmission
-        ? null
-        : await renderFormat(primaryFormat);
+      const calendarImage = await renderFormat(primaryFormat);
       const submissionPayload = {
           ...record,
           submissionId: record.id,
@@ -360,38 +355,10 @@ export default function CustomDesignRequestModal({
       // 일정 제출은 네트워크가 끊겨도 다음 접속 때 복구할 수 있도록 먼저 보관합니다.
       // 같은 id로 재시도하므로 서버에서도 중복 페이지를 만들지 않습니다.
       if (isScheduleSubmission) queuePendingSubmission(submissionPayload);
-      const result = await postSubmissionReliably(submissionPayload);
+      await postSubmissionReliably(submissionPayload);
       if (isScheduleSubmission) clearPendingSubmission(record.id);
 
       if (isScheduleSubmission) {
-        try {
-          if (!renderPreviewForFormat && !previewNodeRef.current) {
-            throw new Error("달력 미리보기를 준비하지 못했습니다.");
-          }
-          await ensureFontLoaded(formData.fontId as FontId | undefined);
-          const notionPreviewImage = await renderFormat('square');
-          const previewResponse = await fetch('/api/notion-custom-request', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'attach-calendar-image',
-              pageId: result.id,
-              calendarImage: notionPreviewImage,
-              calendarImageFilename: buildExportFilename(
-                hospital.name,
-                formData.year,
-                formData.month,
-                'square',
-              ),
-            }),
-          });
-          const previewResult = await previewResponse.json().catch(() => null) as { message?: string } | null;
-          if (!previewResponse.ok) {
-            throw new Error(previewResult?.message ?? `Notion 시안 저장 실패 (HTTP ${previewResponse.status})`);
-          }
-        } catch (notionImageError) {
-          console.error('Notion에 정사각형 달력 시안을 추가하지 못했습니다.', notionImageError);
-        }
         saveCustomDesignRequest(record);
         setIsSubmitted(true);
         return;
