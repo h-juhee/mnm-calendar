@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type RefObject } from "react";
+import { useRef, useState, type ChangeEvent, type RefObject } from "react";
 import type {
   DateSchedule,
   HospitalInfo,
@@ -19,26 +19,12 @@ import Modal from "./Modal";
 import AdditionalInfoFields from "./AdditionalInfoFields";
 import OutputSizeSelector from "./OutputSizeSelector";
 import styles from "./CustomDesignRequestModal.module.css";
-import { saveSubmissionStateToDrive, uploadScheduleImageToDrive } from "../utils/googleDriveUtils";
+import { saveSubmissionStateToDrive } from "../utils/googleDriveUtils";
 import {
   clearPendingSubmission,
   postSubmissionReliably,
   queuePendingSubmission,
 } from "../utils/submissionUtils";
-
-const activeScheduleUploadJobs = new Map<string, AbortController>();
-let previewRenderQueue: Promise<void> = Promise.resolve();
-
-function queuePreviewRender<T>(task: () => Promise<T>): Promise<T> {
-  const result = previewRenderQueue.then(task, task);
-  previewRenderQueue = result.then(() => undefined, () => undefined);
-  return result;
-}
-
-function appendTemplateName(filename: string, name: string): string {
-  const safeTemplateName = name.replace(/[\\/:*?"<>|]/g, '').trim().replace(/\s+/g, '_');
-  return filename.replace(/(\.[^.]+)$/, `_${safeTemplateName}$1`);
-}
 
 interface CustomDesignRequestModalProps {
   submissionMode?: 'schedule' | 'customDesign';
@@ -235,11 +221,6 @@ export default function CustomDesignRequestModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [hasSubmissionFailed, setHasSubmissionFailed] = useState(false);
-  const [imageUploadProgress, setImageUploadProgress] = useState<{
-    completed: number;
-    total: number;
-    status: 'idle' | 'uploading' | 'complete' | 'failed';
-  }>({ completed: 0, total: 0, status: 'idle' });
   const submissionIdentityRef = useRef({
     id: `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     createdAt: new Date().toISOString(),
@@ -271,18 +252,6 @@ export default function CustomDesignRequestModal({
   ].some((value) => value?.trim());
   const isScheduleSubmission = submissionMode === 'schedule';
   const canSubmit = hasOutputSize && (isScheduleSubmission || hasRequestContent) && !isSubmitting;
-  const isFinalizingSubmission = isScheduleSubmission && imageUploadProgress.status === 'uploading';
-
-  useEffect(() => {
-    if (!isFinalizingSubmission) return;
-    const preventLeaving = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', preventLeaving);
-    return () => window.removeEventListener('beforeunload', preventLeaving);
-  }, [isFinalizingSubmission]);
-
   const handleSubmit = async () => {
     if (isSubmitting || isSubmitted) return;
     if (!hasOutputSize) {
@@ -392,143 +361,10 @@ export default function CustomDesignRequestModal({
       // 일정 제출은 네트워크가 끊겨도 다음 접속 때 복구할 수 있도록 먼저 보관합니다.
       // 같은 id로 재시도하므로 서버에서도 중복 페이지를 만들지 않습니다.
       if (isScheduleSubmission) queuePendingSubmission(submissionPayload);
-      const result = await postSubmissionReliably(submissionPayload);
+      await postSubmissionReliably(submissionPayload);
       if (isScheduleSubmission) clearPendingSubmission(record.id);
 
       if (isScheduleSubmission) {
-        // 내용은 먼저 접수하되, 모든 제작 파일 저장이 끝난 뒤에만 완료 화면을 표시합니다.
-        setImageUploadProgress({ completed: 0, total: formatsToRender.length, status: 'uploading' });
-
-        const uploadJobKey = `${hospital.id}:${formData.year}-${formData.month}`;
-        activeScheduleUploadJobs.get(uploadJobKey)?.abort();
-        const uploadController = new AbortController();
-        activeScheduleUploadJobs.set(uploadJobKey, uploadController);
-        const renderCurrentFormat = (format: OutputFormat) => queuePreviewRender(async () => {
-          uploadController.signal.throwIfAborted();
-          const image = await renderFormat(format);
-          uploadController.signal.throwIfAborted();
-          return image;
-        });
-
-        await (async () => {
-          let finalizationError: Error | null = null;
-          try {
-            if (!previewNodeRef.current) {
-              throw new Error("달력 미리보기를 준비하지 못했습니다.");
-            }
-            await ensureFontLoaded(formData.fontId as FontId | undefined);
-
-            // 빠른 DB 접수 후 대표 정사각형 시안을 생성해 방금 만든 Notion 페이지에 추가합니다.
-            if (result?.id) {
-              try {
-                const notionPreviewImage = await renderCurrentFormat(primaryFormat);
-                // Notion의 네트워크 업로드는 Drive 이미지 생성·저장과 동시에 진행합니다.
-                void (async () => {
-                  try {
-                    const previewResponse = await fetch('/api/notion-custom-request', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      signal: uploadController.signal,
-                      body: JSON.stringify({
-                        action: 'attach-calendar-image',
-                        pageId: result.id,
-                        calendarImage: notionPreviewImage,
-                        calendarImageFilename: buildExportFilename(
-                          hospital.name,
-                          formData.year,
-                          formData.month,
-                          primaryFormat,
-                        ),
-                      }),
-                    });
-                    const previewResult = await previewResponse.json().catch(() => null) as { message?: string } | null;
-                    if (!previewResponse.ok) {
-                      throw new Error(previewResult?.message ?? `Notion 시안 저장 실패 (HTTP ${previewResponse.status})`);
-                    }
-                  } catch (notionImageError) {
-                    if (uploadController.signal.aborted) return;
-                    console.error('Notion에 달력 시안을 추가하지 못했습니다.', notionImageError);
-                  }
-                })();
-              } catch (notionImageError) {
-                if (uploadController.signal.aborted) throw notionImageError;
-                console.error('Notion용 달력 시안을 생성하지 못했습니다.', notionImageError);
-              }
-            }
-
-            const failedFormats: string[] = [];
-            const formatsToUpload = formatsToRender.includes(primaryFormat)
-              ? [primaryFormat, ...formatsToRender.filter((format) => format !== primaryFormat)]
-              : formatsToRender;
-            const uploadRenderedFormat = async (format: OutputFormat, image: string): Promise<boolean> => {
-              try {
-                await uploadScheduleImageToDrive({
-                  hospitalName: hospital.name,
-                  year: formData.year,
-                  month: formData.month,
-                  filename: appendTemplateName(
-                    buildExportFilename(hospital.name, formData.year, formData.month, format),
-                    templateName,
-                  ),
-                  image,
-                  signal: uploadController.signal,
-                });
-                setImageUploadProgress((current) => ({
-                  ...current,
-                  completed: Math.min(current.completed + 1, current.total),
-                }));
-                return true;
-              } catch (formatError) {
-                console.error(`${format} Drive 이미지 저장에 실패했습니다.`, formatError);
-                const formatLabel = OUTPUT_FORMATS.find((item) => item.id === format)?.label ?? format;
-                const reason = formatError instanceof Error ? formatError.message : '알 수 없는 오류';
-                failedFormats.push(`${formatLabel}: ${reason}`);
-                return false;
-              }
-            };
-
-            // 첫 업로드로 연/월/병원 폴더를 확정한 뒤, 이미지 생성과 네트워크 업로드를
-            // 겹쳐 수행합니다. 캡처는 화면 충돌을 막기 위해 순차, 업로드는 최대 2개 병렬입니다.
-            let folderReady = false;
-            const pendingUploads: Promise<boolean>[] = [];
-            for (const format of formatsToUpload) {
-              let image: string;
-              try {
-                image = await renderCurrentFormat(format);
-              } catch (renderError) {
-                const formatLabel = OUTPUT_FORMATS.find((item) => item.id === format)?.label ?? format;
-                const reason = renderError instanceof Error ? renderError.message : '알 수 없는 오류';
-                failedFormats.push(`${formatLabel}: ${reason}`);
-                continue;
-              }
-
-              if (!folderReady) {
-                folderReady = await uploadRenderedFormat(format, image);
-                continue;
-              }
-
-              pendingUploads.push(uploadRenderedFormat(format, image));
-              if (pendingUploads.length >= 2) {
-                await Promise.all(pendingUploads.splice(0, pendingUploads.length));
-              }
-            }
-            await Promise.all(pendingUploads);
-            if (failedFormats.length > 0) {
-              throw new Error(failedFormats.join(' / '));
-            }
-            setImageUploadProgress((current) => ({ ...current, status: 'complete' }));
-          } catch (driveError) {
-            if (uploadController.signal.aborted) throw driveError;
-            console.error('진료일정 이미지를 Drive에 저장하지 못했습니다.', driveError);
-            setImageUploadProgress((current) => ({ ...current, status: 'failed' }));
-            finalizationError = new Error('제출을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.');
-          }
-
-          if (activeScheduleUploadJobs.get(uploadJobKey) === uploadController) {
-            activeScheduleUploadJobs.delete(uploadJobKey);
-          }
-          if (finalizationError) throw finalizationError;
-        })();
         saveCustomDesignRequest(record);
         setIsSubmitted(true);
         return;
@@ -559,38 +395,12 @@ export default function CustomDesignRequestModal({
       event.currentTarget.scrollHeight > 180 ? "auto" : "hidden";
   };
 
-  if (isFinalizingSubmission) {
-    return (
-      <Modal
-        title="진료일정 제출 중"
-        onClose={() => undefined}
-        closable={false}
-        backdropClassName={styles.submittingBackdrop}
-      >
-        <div className={styles.successWrap} role="status" aria-live="polite">
-          <p className={styles.successText}>
-            진료일정을 제출하고 있습니다.<br />완료될 때까지 잠시만 기다려 주세요.
-          </p>
-          <p className={styles.preparationProgress}>
-            제출 자료 준비 중 · {imageUploadProgress.completed}/{imageUploadProgress.total}
-          </p>
-          <button type="button" className={`${styles.button} ${styles.buttonPrimary}`} disabled>
-            제출 중…
-          </button>
-        </div>
-      </Modal>
-    );
-  }
-
   if (isSubmitted) {
     return (
       <Modal
         title={isScheduleSubmission ? "진료일정 제출" : "맞춤 디자인 요청"}
-        onClose={() => {
-          if (!isFinalizingSubmission) onClose();
-        }}
-        closable={!isFinalizingSubmission}
-        backdropClassName={isFinalizingSubmission ? styles.submittingBackdrop : undefined}
+        onClose={onClose}
+        closable
       >
         <div className={styles.successWrap}>
           <img
