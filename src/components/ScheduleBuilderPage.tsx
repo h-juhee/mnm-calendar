@@ -141,6 +141,12 @@ export default function ScheduleBuilderPage({ appMode }: ScheduleBuilderPageProp
 
   const handleHospitalReset = useCallback(() => {
     removeHospitalInfo();
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('submission')) {
+      url.searchParams.delete('submission');
+      window.location.assign(url.toString());
+      return;
+    }
     setHospital(null);
   }, []);
 
