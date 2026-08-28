@@ -305,7 +305,7 @@ export default function CustomDesignRequestModal({
       );
       const formatsToRender = selectedFormats.length > 0 ? selectedFormats : [outputFormat];
       // 원장용 진료일정 DB에는 원장이 실제로 확인한 정사각형 미리보기를 대표 이미지로 올립니다.
-      // 선택한 A4·DID 등의 규격은 아래 Drive 저장 단계에서 각각 별도 생성합니다.
+      // Drive에는 화면 복원에 필요한 JSON만 저장합니다.
       const primaryFormat: OutputFormat = isScheduleSubmission
         ? 'square'
         : formatsToRender.includes('square') ? 'square' : formatsToRender[0];
@@ -320,8 +320,7 @@ export default function CustomDesignRequestModal({
         return image;
       };
 
-      // 진료일정 제출은 DB 접수가 우선입니다. 이미지는 Notion 요청에 포함하지 않고
-      // 접수 성공 화면을 먼저 보여준 뒤 Google Drive와 사용이력을 백그라운드 처리합니다.
+      // 진료일정 제출은 텍스트 DB 접수가 우선이므로 큰 이미지는 최초 요청에 포함하지 않습니다.
       const calendarImage = isScheduleSubmission
         ? null
         : await renderFormat(primaryFormat);
@@ -361,10 +360,38 @@ export default function CustomDesignRequestModal({
       // 일정 제출은 네트워크가 끊겨도 다음 접속 때 복구할 수 있도록 먼저 보관합니다.
       // 같은 id로 재시도하므로 서버에서도 중복 페이지를 만들지 않습니다.
       if (isScheduleSubmission) queuePendingSubmission(submissionPayload);
-      await postSubmissionReliably(submissionPayload);
+      const result = await postSubmissionReliably(submissionPayload);
       if (isScheduleSubmission) clearPendingSubmission(record.id);
 
       if (isScheduleSubmission) {
+        try {
+          if (!renderPreviewForFormat && !previewNodeRef.current) {
+            throw new Error("달력 미리보기를 준비하지 못했습니다.");
+          }
+          await ensureFontLoaded(formData.fontId as FontId | undefined);
+          const notionPreviewImage = await renderFormat('square');
+          const previewResponse = await fetch('/api/notion-custom-request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'attach-calendar-image',
+              pageId: result.id,
+              calendarImage: notionPreviewImage,
+              calendarImageFilename: buildExportFilename(
+                hospital.name,
+                formData.year,
+                formData.month,
+                'square',
+              ),
+            }),
+          });
+          const previewResult = await previewResponse.json().catch(() => null) as { message?: string } | null;
+          if (!previewResponse.ok) {
+            throw new Error(previewResult?.message ?? `Notion 시안 저장 실패 (HTTP ${previewResponse.status})`);
+          }
+        } catch (notionImageError) {
+          console.error('Notion에 정사각형 달력 시안을 추가하지 못했습니다.', notionImageError);
+        }
         saveCustomDesignRequest(record);
         setIsSubmitted(true);
         return;

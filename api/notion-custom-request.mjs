@@ -204,7 +204,6 @@ function blocksFor(request) {
     request.lunchHours ? `- 휴게시간 : ${request.lunchHours}` : '',
   ].filter(Boolean).join('\n');
   const entries = [
-    ['제출 작업 ID', request.submissionId],
     ['디자이너 작업 링크', request.designerUrl],
     ['요청 내용', request.requestDetails],
     ['다음달 이벤트', request.nextMonthEvent],
