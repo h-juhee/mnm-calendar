@@ -19,7 +19,7 @@ import Modal from "./Modal";
 import AdditionalInfoFields from "./AdditionalInfoFields";
 import OutputSizeSelector from "./OutputSizeSelector";
 import styles from "./CustomDesignRequestModal.module.css";
-import { uploadScheduleImageToDrive } from "../utils/googleDriveUtils";
+import { saveSubmissionStateToDrive, uploadScheduleImageToDrive } from "../utils/googleDriveUtils";
 import {
   clearPendingSubmission,
   postSubmissionReliably,
@@ -358,6 +358,10 @@ export default function CustomDesignRequestModal({
         : await renderFormat(primaryFormat);
       const submissionPayload = {
           ...record,
+          submissionId: record.id,
+          designerUrl: import.meta.env.VITE_INTERNAL_APP_URL
+            ? `${String(import.meta.env.VITE_INTERNAL_APP_URL).replace(/\/$/, '')}/?submission=${encodeURIComponent(record.id)}`
+            : undefined,
           ...(calendarImage
             ? {
                 calendarImage,
@@ -370,6 +374,21 @@ export default function CustomDesignRequestModal({
               }
             : {}),
       };
+      if (isScheduleSubmission) {
+        await saveSubmissionStateToDrive({
+          hospitalName: hospital.name,
+          year: formData.year,
+          month: formData.month,
+          submissionId: record.id,
+          state: {
+            version: 1,
+            submissionId: record.id,
+            savedAt: new Date().toISOString(),
+            hospital,
+            formData,
+          },
+        });
+      }
       // 일정 제출은 네트워크가 끊겨도 다음 접속 때 복구할 수 있도록 먼저 보관합니다.
       // 같은 id로 재시도하므로 서버에서도 중복 페이지를 만들지 않습니다.
       if (isScheduleSubmission) queuePendingSubmission(submissionPayload);
@@ -713,7 +732,7 @@ export default function CustomDesignRequestModal({
               setSpecialNotes(event.target.value);
               resizeTextarea(event);
             }}
-            placeholder="예: 임시공휴일, 대체공휴일은 단축진료하지않고 평상시와 동일하게 운영"
+            placeholder="예: 임시공휴일, 대체공휴일은 단축 진료하지 않고 평상시와 동일하게 운영"
           />
         </div>
 

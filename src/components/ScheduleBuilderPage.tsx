@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import type { HospitalInfo } from '../types/schedule';
+import type { HospitalInfo, ScheduleFormData } from '../types/schedule';
 import { TEMPLATES } from '../types/schedule';
 import { DEFAULT_FONT_ID, type FontId } from '../types/font';
 import { useScheduleBuilder } from '../hooks/useScheduleBuilder';
@@ -22,7 +22,8 @@ import { getOutputFormatMeta, type OutputFormat } from '../types/outputFormat';
 import { renderNodeAsPng } from '../utils/exportUtils';
 import ClinicHoursEditor from './ClinicHoursEditor';
 import { deleteCustomBackground, loadCustomBackground, migrateCustomBackground, saveCustomBackground } from '../utils/backgroundStorage';
-import { removeHospitalData, removeHospitalInfo, saveHospitalInfo } from '../utils/storageUtils';
+import { removeHospitalData, removeHospitalInfo, saveHospitalInfo, saveScheduleDraft } from '../utils/storageUtils';
+import { listSubmissionStatesFromDrive, loadSubmissionStateFromDrive, type SharedSubmissionSummary } from '../utils/googleDriveUtils';
 import { getClinicHoursWithExample, parseNotionClinicHours } from '../utils/clinicHoursUtils';
 import { flushPendingUsageLogs } from '../utils/usageLogUtils';
 import { flushPendingSubmissions } from '../utils/submissionUtils';
@@ -62,6 +63,52 @@ interface ScheduleBuilderPageProps {
 export default function ScheduleBuilderPage({ appMode }: ScheduleBuilderPageProps) {
   const [hospital, setHospital] = useState<HospitalInfo | null>(null);
   const [isCustomerGuideOpen, setCustomerGuideOpen] = useState(false);
+  const [sharedSubmissionStatus, setSharedSubmissionStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [sharedSubmissionError, setSharedSubmissionError] = useState('');
+  const [sharedSubmissions, setSharedSubmissions] = useState<SharedSubmissionSummary[]>([]);
+  const [sharedSubmissionsLoading, setSharedSubmissionsLoading] = useState(appMode === 'internal');
+
+  useEffect(() => {
+    if (appMode !== 'internal') return;
+    const submissionId = new URLSearchParams(window.location.search).get('submission');
+    if (!submissionId) return;
+    let cancelled = false;
+    setSharedSubmissionStatus('loading');
+    void loadSubmissionStateFromDrive<HospitalInfo, ScheduleFormData>(submissionId)
+      .then((shared) => {
+        if (cancelled) return;
+        if (shared.version !== 1 || !shared.hospital?.id || !shared.formData?.hospitalId) {
+          throw new Error('제출 작업 데이터 형식이 올바르지 않습니다.');
+        }
+        saveHospitalInfo(shared.hospital);
+        saveScheduleDraft(shared.hospital.id, shared.formData.year, shared.formData.month, shared.formData);
+        setHospital(shared.hospital);
+        setSharedSubmissionStatus('idle');
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setSharedSubmissionError(error instanceof Error ? error.message : '제출 작업을 불러오지 못했습니다.');
+        setSharedSubmissionStatus('error');
+      });
+    return () => { cancelled = true; };
+  }, [appMode]);
+
+  useEffect(() => {
+    if (appMode !== 'internal' || new URLSearchParams(window.location.search).has('submission')) return;
+    let cancelled = false;
+    setSharedSubmissionsLoading(true);
+    void listSubmissionStatesFromDrive()
+      .then((items) => {
+        if (!cancelled) setSharedSubmissions(items);
+      })
+      .catch((error) => {
+        if (!cancelled) setSharedSubmissionError(error instanceof Error ? error.message : '제출 목록을 불러오지 못했습니다.');
+      })
+      .finally(() => {
+        if (!cancelled) setSharedSubmissionsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [appMode]);
 
   const handleHospitalChange = useCallback((nextHospital: HospitalInfo) => {
     saveHospitalInfo(nextHospital);
@@ -106,12 +153,33 @@ export default function ScheduleBuilderPage({ appMode }: ScheduleBuilderPageProp
     }
   }, []);
 
+  if (!hospital && sharedSubmissionStatus === 'loading') {
+    return <div role="status" style={{ padding: 32, textAlign: 'center' }}>원장님이 제출한 작업을 불러오는 중입니다…</div>;
+  }
+
+  if (!hospital && sharedSubmissionStatus === 'error') {
+    return (
+      <div role="alert" style={{ padding: 32, textAlign: 'center' }}>
+        <p>{sharedSubmissionError}</p>
+        <button type="button" onClick={() => window.location.assign(window.location.pathname)}>일반 작업 화면으로 이동</button>
+      </div>
+    );
+  }
+
   if (!hospital) {
     return (
       <HospitalIntakeForm
         onSubmit={handleHospitalSubmit}
         onDeleteHospital={handleHospitalDelete}
         showRecentHospitals={appMode === 'internal'}
+        sharedSubmissions={sharedSubmissions}
+        sharedSubmissionsLoading={sharedSubmissionsLoading}
+        sharedSubmissionsError={sharedSubmissionError}
+        onOpenSharedSubmission={(submissionId) => {
+          const url = new URL(window.location.href);
+          url.searchParams.set('submission', submissionId);
+          window.location.assign(url.toString());
+        }}
       />
     );
   }

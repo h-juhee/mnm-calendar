@@ -172,6 +172,85 @@ async function uploadPng(token, folderId, filename, png) {
   });
 }
 
+async function saveSubmissionState(token, folderId, submissionId, state) {
+  const filename = `_submission_${submissionId}.json`;
+  const existing = await findSubmissionStateFile(token, submissionId);
+  const metadata = {
+    name: filename,
+    mimeType: 'application/json',
+    appProperties: {
+      mnnSubmissionId: submissionId,
+      hospitalName: String(state?.hospital?.name ?? '').slice(0, 120),
+      year: String(state?.formData?.year ?? ''),
+      month: String(state?.formData?.month ?? ''),
+      savedAt: String(state?.savedAt ?? '').slice(0, 40),
+    },
+    ...(existing ? {} : { parents: [folderId] }),
+  };
+  const boundary = `mnn-calendar-state-${crypto.randomUUID()}`;
+  const body = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}`),
+    Buffer.from(`\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(state)}`),
+    Buffer.from(`\r\n--${boundary}--`),
+  ]);
+  const target = existing
+    ? `${DRIVE_UPLOAD_API}/files/${encodeURIComponent(existing.id)}?uploadType=multipart&supportsAllDrives=true&fields=id,name`
+    : `${DRIVE_UPLOAD_API}/files?uploadType=multipart&supportsAllDrives=true&fields=id,name`;
+  return driveRequest(token, target, {
+    method: existing ? 'PATCH' : 'POST',
+    headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body,
+  });
+}
+
+async function findSubmissionStateFile(token, submissionId) {
+  const query = `appProperties has { key='mnnSubmissionId' and value='${escapeDriveQuery(submissionId)}' } and trashed = false`;
+  const params = new URLSearchParams({
+    q: query,
+    fields: 'files(id,name,mimeType)',
+    pageSize: '2',
+    spaces: 'drive',
+    supportsAllDrives: 'true',
+    includeItemsFromAllDrives: 'true',
+  });
+  const result = await driveRequest(token, `/files?${params}`);
+  return result.files?.[0] ?? null;
+}
+
+async function listSubmissionStates(token) {
+  const query = `name contains '_submission_req-' and mimeType = 'application/json' and trashed = false`;
+  const params = new URLSearchParams({
+    q: query,
+    fields: 'files(id,name,createdTime,modifiedTime,appProperties)',
+    pageSize: '100',
+    orderBy: 'modifiedTime desc',
+    spaces: 'drive',
+    supportsAllDrives: 'true',
+    includeItemsFromAllDrives: 'true',
+  });
+  const result = await driveRequest(token, `/files?${params}`);
+  return (result.files ?? []).map((file) => ({
+    submissionId: file.appProperties?.mnnSubmissionId ?? /^_submission_(req-[A-Za-z0-9-]+)\.json$/.exec(file.name)?.[1] ?? '',
+    hospitalName: file.appProperties?.hospitalName ?? '병원명 없음',
+    year: Number(file.appProperties?.year) || undefined,
+    month: Number(file.appProperties?.month) || undefined,
+    savedAt: file.appProperties?.savedAt || file.modifiedTime || file.createdTime,
+  })).filter((item) => item.submissionId);
+}
+
+async function loadSubmissionState(token, submissionId) {
+  const file = await findSubmissionStateFile(token, submissionId);
+  if (!file) throw Object.assign(new Error('Submission state was not found.'), { status: 404 });
+  const response = await fetch(`${DRIVE_API}/files/${encodeURIComponent(file.id)}?alt=media&supportsAllDrives=true`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const state = await response.json().catch(() => null);
+  if (!response.ok || !state) {
+    throw Object.assign(new Error('Submission state could not be loaded.'), { status: response.status || 500 });
+  }
+  return state;
+}
+
 async function startResumableUpload(token, folderId, filename, totalSize) {
   const response = await fetch(`${DRIVE_UPLOAD_API}/files?uploadType=resumable&supportsAllDrives=true&fields=id,name,webViewLink`, {
     method: 'POST',
@@ -241,7 +320,34 @@ export default async function handler(req, res) {
         return sendJson(res, 400, { message: 'Drive upload request body is invalid.' });
       }
     }
-    const { action, hospitalName, year, month, filename, image, totalSize, uploadUrl, offset, chunk } = request;
+    const { action, hospitalName, year, month, filename, image, totalSize, uploadUrl, offset, chunk, submissionId, state } = request;
+    if (action === 'list-states') {
+      const token = await getAccessToken();
+      return sendJson(res, 200, { ok: true, submissions: await listSubmissionStates(token) });
+    }
+    if (action === 'load-state') {
+      if (typeof submissionId !== 'string' || !/^req-[A-Za-z0-9-]+$/.test(submissionId)) {
+        return sendJson(res, 400, { message: 'Submission ID is invalid.' });
+      }
+      const token = await getAccessToken();
+      return sendJson(res, 200, { ok: true, state: await loadSubmissionState(token, submissionId) });
+    }
+
+    if (action === 'save-state') {
+      if (!hospitalName || !Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12
+        || typeof submissionId !== 'string' || !/^req-[A-Za-z0-9-]+$/.test(submissionId)
+        || !state || typeof state !== 'object') {
+        return sendJson(res, 400, { message: 'Submission state fields are missing or invalid.' });
+      }
+      const serialized = JSON.stringify(state);
+      if (Buffer.byteLength(serialized) > 4 * 1024 * 1024) {
+        return sendJson(res, 413, { message: 'Submission state is too large.' });
+      }
+      const token = await getAccessToken();
+      const hospitalFolderId = await ensureScheduleFolder(token, rootFolderId, year, month, hospitalName);
+      const file = await saveSubmissionState(token, hospitalFolderId, submissionId, state);
+      return sendJson(res, 200, { ok: true, fileId: file.id });
+    }
     if (action === 'chunk') {
       if (!validateUploadUrl(uploadUrl) || !Number.isInteger(offset) || !Number.isInteger(totalSize) || totalSize <= 0 || typeof chunk !== 'string') {
         return sendJson(res, 400, { message: 'Drive upload chunk fields are missing or invalid.' });

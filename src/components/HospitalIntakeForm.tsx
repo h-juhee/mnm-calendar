@@ -4,16 +4,29 @@ import { withAutoMatchedLogo } from '../utils/hospitalLogoUtils';
 import { createHospitalId, listHospitalInfos } from '../utils/storageUtils';
 import Modal from './Modal';
 import styles from './HospitalIntakeForm.module.css';
+import type { SharedSubmissionSummary } from '../utils/googleDriveUtils';
 
 interface HospitalIntakeFormProps {
   onSubmit: (hospital: HospitalInfo) => void;
   onDeleteHospital: (hospital: HospitalInfo) => Promise<boolean>;
   showRecentHospitals?: boolean;
+  sharedSubmissions?: SharedSubmissionSummary[];
+  sharedSubmissionsLoading?: boolean;
+  sharedSubmissionsError?: string;
+  onOpenSharedSubmission?: (submissionId: string) => void;
 }
 
 const DEFAULT_PRIMARY_COLOR = '#2f6fed';
 
-export default function HospitalIntakeForm({ onSubmit, onDeleteHospital, showRecentHospitals = false }: HospitalIntakeFormProps) {
+export default function HospitalIntakeForm({
+  onSubmit,
+  onDeleteHospital,
+  showRecentHospitals = false,
+  sharedSubmissions = [],
+  sharedSubmissionsLoading = false,
+  sharedSubmissionsError = '',
+  onOpenSharedSubmission,
+}: HospitalIntakeFormProps) {
   const [recentHospitals, setRecentHospitals] = useState(() => listHospitalInfos());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -70,6 +83,39 @@ export default function HospitalIntakeForm({ onSubmit, onDeleteHospital, showRec
             진료일정 제작과 맞춤 제작 요청에 필요한 기본 정보예요.
           </p>
         </div>
+
+        {showRecentHospitals && (
+          <section className={styles.recentSection} aria-labelledby="submitted-hospitals-title">
+            <div className={styles.recentHeading}>
+              <h3 id="submitted-hospitals-title">원장님 제출 데이터</h3>
+              <span>제출된 화면을 그대로 불러옵니다</span>
+            </div>
+            {sharedSubmissionsLoading && <p>제출 데이터를 불러오는 중입니다…</p>}
+            {sharedSubmissionsError && <p className={styles.error}>{sharedSubmissionsError}</p>}
+            {!sharedSubmissionsLoading && !sharedSubmissionsError && sharedSubmissions.length === 0 && (
+              <p>아직 불러올 수 있는 제출 데이터가 없습니다.</p>
+            )}
+            {sharedSubmissions.length > 0 && (
+              <div className={styles.recentList}>
+                {sharedSubmissions.map((submission) => (
+                  <div className={styles.recentItem} key={submission.submissionId}>
+                    <button
+                      type="button"
+                      className={styles.recentSelect}
+                      onClick={() => onOpenSharedSubmission?.(submission.submissionId)}
+                    >
+                      <strong>{submission.hospitalName} 데이터 보기</strong>
+                      <span>
+                        {submission.year && submission.month ? `${submission.year}년 ${submission.month}월 · ` : ''}
+                        {submission.savedAt ? new Date(submission.savedAt).toLocaleString('ko-KR') : '제출 데이터'}
+                      </span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {showRecentHospitals && recentHospitals.length > 0 && (
           <section className={styles.recentSection} aria-labelledby="recent-hospitals-title">

@@ -7,6 +7,22 @@ export interface DriveScheduleImage {
   signal?: AbortSignal;
 }
 
+export interface SharedSubmissionState<THospital = unknown, TFormData = unknown> {
+  version: 1;
+  submissionId: string;
+  savedAt: string;
+  hospital: THospital;
+  formData: TFormData;
+}
+
+export interface SharedSubmissionSummary {
+  submissionId: string;
+  hospitalName: string;
+  year?: number;
+  month?: number;
+  savedAt?: string;
+}
+
 // Base64와 JSON 인코딩 후에도 Vercel 요청 본문 제한 이내인 2MB 단위로 전송합니다.
 // 일반적인 출력 이미지는 한 번의 조각 요청으로 끝나 API 왕복 횟수를 줄일 수 있습니다.
 const DRIVE_CHUNK_SIZE = 2 * 1024 * 1024;
@@ -79,4 +95,37 @@ export async function uploadScheduleImageToDrive(payload: DriveScheduleImage): P
     offset = result?.nextOffset ?? offset + chunk.size;
     if (result?.done) break;
   }
+}
+
+export async function saveSubmissionStateToDrive(payload: {
+  hospitalName: string;
+  year: number;
+  month: number;
+  submissionId: string;
+  state: SharedSubmissionState;
+  signal?: AbortSignal;
+}): Promise<void> {
+  await postDriveRequest({
+    action: 'save-state',
+    hospitalName: payload.hospitalName,
+    year: payload.year,
+    month: payload.month,
+    submissionId: payload.submissionId,
+    state: payload.state,
+  }, payload.signal);
+}
+
+export async function loadSubmissionStateFromDrive<THospital, TFormData>(submissionId: string): Promise<SharedSubmissionState<THospital, TFormData>> {
+  const result = await postDriveRequest({ action: 'load-state', submissionId }) as {
+    state?: SharedSubmissionState<THospital, TFormData>;
+  } | null;
+  if (!result?.state) throw new Error('제출 작업 데이터를 불러오지 못했습니다.');
+  return result.state;
+}
+
+export async function listSubmissionStatesFromDrive(): Promise<SharedSubmissionSummary[]> {
+  const result = await postDriveRequest({ action: 'list-states' }) as {
+    submissions?: SharedSubmissionSummary[];
+  } | null;
+  return Array.isArray(result?.submissions) ? result.submissions : [];
 }
