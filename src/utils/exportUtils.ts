@@ -25,6 +25,14 @@ interface LoadedBackground {
 }
 
 async function loadBackgroundSource(image: HTMLImageElement): Promise<LoadedBackground> {
+  if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
+    return {
+      source: image,
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+      dispose: () => undefined,
+    };
+  }
   // Base64는 고해상도 배경의 메모리를 크게 늘립니다. Blob을 직접 디코딩해
   // 모바일 WebKit에서도 배경이 누락되지 않도록 별도 레이어로 합성합니다.
   const response = await fetch(image.currentSrc || image.src, { cache: 'force-cache' });
@@ -44,6 +52,42 @@ async function loadBackgroundSource(image: HTMLImageElement): Promise<LoadedBack
     height: loadedImage.naturalHeight,
     dispose: () => URL.revokeObjectURL(objectUrl),
   };
+}
+
+interface EmbeddedImage {
+  image: HTMLImageElement;
+  src: string | null;
+  srcset: string | null;
+}
+
+function embedLoadedImages(node: HTMLElement): EmbeddedImage[] {
+  const embedded: EmbeddedImage[] = [];
+  Array.from(node.querySelectorAll<HTMLImageElement>('img')).forEach((image) => {
+    if (!image.complete || image.naturalWidth <= 0 || image.naturalHeight <= 0 || image.src.startsWith('data:')) return;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext('2d');
+      if (!context) return;
+      context.drawImage(image, 0, 0);
+      embedded.push({ image, src: image.getAttribute('src'), srcset: image.getAttribute('srcset') });
+      image.removeAttribute('srcset');
+      image.src = canvas.toDataURL('image/png');
+    } catch {
+      // Cross-origin images that cannot be drawn keep their original URL.
+    }
+  });
+  return embedded;
+}
+
+function restoreEmbeddedImages(embedded: EmbeddedImage[]): void {
+  embedded.forEach(({ image, src, srcset }) => {
+    if (src === null) image.removeAttribute('src');
+    else image.setAttribute('src', src);
+    if (srcset === null) image.removeAttribute('srcset');
+    else image.setAttribute('srcset', srcset);
+  });
 }
 
 function drawImageCover(
@@ -72,6 +116,7 @@ export async function renderNodeAsPng(node: HTMLElement, outputFormat: OutputFor
   selectedLayers.forEach((layer) => layer.removeAttribute('data-selected'));
   const backgroundImages = Array.from(node.querySelectorAll<HTMLImageElement>('img[data-export-background]'));
   const backgroundSources = await Promise.all(backgroundImages.map(loadBackgroundSource));
+  const embeddedImages = embedLoadedImages(node);
   const originalVisibility = backgroundImages.map((image) => image.style.visibility);
   backgroundImages.forEach((image) => { image.style.visibility = 'hidden'; });
 
@@ -82,6 +127,7 @@ export async function renderNodeAsPng(node: HTMLElement, outputFormat: OutputFor
       pixelRatio,
       backgroundColor: 'rgba(0, 0, 0, 0)',
       style: { transform: 'none', width: `${renderWidth}px`, height: `${renderHeight}px` },
+      skipFonts: true,
     });
     const canvas = document.createElement('canvas');
     canvas.width = format.width;
@@ -98,6 +144,7 @@ export async function renderNodeAsPng(node: HTMLElement, outputFormat: OutputFor
   } finally {
     backgroundImages.forEach((image, index) => { image.style.visibility = originalVisibility[index]; });
     backgroundSources.forEach(({ dispose }) => dispose());
+    restoreEmbeddedImages(embeddedImages);
     selectedLayers.forEach((layer) => layer.setAttribute('data-selected', 'true'));
   }
 }
