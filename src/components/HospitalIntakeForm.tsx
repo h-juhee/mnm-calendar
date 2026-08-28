@@ -1,7 +1,7 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
 import type { HospitalInfo } from '../types/schedule';
 import { withAutoMatchedLogo } from '../utils/hospitalLogoUtils';
-import { createHospitalId, listHospitalInfos } from '../utils/storageUtils';
+import { createHospitalId, listHospitalInfos, loadHospitalWorkSummary } from '../utils/storageUtils';
 import Modal from './Modal';
 import styles from './HospitalIntakeForm.module.css';
 import type { SharedSubmissionSummary } from '../utils/googleDriveUtils';
@@ -32,6 +32,10 @@ export default function HospitalIntakeForm({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [directorName, setDirectorName] = useState('');
+  const [submissionSearch, setSubmissionSearch] = useState('');
+  const [expandedSubmissionGroups, setExpandedSubmissionGroups] = useState<Set<string>>(() => new Set());
+  const [recentHospitalSearch, setRecentHospitalSearch] = useState('');
+  const [expandedRecentHospitalGroups, setExpandedRecentHospitalGroups] = useState<Set<string>>(() => new Set());
   const [touched, setTouched] = useState({ name: false, directorName: false });
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -46,6 +50,36 @@ export default function HospitalIntakeForm({
     ? getError(directorName, '대표원장 성함을 입력해 주세요.')
     : null;
   const isValid = name.trim().length > 0 && directorName.trim().length > 0;
+  const submissionGroups = useMemo(() => {
+    const query = submissionSearch.trim().toLocaleLowerCase('ko-KR').replace(/\s/g, '');
+    const grouped = new Map<string, SharedSubmissionSummary[]>();
+    sharedSubmissions.forEach((submission) => {
+      const searchableName = submission.hospitalName.toLocaleLowerCase('ko-KR').replace(/\s/g, '');
+      if (query && !searchableName.includes(query)) return;
+      const groupKey = `${searchableName}:${submission.year ?? ''}:${submission.month ?? ''}`;
+      const items = grouped.get(groupKey) ?? [];
+      items.push(submission);
+      grouped.set(groupKey, items);
+    });
+    return Array.from(grouped, ([key, items]) => ({
+      key,
+      items: items.sort((left, right) => Date.parse(right.savedAt ?? '') - Date.parse(left.savedAt ?? '')),
+    })).sort((left, right) => Date.parse(right.items[0]?.savedAt ?? '') - Date.parse(left.items[0]?.savedAt ?? ''));
+  }, [sharedSubmissions, submissionSearch]);
+  const recentHospitalGroups = useMemo(() => {
+    const query = recentHospitalSearch.trim().toLocaleLowerCase('ko-KR').replace(/\s/g, '');
+    const grouped = new Map<string, HospitalInfo[]>();
+    recentHospitals.forEach((hospital) => {
+      const key = hospital.name.normalize('NFC').toLocaleLowerCase('ko-KR').replace(/\s/g, '');
+      if (query && !key.includes(query)) return;
+      grouped.set(key, [...(grouped.get(key) ?? []), hospital]);
+    });
+    return Array.from(grouped, ([key, hospitals]) => ({ key, hospitals, latest: hospitals[0] }));
+  }, [recentHospitals, recentHospitalSearch]);
+
+  const formatSubmittedAt = (value?: string) => value
+    ? new Date(value).toLocaleString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : '제출일 없음';
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -90,28 +124,65 @@ export default function HospitalIntakeForm({
               <h3 id="submitted-hospitals-title">원장님 제출 데이터</h3>
               <span>제출된 화면을 그대로 불러옵니다</span>
             </div>
+            <label className={styles.submissionSearch}>
+              <span className={styles.visuallyHidden}>병원명 검색</span>
+              <input
+                type="search"
+                placeholder="병원명 검색"
+                value={submissionSearch}
+                onChange={(event) => setSubmissionSearch(event.target.value)}
+              />
+            </label>
             {sharedSubmissionsLoading && <p>제출 데이터를 불러오는 중입니다…</p>}
             {sharedSubmissionsError && <p className={styles.error}>{sharedSubmissionsError}</p>}
             {!sharedSubmissionsLoading && !sharedSubmissionsError && sharedSubmissions.length === 0 && (
               <p>아직 불러올 수 있는 제출 데이터가 없습니다.</p>
             )}
-            {sharedSubmissions.length > 0 && (
-              <div className={styles.recentList}>
-                {sharedSubmissions.map((submission) => (
-                  <div className={styles.recentItem} key={submission.submissionId}>
-                    <button
-                      type="button"
-                      className={styles.recentSelect}
-                      onClick={() => onOpenSharedSubmission?.(submission.submissionId)}
-                    >
-                      <strong>{submission.hospitalName} 데이터 보기</strong>
-                      <span>
-                        {submission.year && submission.month ? `${submission.year}년 ${submission.month}월 · ` : ''}
-                        {submission.savedAt ? new Date(submission.savedAt).toLocaleString('ko-KR') : '제출 데이터'}
-                      </span>
-                    </button>
-                  </div>
-                ))}
+            {sharedSubmissions.length > 0 && submissionGroups.length === 0 && <p>검색 결과가 없습니다.</p>}
+            {submissionGroups.length > 0 && (
+              <div className={styles.submissionGroupList}>
+                {submissionGroups.map(({ key, items }) => {
+                  const latest = items[0];
+                  const previousItems = items.slice(1);
+                  const expanded = expandedSubmissionGroups.has(key);
+                  const renderSubmission = (submission: SharedSubmissionSummary, previous = false) => (
+                    <div className={`${styles.submissionCard}${previous ? ` ${styles.previousSubmission}` : ''}`} key={submission.submissionId}>
+                      <div className={styles.submissionInfo}>
+                        <strong>{submission.hospitalName}</strong>
+                        <span className={styles.submissionMonth}>
+                          {submission.year && submission.month ? `${submission.year}년 ${submission.month}월 진료일정` : '진료일정'}
+                        </span>
+                        <span>{previous ? '이전 제출' : '최근 제출'}: {formatSubmittedAt(submission.savedAt)}</span>
+                      </div>
+                      <button type="button" className={styles.openSubmissionButton} onClick={() => onOpenSharedSubmission?.(submission.submissionId)}>
+                        데이터 보기
+                      </button>
+                    </div>
+                  );
+                  return (
+                    <section className={styles.submissionGroup} key={key}>
+                      {renderSubmission(latest)}
+                      {previousItems.length > 0 && (
+                        <>
+                          <button
+                            type="button"
+                            className={styles.previousToggle}
+                            aria-expanded={expanded}
+                            onClick={() => setExpandedSubmissionGroups((current) => {
+                              const next = new Set(current);
+                              if (next.has(key)) next.delete(key);
+                              else next.add(key);
+                              return next;
+                            })}
+                          >
+                            이전 제출 {previousItems.length}건 {expanded ? '▴' : '▾'}
+                          </button>
+                          {expanded && <div className={styles.previousList}>{previousItems.map((item) => renderSubmission(item, true))}</div>}
+                        </>
+                      )}
+                    </section>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -123,25 +194,32 @@ export default function HospitalIntakeForm({
               <h3 id="recent-hospitals-title">최근 병원</h3>
               <span>이 브라우저에 저장된 작업</span>
             </div>
-            <div className={styles.recentList}>
-              {recentHospitals.map((hospital) => (
-                <div className={styles.recentItem} key={hospital.id}>
-                  <button
-                    type="button"
-                    className={styles.recentSelect}
-                    onClick={() => onSubmit(withAutoMatchedLogo(hospital))}
-                  >
-                    <strong>{hospital.name}</strong>
-                    <span>{hospital.directorName ? `${hospital.directorName} 원장` : '저장된 작업 열기'}</span>
-                  </button>
-                  {deleteConfirmId === hospital.id ? (
-                    <div className={styles.deleteConfirm}>
-                      <span>삭제할까요?</span>
-                      <button type="button" onClick={() => setDeleteConfirmId(null)}>취소</button>
-                      <button
-                        type="button"
-                        className={styles.deleteConfirmButton}
-                        onClick={async () => {
+            <label className={styles.submissionSearch}>
+              <span className={styles.visuallyHidden}>최근 병원 검색</span>
+              <input type="search" placeholder="병원명 검색" value={recentHospitalSearch} onChange={(event) => setRecentHospitalSearch(event.target.value)} />
+            </label>
+            {recentHospitalGroups.length === 0 && <p>검색 결과가 없습니다.</p>}
+            <div className={styles.submissionGroupList}>
+              {recentHospitalGroups.map(({ key, hospitals, latest }) => {
+                const previousHospitals = hospitals.slice(1);
+                const expanded = expandedRecentHospitalGroups.has(key);
+                const renderHospital = (hospital: HospitalInfo, previous = false) => {
+                  const work = loadHospitalWorkSummary(hospital.id);
+                  return (
+                  <div className={`${styles.recentItem}${previous ? ` ${styles.previousSubmission}` : ''}`} key={hospital.id}>
+                    <button type="button" className={styles.recentSelect} onClick={() => onSubmit(withAutoMatchedLogo(hospital))}>
+                      <strong>{hospital.name}</strong>
+                      <span className={styles.submissionMonth}>
+                        {work ? `${work.year}년 ${work.month}월 진료일정` : '저장된 진료일정'}
+                      </span>
+                      <span>{previous ? '이전 저장' : '최근 저장'}: {work?.savedAt ? formatSubmittedAt(work.savedAt) : '저장일시 정보 없음'}</span>
+                      {hospital.directorName && <span>{hospital.directorName} 원장</span>}
+                    </button>
+                    {deleteConfirmId === hospital.id ? (
+                      <div className={styles.deleteConfirm}>
+                        <span>삭제할까요?</span>
+                        <button type="button" onClick={() => setDeleteConfirmId(null)}>취소</button>
+                        <button type="button" className={styles.deleteConfirmButton} onClick={async () => {
                           setDeleteError(null);
                           const removed = await onDeleteHospital(hospital);
                           if (!removed) {
@@ -150,23 +228,31 @@ export default function HospitalIntakeForm({
                           }
                           setRecentHospitals((current) => current.filter((item) => item.id !== hospital.id));
                           setDeleteConfirmId(null);
-                        }}
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      className={styles.deleteButton}
-                      aria-label={`${hospital.name} 저장 데이터 삭제`}
-                      onClick={() => setDeleteConfirmId(hospital.id)}
-                    >
-                      삭제
-                    </button>
-                  )}
-                </div>
-              ))}
+                        }}>삭제</button>
+                      </div>
+                    ) : (
+                      <button type="button" className={styles.deleteButton} aria-label={`${hospital.name} 저장 데이터 삭제`} onClick={() => setDeleteConfirmId(hospital.id)}>삭제</button>
+                    )}
+                  </div>
+                  );
+                };
+                return (
+                  <section className={styles.submissionGroup} key={key}>
+                    {renderHospital(latest)}
+                    {previousHospitals.length > 0 && (
+                      <>
+                        <button type="button" className={styles.previousToggle} aria-expanded={expanded} onClick={() => setExpandedRecentHospitalGroups((current) => {
+                          const next = new Set(current);
+                          if (next.has(key)) next.delete(key);
+                          else next.add(key);
+                          return next;
+                        })}>이전 저장 {previousHospitals.length}건 {expanded ? '▴' : '▾'}</button>
+                        {expanded && <div className={styles.previousList}>{previousHospitals.map((hospital) => renderHospital(hospital, true))}</div>}
+                      </>
+                    )}
+                  </section>
+                );
+              })}
             </div>
             {deleteError && <p className={styles.error} role="alert">{deleteError}</p>}
           </section>

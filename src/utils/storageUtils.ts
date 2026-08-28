@@ -104,8 +104,9 @@ function upsertHospitalInfo(hospital: HospitalInfo): boolean {
 export function removeHospitalData(hospitalId: string): boolean {
   try {
     const schedulePrefix = `${PREFIX}:schedule:${hospitalId}:`;
+    const scheduleSavedAtPrefix = `${PREFIX}:scheduleSavedAt:${hospitalId}:`;
     for (const key of listStorageKeys()) {
-      if (key.startsWith(schedulePrefix) || key === lastActiveKey(hospitalId)) {
+      if (key.startsWith(schedulePrefix) || key.startsWith(scheduleSavedAtPrefix) || key === lastActiveKey(hospitalId)) {
         localStorage.removeItem(key);
       }
     }
@@ -206,6 +207,10 @@ export function scheduleKey(hospitalId: string, year: number, month: number): st
   return `${PREFIX}:schedule:${hospitalId}:${year}-${String(month).padStart(2, '0')}`;
 }
 
+function scheduleSavedAtKey(hospitalId: string, year: number, month: number): string {
+  return `${PREFIX}:scheduleSavedAt:${hospitalId}:${year}-${String(month).padStart(2, '0')}`;
+}
+
 function lastActiveKey(hospitalId: string): string {
   return `${PREFIX}:lastActive:${hospitalId}`;
 }
@@ -229,12 +234,20 @@ export function loadLastActiveMonth(hospitalId: string): { year: number; month: 
 }
 
 export function saveScheduleDraft(hospitalId: string, year: number, month: number, data: ScheduleFormData): boolean {
-  return safeSet(scheduleKey(hospitalId, year, month), data);
+  return safeSet(scheduleKey(hospitalId, year, month), data)
+    && safeSet(scheduleSavedAtKey(hospitalId, year, month), new Date().toISOString());
 }
 
 export function loadScheduleDraft(hospitalId: string, year: number, month: number): ScheduleFormData | null {
   const raw = safeGet<unknown>(scheduleKey(hospitalId, year, month), null);
   return isValidScheduleFormData(raw) ? raw : null;
+}
+
+export function loadHospitalWorkSummary(hospitalId: string): { year: number; month: number; savedAt?: string } | null {
+  const active = loadLastActiveMonth(hospitalId);
+  if (!active) return null;
+  const savedAt = safeGet<unknown>(scheduleSavedAtKey(hospitalId, active.year, active.month), null);
+  return { ...active, ...(typeof savedAt === 'string' ? { savedAt } : {}) };
 }
 
 export interface CustomDesignRequestRecord {
