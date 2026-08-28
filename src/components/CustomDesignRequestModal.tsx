@@ -713,7 +713,7 @@ export default function CustomDesignRequestModal({
               setSpecialNotes(event.target.value);
               resizeTextarea(event);
             }}
-            placeholder="예: 정기 휴진일인 목요일에도 7월 30일은 정상 진료"
+            placeholder="예: 임시공휴일, 대체공휴일은 단축진료하지않고 평상시와 동일하게 운영"
           />
         </div>
 
@@ -736,7 +736,7 @@ export default function CustomDesignRequestModal({
                   setRequestDetails(event.target.value);
                   resizeTextarea(event);
                 }}
-                placeholder="예: 제목을 파란색으로 변경하고 로고를 오른쪽 상단에 배치"
+                placeholder="예: 글씨 크기를 더 키우고, 로고를 하단에 배치"
               />
             </div>
           )}

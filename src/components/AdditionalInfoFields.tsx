@@ -27,7 +27,7 @@ export default function AdditionalInfoFields({
           className={styles.textarea}
           value={calendarMustInclude}
           onChange={(e) => onCalendarMustIncludeChange(e.target.value)}
-          placeholder={'예:\n화 야간진료\n일 정기휴무\n목 정기휴무'}
+          placeholder={'예: 일요일 정기휴무, 16일 세미나 휴진'}
         />
       </div>
 
@@ -42,7 +42,7 @@ export default function AdditionalInfoFields({
           className={styles.textarea}
           value={nextMonthEvent}
           onChange={(e) => onNextMonthEventChange(e.target.value)}
-          placeholder="예: 5/1~5/15 화이트닝 30% 할인 이벤트"
+          placeholder="예:개원 4주년 이벤트 진행"
         />
       </div>
     </div>
