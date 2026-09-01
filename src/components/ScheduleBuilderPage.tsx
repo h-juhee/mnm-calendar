@@ -170,7 +170,13 @@ export default function ScheduleBuilderPage({ appMode }: ScheduleBuilderPageProp
     return (
       <div role="alert" style={{ padding: 32, textAlign: 'center' }}>
         <p>{sharedSubmissionError}</p>
-        <button type="button" onClick={() => window.location.assign(window.location.pathname)}>일반 작업 화면으로 이동</button>
+        <button
+          type="button"
+          className={styles.errorReturnButton}
+          onClick={() => window.location.assign(window.location.pathname)}
+        >
+          일반 작업 화면으로 이동
+        </button>
       </div>
     );
   }
