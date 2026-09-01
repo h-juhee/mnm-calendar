@@ -53,12 +53,20 @@ function parseCsv(text) {
 }
 
 function normalizeHospitalName(value) {
-  return String(value ?? '')
+  const normalized = String(value ?? '')
     .normalize('NFC')
     .toLocaleLowerCase('ko-KR')
     .replace(/[\s_.·,()[\]{}-]/gu, '')
     .replace(/치과(?:병원|의원)/gu, '치과')
     .replace(/(?:병원|의원)$/u, '');
+
+  if (new Set([
+    '올바로치과',
+    '올바로치과파주',
+    '올바로치과문산',
+  ]).has(normalized)) return '올바로치과';
+
+  return normalized;
 }
 
 async function loadRows() {

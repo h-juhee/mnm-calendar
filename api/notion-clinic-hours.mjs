@@ -80,7 +80,25 @@ function labeledValue(lines, label) {
 }
 
 function normalizedName(value) {
-  return String(value ?? '').normalize('NFKC').replace(/\s+/g, '').toLocaleLowerCase('ko-KR');
+  const normalized = String(value ?? '')
+    .normalize('NFKC')
+    .replace(/[\s_.·,()[\]{}-]+/gu, '')
+    .toLocaleLowerCase('ko-KR');
+
+  if (new Set([
+    '올바로치과',
+    '올바로치과의원',
+    '올바로치과파주',
+    '올바로치과의원파주',
+    '올바로치과문산',
+    '올바로치과의원문산',
+  ]).has(normalized)) return '올바로치과';
+
+  return normalized;
+}
+
+function clinicLookupName(value) {
+  return normalizedName(value) === '올바로치과' ? '올바로치과' : value;
 }
 
 async function queryClients(dataSourceId, titlePropertyName, hospitalName, matchType = 'equals') {
@@ -110,11 +128,17 @@ export default async function handler(req, res) {
     const titlePropertyName = Object.entries(schema).find(([, property]) => property.type === 'title')?.[0];
     if (!titlePropertyName) return sendJson(res, 500, { message: 'Client database has no title property.' });
 
-    let result = await queryClients(dataSourceId, titlePropertyName, hospitalName);
+    const lookupName = clinicLookupName(hospitalName);
+    let result = normalizedName(hospitalName) === '올바로치과'
+      ? await queryClients(dataSourceId, titlePropertyName, lookupName, 'contains')
+      : await queryClients(dataSourceId, titlePropertyName, lookupName);
     let matches = result.results ?? [];
-    if (matches.length === 0) {
-      result = await queryClients(dataSourceId, titlePropertyName, hospitalName, 'contains');
-      const normalizedHospitalName = normalizedName(hospitalName);
+    const normalizedHospitalName = normalizedName(hospitalName);
+    matches = matches.filter((page) =>
+      normalizedName(plainText(page.properties?.[titlePropertyName])) === normalizedHospitalName,
+    );
+    if (matches.length === 0 && normalizedHospitalName !== '올바로치과') {
+      result = await queryClients(dataSourceId, titlePropertyName, lookupName, 'contains');
       const candidates = result.results ?? [];
       const normalizedMatches = candidates.filter((page) =>
         normalizedName(plainText(page.properties?.[titlePropertyName])) === normalizedHospitalName,
