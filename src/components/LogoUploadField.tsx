@@ -4,7 +4,7 @@ import styles from './LogoUploadField.module.css';
 interface LogoUploadFieldProps {
   logoUrl?: string;
   logoFileName?: string;
-  onChange: (logoUrl: string | undefined, logoFileName?: string) => void;
+  onChange: (file?: File) => Promise<void>;
 }
 
 const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024;
@@ -15,7 +15,7 @@ export default function LogoUploadField({ logoUrl, logoFileName, onChange }: Log
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleFile = (file: File) => {
+  const handleFile = async (file: File) => {
     if (!ACCEPTED_LOGO_TYPES.includes(file.type)) {
       setError('PNG, JPG, WEBP, SVG 형식의 로고 파일만 추가할 수 있습니다.');
       return;
@@ -25,25 +25,28 @@ export default function LogoUploadField({ logoUrl, logoFileName, onChange }: Log
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      onChange(typeof reader.result === 'string' ? reader.result : undefined, file.name);
+    try {
+      await onChange(file);
       setError(null);
-    };
-    reader.onerror = () => setError('로고 파일을 읽지 못했습니다. 다시 시도해 주세요.');
-    reader.readAsDataURL(file);
+    } catch {
+      setError('로고를 저장하지 못했습니다. 다시 시도해 주세요.');
+    }
   };
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) handleFile(file);
+    if (file) void handleFile(file);
     event.target.value = '';
   };
 
-  const clearLogo = () => {
-    onChange(undefined, undefined);
-    setError(null);
-    if (inputRef.current) inputRef.current.value = '';
+  const clearLogo = async () => {
+    try {
+      await onChange();
+      setError(null);
+      if (inputRef.current) inputRef.current.value = '';
+    } catch {
+      setError('로고를 삭제하지 못했습니다. 다시 시도해 주세요.');
+    }
   };
 
   const handleDragOver = (event: DragEvent<HTMLLabelElement>) => {
@@ -60,7 +63,7 @@ export default function LogoUploadField({ logoUrl, logoFileName, onChange }: Log
     event.preventDefault();
     setIsDragging(false);
     const file = event.dataTransfer.files[0];
-    if (file) handleFile(file);
+    if (file) void handleFile(file);
   };
 
   return (
@@ -82,7 +85,7 @@ export default function LogoUploadField({ logoUrl, logoFileName, onChange }: Log
           </div>
           <div className={styles.actions}>
             <label className={styles.changeButton} htmlFor="hospital-logo">교체</label>
-            <button type="button" className={styles.removeButton} onClick={clearLogo}>삭제</button>
+            <button type="button" className={styles.removeButton} onClick={() => void clearLogo()}>삭제</button>
           </div>
         </div>
       ) : (

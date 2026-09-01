@@ -1,6 +1,6 @@
 const DB_NAME = 'mnn-calendar-assets';
 const STORE_NAME = 'backgrounds';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -8,6 +8,7 @@ function openDatabase(): Promise<IDBDatabase> {
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+      if (!db.objectStoreNames.contains('logos')) db.createObjectStore('logos');
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);

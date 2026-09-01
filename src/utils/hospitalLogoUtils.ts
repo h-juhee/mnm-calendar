@@ -108,7 +108,7 @@ export function findHospitalLogoUrl(hospitalName: string): string | undefined {
 }
 
 export function withAutoMatchedLogo(hospital: HospitalInfo): HospitalInfo {
-  if (hospital.logoUrl) return hospital;
+  if (hospital.logoUrl || hospital.logoAssetId) return hospital;
   const logoUrl = findHospitalLogoUrl(hospital.name);
   if (!logoUrl) return hospital;
 

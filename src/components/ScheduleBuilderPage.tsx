@@ -27,6 +27,7 @@ import { listSubmissionStatesFromDrive, loadSubmissionStateFromDrive, type Share
 import { getClinicHoursWithExample, parseNotionClinicHours } from '../utils/clinicHoursUtils';
 import { flushPendingUsageLogs } from '../utils/usageLogUtils';
 import { flushPendingSubmissions } from '../utils/submissionUtils';
+import { deleteHospitalLogo, hydrateHospitalLogo, loadHospitalLogo, saveHospitalLogo } from '../utils/logoStorage';
 import styles from './ScheduleBuilderPage.module.css';
 
 type SettingsPanel =
@@ -115,12 +116,13 @@ export default function ScheduleBuilderPage({ appMode }: ScheduleBuilderPageProp
     setHospital(nextHospital);
   }, []);
 
-  const handleHospitalSubmit = useCallback((nextHospital: HospitalInfo) => {
-    saveHospitalInfo(nextHospital);
-    setHospital(nextHospital);
+  const handleHospitalSubmit = useCallback(async (nextHospital: HospitalInfo) => {
+    const hydratedHospital = await hydrateHospitalLogo(nextHospital);
+    if (!saveHospitalInfo(hydratedHospital)) throw new Error('병원 정보를 저장하지 못했습니다.');
+    setHospital(hydratedHospital);
     if (appMode !== 'customer') return;
     try {
-      if (localStorage.getItem(`mnn:customerGuideSeen:v1:${nextHospital.id}`) !== '1') {
+      if (localStorage.getItem(`mnn:customerGuideSeen:v1:${hydratedHospital.id}`) !== '1') {
         setCustomerGuideOpen(true);
       }
     } catch {
@@ -153,6 +155,7 @@ export default function ScheduleBuilderPage({ appMode }: ScheduleBuilderPageProp
   const handleHospitalDelete = useCallback(async (target: HospitalInfo) => {
     try {
       await deleteCustomBackground(target.id);
+      if (target.logoAssetId) await deleteHospitalLogo(target.logoAssetId);
       return removeHospitalData(target.id);
     } catch {
       return false;
@@ -258,6 +261,7 @@ function ScheduleBuilderContent({
   const [notionClinicHoursPageUrl, setNotionClinicHoursPageUrl] = useState('');
   const [notionClinicHoursSpecialNotes, setNotionClinicHoursSpecialNotes] = useState('');
   const customBackgroundObjectUrlRef = useRef<string | undefined>(undefined);
+  const hospitalLogoObjectUrlRef = useRef<string | undefined>(hospital.logoUrl?.startsWith('blob:') ? hospital.logoUrl : undefined);
   const exportNodeRef = useRef<HTMLDivElement>(null);
   const settingsPanelRef = useRef<HTMLElement>(null);
   const shouldFocusSettingsAfterTemplateRef = useRef(false);
@@ -397,6 +401,43 @@ function ScheduleBuilderContent({
     customBackgroundObjectUrlRef.current = undefined;
     setCustomBackgroundUrl(undefined);
     setCustomBackgroundFileName(undefined);
+  };
+
+  const handleHospitalLogoChange = async (file?: File) => {
+    const assetId = hospital.logoAssetId ?? hospital.id;
+    if (!file) {
+      const previousFile = await loadHospitalLogo(assetId);
+      await deleteHospitalLogo(assetId);
+      const nextHospital = { ...hospital, logoUrl: undefined, logoFileName: undefined, logoAssetId: undefined };
+      if (!saveHospitalInfo(nextHospital)) {
+        if (previousFile) await saveHospitalLogo(assetId, previousFile);
+        throw new Error('병원 정보를 저장하지 못했습니다.');
+      }
+      if (hospitalLogoObjectUrlRef.current) URL.revokeObjectURL(hospitalLogoObjectUrlRef.current);
+      hospitalLogoObjectUrlRef.current = undefined;
+      onHospitalChange(nextHospital);
+      return;
+    }
+
+    const previousFile = await loadHospitalLogo(assetId);
+    await saveHospitalLogo(assetId, file);
+    const nextUrl = URL.createObjectURL(file);
+    const nextHospital = {
+      ...hospital,
+      logoUrl: nextUrl,
+      logoFileName: file.name,
+      logoAssetId: assetId,
+      displayMode: 'logo' as const,
+    };
+    if (!saveHospitalInfo(nextHospital)) {
+      if (previousFile) await saveHospitalLogo(assetId, previousFile);
+      else await deleteHospitalLogo(assetId);
+      URL.revokeObjectURL(nextUrl);
+      throw new Error('병원 정보를 저장하지 못했습니다.');
+    }
+    if (hospitalLogoObjectUrlRef.current) URL.revokeObjectURL(hospitalLogoObjectUrlRef.current);
+    hospitalLogoObjectUrlRef.current = nextUrl;
+    onHospitalChange(nextHospital);
   };
 
   const selectedResolvedSchedule = selectedDateKey ? resolvedByDate.get(selectedDateKey) : undefined;
@@ -881,7 +922,7 @@ function ScheduleBuilderContent({
               <LogoUploadField
                 logoUrl={hospital.logoUrl}
                 logoFileName={hospital.logoFileName}
-                onChange={(logoUrl, logoFileName) => onHospitalChange({ ...hospital, logoUrl, logoFileName })}
+                onChange={handleHospitalLogoChange}
               />
             )}
             titleStyleEditor={(

@@ -43,6 +43,7 @@ export function createHospitalId(): string {
 export function saveHospitalInfo(hospital: HospitalInfo): boolean {
   const normalized = {
     ...hospital,
+    ...(hospital.logoAssetId ? { logoUrl: undefined } : {}),
     storageVersion: CURRENT_HOSPITAL_STORAGE_VERSION,
   } satisfies HospitalInfo;
   return safeSet(HOSPITAL_INFO_KEY, normalized) && upsertHospitalInfo(normalized);

@@ -27,7 +27,7 @@ import {
   setDesignEditsForFormat,
 } from '../src/utils/designEditsUtils';
 import { parseNotionClinicHours } from '../src/utils/clinicHoursUtils';
-import { findHospitalLogoUrl, HOSPITAL_LOGO_FILES } from '../src/utils/hospitalLogoUtils';
+import { findHospitalLogoUrl, HOSPITAL_LOGO_FILES, withAutoMatchedLogo } from '../src/utils/hospitalLogoUtils';
 import { isUsageWithinSession } from '../api/notion-usage-log.mjs';
 
 // Node 실행 환경에는 브라우저 localStorage가 없으므로 검증용 최소 메모리 구현을 주입합니다.
@@ -582,6 +582,23 @@ test('노션 거래처 진료시간을 동일 시간대의 요일별 행으로 �
     { id: 'notion-hours-2', days: [6], startTime: '10:00', endTime: '14:00' },
   ]);
   assert.equal(parsed.confirmed, true);
+});
+
+test('사용자 로고가 있는 최근 병원에는 이미지 원문 대신 로고 식별자만 저장한다', () => {
+  const hospital = {
+    id: createHospitalId(),
+    name: '사용자로고치과',
+    directorName: '김원장',
+    logoUrl: 'blob:http://localhost/user-logo',
+    logoFileName: 'custom-logo.png',
+    logoAssetId: 'user-logo-asset',
+    primaryColor: '#2f6fed',
+  };
+  assert.equal(saveHospitalInfo(hospital), true);
+  const stored = listHospitalInfos().find((item) => item.id === hospital.id);
+  assert.equal(stored?.logoAssetId, 'user-logo-asset');
+  assert.equal(stored?.logoUrl, undefined);
+  assert.equal(withAutoMatchedLogo(stored!).logoUrl, undefined);
 });
 
 test('정상 진료를 지정해도 반복 야간 진료는 추가 일정으로 함께 표시된다', () => {
