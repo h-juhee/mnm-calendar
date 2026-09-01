@@ -77,6 +77,18 @@ function shortenedClinicName(value: string): string {
 export function findHospitalLogoUrl(hospitalName: string): string | undefined {
   const exactName = normalizeClinicName(hospitalName);
 
+  // 올바로치과의 정식 명칭과 파주 지점 표기는 같은 로고를 사용합니다.
+  if (new Set([
+    '올바로치과',
+    '올바로치과의원',
+    '올바로치과파주',
+    '올바로치과의원파주',
+    '올바로치과문산',
+    '올바로치과의원문산',
+  ]).has(exactName)) {
+    return `/logos/${encodeURIComponent('올바로치과_로고.png')}`;
+  }
+
   // 연세바로치과교정과는 지점명이 붙어도 모든 지점이 같은 로고를 사용합니다.
   if (exactName.includes('연세바로')) {
     return `/logos/${encodeURIComponent('연세바로치과교정과의원.png')}`;
