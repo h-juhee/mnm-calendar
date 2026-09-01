@@ -27,6 +27,12 @@ export interface LayerEdit {
   fontId?: FontId;
   fontWeight?: FontWeight;
   color?: string;
+  /** Character ranges that override the layer's default text color. */
+  textColorRanges?: Array<{
+    start: number;
+    end: number;
+    color: string;
+  }>;
   outlineColor?: string;
   text?: string;
   scale?: number;

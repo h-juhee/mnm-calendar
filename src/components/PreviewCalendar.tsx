@@ -8,6 +8,7 @@ import styles from './PreviewCalendar.module.css';
 import type { OutputFormat } from '../types/outputFormat';
 import { getFontOption } from '../types/font';
 import { getKoreanHolidays } from '../utils/holidayProvider';
+import ColoredText from './ColoredText';
 
 interface PreviewCalendarProps {
   calendarMatrix: CalendarCell[][];
@@ -411,7 +412,7 @@ export default function PreviewCalendar({
             color: secondarySubtitleEdit?.color,
           } as CSSProperties}
         >
-          {secondarySubtitle}
+          <ColoredText text={secondarySubtitle ?? ''} ranges={secondarySubtitleEdit?.textColorRanges} />
         </span>
       )}
     </div>

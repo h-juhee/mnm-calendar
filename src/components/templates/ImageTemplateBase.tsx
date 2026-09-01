@@ -7,6 +7,7 @@ import type { OutputFormat } from '../../types/outputFormat';
 import ClinicHoursDisplay from './ClinicHoursDisplay';
 import { hasRenderableClinicHours } from '../../utils/clinicHoursUtils';
 import { getFontOption } from '../../types/font';
+import ColoredText from '../ColoredText';
 
 interface ImageTemplateBaseProps extends TemplateProps {
   backgroundUrls: Record<OutputFormat, string>;
@@ -125,10 +126,10 @@ export default function ImageTemplateBase({
                   : undefined,
               }}
             >
-              {titleText}
+              <ColoredText text={titleText} ranges={designEdits.title?.textColorRanges} />
             </span>
             <span className={styles.subtitle} {...layerProps('subtitle')} style={{ ...editableStyle('subtitle'), color: subtitleColor }}>
-              {subtitleText}
+              <ColoredText text={subtitleText} ranges={designEdits.subtitle?.textColorRanges} />
             </span>
           </div>
           <div className={styles.heroHospitalTag} data-edit-layer="hospital" data-selected={selectedLayer === 'hospital' || undefined} style={editableStyle('hospital')}>
@@ -138,7 +139,7 @@ export default function ImageTemplateBase({
               ) : null
             ) : (
               <span className={styles.heroHospitalName} style={{ color: designEdits.hospital?.color ?? textColor, fontSize: designEdits.hospital?.fontSize }}>
-                {designEdits.hospital?.text ?? hospital.name}
+                <ColoredText text={designEdits.hospital?.text ?? hospital.name} ranges={designEdits.hospital?.textColorRanges} />
               </span>
             )}
           </div>
@@ -152,17 +153,17 @@ export default function ImageTemplateBase({
               ) : null
             ) : (
               <span className={styles.hospitalName} style={{ color: designEdits.hospital?.color ?? textColor, fontSize: designEdits.hospital?.fontSize }}>
-                {designEdits.hospital?.text ?? hospital.name}
+                <ColoredText text={designEdits.hospital?.text ?? hospital.name} ranges={designEdits.hospital?.textColorRanges} />
               </span>
             )}
           </div>
 
           <div className={styles.titleBlock}>
             <span className={styles.monthTitle} {...layerProps('title')} style={{ ...editableStyle('title'), color: designEdits.title?.color ?? titleColor }}>
-              {titleText}
+              <ColoredText text={titleText} ranges={designEdits.title?.textColorRanges} />
             </span>
             <span className={styles.subtitle} {...layerProps('subtitle')} style={{ ...editableStyle('subtitle'), color: subtitleColor }}>
-              {subtitleText}
+              <ColoredText text={subtitleText} ranges={designEdits.subtitle?.textColorRanges} />
             </span>
           </div>
         </>

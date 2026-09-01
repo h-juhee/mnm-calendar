@@ -13,6 +13,7 @@ import {
 } from 'react';
 import { flushSync } from 'react-dom';
 import HexColorInput from './HexColorInput';
+import { applyTextColorRange } from '../utils/textColorRanges';
 import type { CalendarCell } from '../utils/scheduleUtils';
 import { getCalendarSubtitle, getCalendarTitle } from '../utils/scheduleUtils';
 import type {
@@ -137,23 +138,15 @@ const A4_HORIZONTAL_ROW_GAP_CONFIG = { min: 0, max: 120, step: 2, defaultValue: 
 
 function copyDesignEdits(edits: DesignEdits | undefined): DesignEdits {
   return Object.fromEntries(
-    Object.entries(edits ?? {}).map(([id, edit]) => [id, { ...edit }]),
+    Object.entries(edits ?? {}).map(([id, edit]) => [id, {
+      ...edit,
+      textColorRanges: edit.textColorRanges?.map((range) => ({ ...range })),
+    }]),
   ) as DesignEdits;
 }
 
 function designEditsAreEqual(left: DesignEdits, right: DesignEdits): boolean {
-  const leftEntries = Object.entries(left);
-  const rightEntries = Object.entries(right);
-  if (leftEntries.length !== rightEntries.length) return false;
-
-  return leftEntries.every(([id, edit]) => {
-    const other = right[id as EditableLayerId];
-    if (!other) return false;
-    const keys = Object.keys(edit);
-    return keys.length === Object.keys(other).length
-      && keys.every((key) =>
-        edit[key as keyof typeof edit] === other[key as keyof typeof other]);
-  });
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function isTextEditingTarget(target: EventTarget | null): boolean {
@@ -201,6 +194,20 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
   const wrapperRef = useRef<HTMLDivElement>(null);
   const backgroundInputRef = useRef<HTMLInputElement>(null);
   const inlineEditOriginalRef = useRef('');
+  const selectedTextRangeRef = useRef<{
+    layer: EditableLayerId;
+    start: number;
+    end: number;
+  } | null>(null);
+  const [selectedTextRange, setSelectedTextRange] = useState<{
+    layer: EditableLayerId;
+    start: number;
+    end: number;
+  } | null>(null);
+  const [textColorPopover, setTextColorPopover] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
   const currentDesignEditsRef = useRef<DesignEdits>(copyDesignEdits(designEdits));
   const currentOutputFormatRef = useRef(outputFormat);
   const undoStackRef = useRef<DesignEdits[]>([]);
@@ -412,6 +419,82 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     applyDesignEdits(edits);
   }, [applyDesignEdits, rememberDesignState]);
 
+  const captureSelectedTextRange = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+      selectedTextRangeRef.current = null;
+      setSelectedTextRange(null);
+      setTextColorPopover(null);
+      return;
+    }
+    const range = selection.getRangeAt(0);
+    const commonElement = range.commonAncestorContainer instanceof HTMLElement
+      ? range.commonAncestorContainer
+      : range.commonAncestorContainer.parentElement;
+    const target = commonElement?.closest<HTMLElement>('[data-edit-layer][contenteditable="true"]');
+    if (!target || !target.contains(range.startContainer) || !target.contains(range.endContainer)) return;
+    const layer = target.dataset.editLayer as EditableLayerId;
+    if (!['title', 'subtitle', 'secondarySubtitle', 'hospital'].includes(layer)) return;
+
+    const beforeStart = document.createRange();
+    beforeStart.selectNodeContents(target);
+    beforeStart.setEnd(range.startContainer, range.startOffset);
+    const beforeEnd = document.createRange();
+    beforeEnd.selectNodeContents(target);
+    beforeEnd.setEnd(range.endContainer, range.endOffset);
+    const nextRange = {
+      layer,
+      start: beforeStart.toString().length,
+      end: beforeEnd.toString().length,
+    };
+    selectedTextRangeRef.current = nextRange;
+    setSelectedTextRange(nextRange);
+    const box = wrapperRef.current?.querySelector<HTMLElement>(`.${styles.scaledBox}`);
+    if (box) {
+      const boxRect = box.getBoundingClientRect();
+      const rangeRect = range.getBoundingClientRect();
+      const popoverWidth = 190;
+      const popoverHeight = 58;
+      setTextColorPopover({
+        left: Math.max(8, Math.min(
+          rangeRect.left - boxRect.left + (rangeRect.width / 2) - (popoverWidth / 2),
+          boxRect.width - popoverWidth - 8,
+        )),
+        top: rangeRect.top - boxRect.top >= popoverHeight + 8
+          ? rangeRect.top - boxRect.top - popoverHeight - 8
+          : rangeRect.bottom - boxRect.top + 8,
+      });
+    }
+  };
+
+  const updateSelectedColor = (color: string) => {
+    const selectedRange = selectedTextRangeRef.current;
+    const current = currentDesignEditsRef.current;
+    const currentEdit = current[selectedLayer] ?? {};
+    if (selectedRange?.layer === selectedLayer && selectedRange.start < selectedRange.end) {
+      changeDesignEdits({
+        ...current,
+        [selectedLayer]: {
+          ...currentEdit,
+          textColorRanges: applyTextColorRange(
+            currentEdit.textColorRanges,
+            selectedRange.start,
+            selectedRange.end,
+            color,
+          ),
+        },
+      });
+      // A native color picker emits multiple change events while the user drags
+      // inside it. Keep the same text range for the picker session so every
+      // intermediate/final color is applied to the originally selected text.
+      return;
+    }
+    changeDesignEdits({
+      ...current,
+      [selectedLayer]: { ...currentEdit, color },
+    });
+  };
+
   useEffect(() => {
     const handleUndoRedo = (event: globalThis.KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey) || event.altKey || isTextEditingTarget(event.target)) return;
@@ -472,6 +555,11 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
   }, [hidesClinicHours, selectedLayer]);
 
   const selectedEdit = designEdits[selectedLayer] ?? {};
+  const selectedPartialColor = selectedTextRange?.layer === selectedLayer
+    ? selectedEdit.textColorRanges?.find((range) =>
+      range.start <= selectedTextRange.start && range.end >= selectedTextRange.end)?.color
+    : undefined;
+  const displayedPartialTextColor = selectedPartialColor ?? selectedEdit.color ?? '#111827';
   const selectedLabel = LAYER_LABELS[selectedLayer];
   const defaultFontSize = DEFAULT_FONT_SIZES[outputFormat][selectedLayer];
   const minimumFontSize = 12;
@@ -524,10 +612,16 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     if (!designEditingEnabled) return;
     let target = (event.target as HTMLElement).closest<HTMLElement>('[data-edit-layer]');
     if (!target) {
+      selectedTextRangeRef.current = null;
+      setSelectedTextRange(null);
+      setTextColorPopover(null);
       setCanvasElementSelected(false);
       return;
     }
     if (target.isContentEditable) return;
+    selectedTextRangeRef.current = null;
+    setSelectedTextRange(null);
+    setTextColorPopover(null);
     const id = target.dataset.editLayer as EditableLayerId;
     if (id === 'calendar' && (event.target as HTMLElement).closest('button')) return;
 
@@ -643,6 +737,9 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     range.selectNodeContents(target);
     selection?.removeAllRanges();
     selection?.addRange(range);
+    selectedTextRangeRef.current = null;
+    setSelectedTextRange(null);
+    setTextColorPopover(null);
     event.preventDefault();
     event.stopPropagation();
   };
@@ -651,16 +748,29 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     const target = event.target as HTMLElement;
     if (!target.matches('[data-edit-layer][contenteditable="true"]')) return;
     const id = target.dataset.editLayer as EditableLayerId;
-    target.contentEditable = 'false';
+    const nextFocus = event.relatedTarget instanceof HTMLElement ? event.relatedTarget : null;
+    const keepEditingForPartialColor = Boolean(nextFocus?.closest(`.${styles.textColorPopover}`));
+    if (!keepEditingForPartialColor) target.contentEditable = 'false';
+    const nextText = (target.textContent ?? '').trim();
+    const textChanged = nextText !== inlineEditOriginalRef.current.trim();
     if (id === 'secondarySubtitle') {
-      onSecondarySubtitleTextChange((target.textContent ?? '').trim());
+      onSecondarySubtitleTextChange(nextText);
+      if (textChanged) {
+        const current = currentDesignEditsRef.current;
+        changeDesignEdits({
+          ...current,
+          [id]: { ...(current[id] ?? {}), textColorRanges: undefined },
+        });
+      }
       return;
     }
+    const current = currentDesignEditsRef.current;
     changeDesignEdits({
-      ...designEdits,
+      ...current,
       [id]: {
-        ...(designEdits[id] ?? {}),
-        text: (target.textContent ?? '').trim(),
+        ...(current[id] ?? {}),
+        text: nextText,
+        ...(textChanged ? { textColorRanges: undefined } : {}),
       },
     });
   };
@@ -817,8 +927,9 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
                             if (selectedLayer === 'secondarySubtitle') {
                               onSecondarySubtitleTextChange(event.target.value);
                               if (event.target.value.trim()) onSecondarySubtitleEnabledChange(true);
+                              updateSelected({ textColorRanges: undefined });
                             } else {
-                              updateSelected({ text: event.target.value });
+                              updateSelected({ text: event.target.value, textColorRanges: undefined });
                             }
                           }}
                           onInput={(event) => {
@@ -958,7 +1069,12 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
                           <span>글자 색상</span>
                           <HexColorInput
                             value={selectedEdit.color ?? '#111827'}
-                            onChange={(color) => updateSelected({ color })}
+                            onChange={(color) => {
+                              selectedTextRangeRef.current = null;
+                              setSelectedTextRange(null);
+                              setTextColorPopover(null);
+                              updateSelected({ color });
+                            }}
                             pickerLabel="글자 색상 선택"
                             codeLabel="글자 색상 코드"
                           />
@@ -1075,6 +1191,22 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
               }
             }}
             onDoubleClick={handleDoubleClick}
+            onDragStartCapture={(event) => {
+              if ((event.target as HTMLElement).closest('[data-edit-layer][contenteditable="true"]')) {
+                event.preventDefault();
+              }
+            }}
+            onDropCapture={(event) => {
+              if ((event.target as HTMLElement).closest('[data-edit-layer][contenteditable="true"]')) {
+                event.preventDefault();
+              }
+            }}
+            onPointerUpCapture={() => {
+              window.requestAnimationFrame(captureSelectedTextRange);
+            }}
+            onKeyUpCapture={() => {
+              window.requestAnimationFrame(captureSelectedTextRange);
+            }}
             onBlurCapture={handleInlineBlur}
             onKeyDownCapture={handleInlineKeyDown}
           >
@@ -1235,6 +1367,23 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
             >
               <span aria-hidden="true">↕</span>
               <small>전체 행 간격</small>
+            </div>
+          )}
+          {designEditingEnabled && selectedTextRange && textColorPopover && (
+            <div
+              className={styles.textColorPopover}
+              style={{ left: textColorPopover.left, top: textColorPopover.top }}
+              data-editor-only
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <span>선택 글자</span>
+              <HexColorInput
+                className={styles.textColorPopoverInput}
+                value={displayedPartialTextColor}
+                onChange={updateSelectedColor}
+                pickerLabel="선택한 글자 색상 선택"
+                codeLabel="선택한 글자 색상 코드"
+              />
             </div>
           )}
           {designEditingEnabled && canvasElementSelected && selectionOverlay && (
