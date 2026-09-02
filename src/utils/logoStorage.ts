@@ -4,6 +4,23 @@ const DB_NAME = 'mnn-calendar-assets';
 const STORE_NAME = 'logos';
 const DB_VERSION = 2;
 
+/**
+ * 제출 당시의 작업 데이터는 이후 디자이너가 교체한 로고를 알지 못합니다.
+ * 같은 브라우저에서 다시 열 때에는 로컬에 저장된 로고 변경분만 서버 사본 위에 복원합니다.
+ * logoAssetId 검사는 logoUpdatedAt 도입 전에 저장된 사용자 로고도 복구하기 위한 호환 처리입니다.
+ */
+export function restoreLocallyEditedLogo(shared: HospitalInfo, local?: HospitalInfo): HospitalInfo {
+  if (!local || local.id !== shared.id || (!local.logoAssetId && !local.logoUpdatedAt)) return shared;
+  return {
+    ...shared,
+    logoUrl: local.logoUrl,
+    logoFileName: local.logoFileName,
+    logoAssetId: local.logoAssetId,
+    logoUpdatedAt: local.logoUpdatedAt,
+    displayMode: local.displayMode,
+  };
+}
+
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);

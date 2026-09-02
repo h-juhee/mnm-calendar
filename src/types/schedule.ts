@@ -89,6 +89,8 @@ export interface HospitalInfo {
   logoFileName?: string;
   /** IndexedDB에 저장된 사용자 로고를 찾기 위한 식별자입니다. */
   logoAssetId?: string;
+  /** 기존 작업을 다시 열 때 서버의 최초 로고보다 로컬에서 변경한 로고를 우선하기 위한 시각입니다. */
+  logoUpdatedAt?: string;
   displayMode?: 'name' | 'logo';
   primaryColor: string;
   /** UUID 기반 저장 체계로 생성되거나 이전된 병원 정보의 버전입니다. */

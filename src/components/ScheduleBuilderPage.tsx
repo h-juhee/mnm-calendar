@@ -22,12 +22,12 @@ import { getOutputFormatMeta, type OutputFormat } from '../types/outputFormat';
 import { renderNodeAsPng } from '../utils/exportUtils';
 import ClinicHoursEditor from './ClinicHoursEditor';
 import { deleteCustomBackground, loadCustomBackground, migrateCustomBackground, saveCustomBackground } from '../utils/backgroundStorage';
-import { removeHospitalData, removeHospitalInfo, saveHospitalInfo, saveScheduleDraft } from '../utils/storageUtils';
+import { listHospitalInfos, removeHospitalData, removeHospitalInfo, saveHospitalInfo, saveScheduleDraft } from '../utils/storageUtils';
 import { listSubmissionStatesFromDrive, loadSubmissionStateFromDrive, type SharedSubmissionSummary } from '../utils/googleDriveUtils';
 import { getClinicHoursWithExample, parseNotionClinicHours } from '../utils/clinicHoursUtils';
 import { flushPendingUsageLogs } from '../utils/usageLogUtils';
 import { flushPendingSubmissions } from '../utils/submissionUtils';
-import { deleteHospitalLogo, hydrateHospitalLogo, loadHospitalLogo, saveHospitalLogo } from '../utils/logoStorage';
+import { deleteHospitalLogo, hydrateHospitalLogo, loadHospitalLogo, restoreLocallyEditedLogo, saveHospitalLogo } from '../utils/logoStorage';
 import styles from './ScheduleBuilderPage.module.css';
 
 type SettingsPanel =
@@ -76,14 +76,18 @@ export default function ScheduleBuilderPage({ appMode }: ScheduleBuilderPageProp
     let cancelled = false;
     setSharedSubmissionStatus('loading');
     void loadSubmissionStateFromDrive<HospitalInfo, ScheduleFormData>(submissionId)
-      .then((shared) => {
+      .then(async (shared) => {
         if (cancelled) return;
         if (shared.version !== 1 || !shared.hospital?.id || !shared.formData?.hospitalId) {
           throw new Error('제출 작업 데이터 형식이 올바르지 않습니다.');
         }
-        saveHospitalInfo(shared.hospital);
+        const localHospital = listHospitalInfos().find((item) => item.id === shared.hospital.id);
+        const restoredHospital = restoreLocallyEditedLogo(shared.hospital, localHospital);
+        const hydratedHospital = await hydrateHospitalLogo(restoredHospital);
+        if (cancelled) return;
+        saveHospitalInfo(hydratedHospital);
         saveScheduleDraft(shared.hospital.id, shared.formData.year, shared.formData.month, shared.formData);
-        setHospital(shared.hospital);
+        setHospital(hydratedHospital);
         setSharedSubmissionStatus('idle');
       })
       .catch((error) => {
@@ -414,7 +418,13 @@ function ScheduleBuilderContent({
     if (!file) {
       const previousFile = await loadHospitalLogo(assetId);
       await deleteHospitalLogo(assetId);
-      const nextHospital = { ...hospital, logoUrl: undefined, logoFileName: undefined, logoAssetId: undefined };
+      const nextHospital = {
+        ...hospital,
+        logoUrl: undefined,
+        logoFileName: undefined,
+        logoAssetId: undefined,
+        logoUpdatedAt: new Date().toISOString(),
+      };
       if (!saveHospitalInfo(nextHospital)) {
         if (previousFile) await saveHospitalLogo(assetId, previousFile);
         throw new Error('병원 정보를 저장하지 못했습니다.');
@@ -433,6 +443,7 @@ function ScheduleBuilderContent({
       logoUrl: nextUrl,
       logoFileName: file.name,
       logoAssetId: assetId,
+      logoUpdatedAt: new Date().toISOString(),
       displayMode: 'logo' as const,
     };
     if (!saveHospitalInfo(nextHospital)) {

@@ -28,6 +28,7 @@ import {
 } from '../src/utils/designEditsUtils';
 import { parseNotionClinicHours } from '../src/utils/clinicHoursUtils';
 import { findHospitalLogoUrl, HOSPITAL_LOGO_FILES, withAutoMatchedLogo } from '../src/utils/hospitalLogoUtils';
+import { restoreLocallyEditedLogo } from '../src/utils/logoStorage';
 import { isUsageWithinSession } from '../api/notion-usage-log.mjs';
 
 // Node 실행 환경에는 브라우저 localStorage가 없으므로 검증용 최소 메모리 구현을 주입합니다.
@@ -599,6 +600,53 @@ test('사용자 로고가 있는 최근 병원에는 이미지 원문 대신 로
   assert.equal(stored?.logoAssetId, 'user-logo-asset');
   assert.equal(stored?.logoUrl, undefined);
   assert.equal(withAutoMatchedLogo(stored!).logoUrl, undefined);
+});
+
+test('제출 작업 재접속 시 서버의 기존 로고보다 디자이너가 교체한 로컬 로고를 복원한다', () => {
+  const shared = {
+    id: 'shared-hospital',
+    name: '파주연세치과',
+    primaryColor: '#2f6fed',
+    logoUrl: '/logos/original.png',
+    logoFileName: 'original.png',
+  };
+  const local = {
+    ...shared,
+    logoUrl: undefined,
+    logoFileName: 'designer-logo.png',
+    logoAssetId: 'shared-hospital',
+  };
+  const restored = restoreLocallyEditedLogo(shared, local);
+  assert.equal(restored.logoUrl, undefined);
+  assert.equal(restored.logoFileName, 'designer-logo.png');
+  assert.equal(restored.logoAssetId, 'shared-hospital');
+});
+
+test('디자이너가 로고를 삭제한 작업도 재접속 시 서버 기본 로고로 되돌리지 않는다', () => {
+  const shared = {
+    id: 'shared-hospital',
+    name: '파주연세치과',
+    primaryColor: '#2f6fed',
+    logoUrl: '/logos/original.png',
+  };
+  const local = {
+    ...shared,
+    logoUrl: undefined,
+    logoUpdatedAt: '2026-09-02T00:00:00.000Z',
+    displayMode: 'name' as const,
+  };
+  assert.equal(restoreLocallyEditedLogo(shared, local).logoUrl, undefined);
+});
+
+test('최근 병원에서 디자이너가 삭제한 로고를 병원명 자동 매칭 로고로 되돌리지 않는다', () => {
+  const hospital = {
+    id: 'recent-hospital',
+    name: '서울마인드치과',
+    primaryColor: '#2f6fed',
+    logoUpdatedAt: '2026-09-02T00:00:00.000Z',
+    displayMode: 'name' as const,
+  };
+  assert.deepEqual(withAutoMatchedLogo(hospital), hospital);
 });
 
 test('정상 진료를 지정해도 반복 야간 진료는 추가 일정으로 함께 표시된다', () => {

@@ -120,7 +120,8 @@ export function findHospitalLogoUrl(hospitalName: string): string | undefined {
 }
 
 export function withAutoMatchedLogo(hospital: HospitalInfo): HospitalInfo {
-  if (hospital.logoUrl || hospital.logoAssetId) return hospital;
+  // 최근 병원을 다시 열 때 디자이너가 교체하거나 삭제한 결과를 자동 매칭 로고로 덮지 않습니다.
+  if (hospital.logoUrl || hospital.logoAssetId || hospital.logoUpdatedAt) return hospital;
   const logoUrl = findHospitalLogoUrl(hospital.name);
   if (!logoUrl) return hospital;
 
