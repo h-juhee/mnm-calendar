@@ -193,6 +193,41 @@ export interface TemplateMeta {
   previewImageUrl: string;
 }
 
+const SEPTEMBER_TEMPLATE_SET: Omit<TemplateMeta, 'month'>[] = [
+  {
+    id: 'septemberA',
+    name: '시안 A',
+    description: '단풍과 전통 정자가 어우러진 시안',
+    previewImageUrl: '/templates/september_A_preview.jpg',
+  },
+  {
+    id: 'septemberB',
+    name: '시안 B',
+    description: '보랏빛 밤하늘과 한옥을 담은 시안',
+    previewImageUrl: '/templates/september_B_preview.jpg',
+  },
+  {
+    id: 'septemberC',
+    name: '시안 C',
+    description: '학과 전통 문양을 담은 시안',
+    previewImageUrl: '/templates/september_C_preview.jpg',
+  },
+  {
+    id: 'septemberD',
+    name: '시안 D',
+    description: '감나무와 노을을 담은 시안',
+    previewImageUrl: '/templates/september_D_preview.jpg',
+  },
+  {
+    id: 'septemberE',
+    name: '시안 E',
+    description: '달맞이와 가족 풍경을 담은 시안',
+    previewImageUrl: '/templates/september_E_preview.jpg',
+  },
+];
+
+const AVAILABLE_TEMPLATE_MONTHS = [9];
+
 export const TEMPLATES: TemplateMeta[] = [
   {
     id: 'scheduleA',
@@ -222,41 +257,9 @@ export const TEMPLATES: TemplateMeta[] = [
     description: '시원한 여름 바다 포인트의 진료일정 시안',
     previewImageUrl: '/templates/schedule_D.png',
   },
-  {
-    id: 'septemberA',
-    month: 9,
-    name: '시안 A',
-    description: '단풍과 전통 정자가 어우러진 9월 시안',
-    previewImageUrl: '/templates/september_A_preview.jpg',
-  },
-  {
-    id: 'septemberB',
-    month: 9,
-    name: '시안 B',
-    description: '보랏빛 밤하늘과 한옥을 담은 9월 시안',
-    previewImageUrl: '/templates/september_B_preview.jpg',
-  },
-  {
-    id: 'septemberC',
-    month: 9,
-    name: '시안 C',
-    description: '학과 전통 문양을 담은 9월 시안',
-    previewImageUrl: '/templates/september_C_preview.jpg',
-  },
-  {
-    id: 'septemberD',
-    month: 9,
-    name: '시안 D',
-    description: '감나무와 노을을 담은 9월 시안',
-    previewImageUrl: '/templates/september_D_preview.jpg',
-  },
-  {
-    id: 'septemberE',
-    month: 9,
-    name: '시안 E',
-    description: '달맞이와 가족 풍경을 담은 9월 시안',
-    previewImageUrl: '/templates/september_E_preview.jpg',
-  },
+  ...AVAILABLE_TEMPLATE_MONTHS.flatMap((month) =>
+    SEPTEMBER_TEMPLATE_SET.map((template) => ({ ...template, month })),
+  ),
 ];
 
 export const SCHEDULE_TYPE_META: Record<

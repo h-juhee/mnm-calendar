@@ -234,7 +234,9 @@ function ScheduleBuilderContent({
   const { formData, saveStatus, resolvedSchedule, resolvedByDate, calendarMatrix, actions } = useScheduleBuilder(hospital.id);
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [isCustomModalOpen, setCustomModalOpen] = useState(false);
-  const [isTemplateModalOpen, setTemplateModalOpen] = useState(() => formData.templateId === null);
+  const [isTemplateModalOpen, setTemplateModalOpen] = useState(
+    () => appMode === 'internal' || formData.templateId === null,
+  );
   const availableTemplates = useMemo(
     () => TEMPLATES.filter((template) => template.month === formData.month),
     [formData.month],
@@ -474,9 +476,15 @@ function ScheduleBuilderContent({
   const currentDesignEdits = formData.designEditsByFormat?.[outputFormat] ?? {};
 
   useEffect(() => {
+    if (appMode === 'internal' && availableTemplates.length === 0) {
+      setTemplateModalOpen(false);
+      setActiveSettingsPanel('background');
+      setExpandedSettingsGroup('design');
+      return;
+    }
     const templateMatchesMonth = availableTemplates.some((template) => template.id === formData.templateId);
     if (!templateMatchesMonth) setTemplateModalOpen(true);
-  }, [availableTemplates, formData.templateId]);
+  }, [appMode, availableTemplates, formData.templateId]);
 
   useEffect(() => {
     if (
@@ -754,9 +762,11 @@ function ScheduleBuilderContent({
               사용 방법
             </button>
           )}
-          <button type="button" className={styles.previewDesignButton} onClick={() => setTemplateModalOpen(true)}>
-            템플릿 변경
-          </button>
+          {availableTemplates.length > 0 && (
+            <button type="button" className={styles.previewDesignButton} onClick={() => setTemplateModalOpen(true)}>
+              템플릿 변경
+            </button>
+          )}
         </div>
       </div>
       {appMode === 'internal' && <section className={styles.formatSection}>
@@ -793,7 +803,9 @@ function ScheduleBuilderContent({
     </>
   );
 
-  const previewFooter = selectedTemplate ? (
+  const canUseProductionTools = Boolean(selectedTemplate)
+    || (appMode === 'internal' && availableTemplates.length === 0);
+  const previewFooter = canUseProductionTools ? (
     <div className={styles.downloadActions}>
       {appMode === 'internal' && (
         <ExportImageButton
@@ -897,7 +909,7 @@ function ScheduleBuilderContent({
       )}
 
       <main className={styles.container}>
-        {selectedTemplate ? (
+        {canUseProductionTools ? (
           <SchedulePreview
             ref={exportNodeRef}
             hospital={hospital}
@@ -912,6 +924,7 @@ function ScheduleBuilderContent({
             onSecondarySubtitleTextChange={actions.setSecondarySubtitleText}
             customBackgroundUrl={customBackgroundUrl}
             customBackgroundFileName={customBackgroundFileName}
+            useTransparentTemplateBackground={!selectedTemplate}
             onCustomBackgroundSelect={handleCustomBackgroundSelect}
             onCustomBackgroundRemove={handleCustomBackgroundRemove}
             onResetSchedule={() => {
@@ -1027,30 +1040,42 @@ function ScheduleBuilderContent({
 
       {isTemplateModalOpen && (
         <Modal
-          title={`${formData.year}년 ${formData.month}월 시안을 선택해 주세요`}
+          title={availableTemplates.length > 0
+            ? `${formData.year}년 ${formData.month}월 시안을 선택해 주세요`
+            : `${formData.year}년 제작 월을 선택해 주세요`}
           onClose={() => setTemplateModalOpen(false)}
-          closable={hasSelectedTemplate}
+          closable={hasSelectedTemplate || availableTemplates.length === 0}
           panelClassName={styles.templateSelectModal}
         >
           <MonthSelector
             year={formData.year}
             month={formData.month}
-            availableMonths={[8, 9]}
-            onChange={actions.setYearMonth}
-          />
-          <div className={styles.templateListSpacing}>
-            <TemplateSelector
-              month={formData.month}
-              selectedId={formData.templateId}
-              onSelect={(templateId) => {
-                if (appMode === 'customer' && !hasSelectedTemplate) {
-                  shouldFocusSettingsAfterTemplateRef.current = true;
-                }
-                actions.setTemplateId(templateId);
+            availableMonths={appMode === 'internal' ? [8, 9, 10, 11, 12] : [8, 9]}
+            onChange={(year, month) => {
+              actions.setYearMonth(year, month);
+              const hasTemplatesForMonth = TEMPLATES.some((template) => template.month === month);
+              if (!hasTemplatesForMonth) {
                 setTemplateModalOpen(false);
-              }}
-            />
-          </div>
+                setActiveSettingsPanel('background');
+                setExpandedSettingsGroup('design');
+              }
+            }}
+          />
+          {availableTemplates.length > 0 && (
+            <div className={styles.templateListSpacing}>
+              <TemplateSelector
+                month={formData.month}
+                selectedId={formData.templateId}
+                onSelect={(templateId) => {
+                  if (appMode === 'customer' && !hasSelectedTemplate) {
+                    shouldFocusSettingsAfterTemplateRef.current = true;
+                  }
+                  actions.setTemplateId(templateId);
+                  setTemplateModalOpen(false);
+                }}
+              />
+            </div>
+          )}
         </Modal>
       )}
 

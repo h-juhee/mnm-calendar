@@ -54,6 +54,7 @@ interface SchedulePreviewProps {
   onDesignEditsChange: (edits: DesignEdits) => void;
   customBackgroundUrl?: string;
   customBackgroundFileName?: string;
+  useTransparentTemplateBackground?: boolean;
   onCustomBackgroundSelect: (file: File) => Promise<void>;
   onCustomBackgroundRemove: () => Promise<void>;
   onResetSchedule: () => void;
@@ -115,6 +116,7 @@ const MAX_DESIGN_HISTORY = 50;
 const MAX_FONT_SIZE = 500;
 const CANVAS_EDIT_HINT_KEY = 'mnn-calendar:canvas-edit-hint-seen';
 const CALENDAR_DRAG_HINT_KEY = 'mnn-calendar:calendar-drag-hint-seen';
+const TRANSPARENT_BACKGROUND_URL = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 const DEFAULT_TITLE_OUTLINE_COLORS: Partial<Record<TemplateId, string>> = {
   scheduleA: '#1e3a5f',
   scheduleB: '#ec4899',
@@ -167,6 +169,7 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
     onDesignEditsChange,
     customBackgroundUrl,
     customBackgroundFileName,
+    useTransparentTemplateBackground = false,
     onCustomBackgroundSelect,
     onCustomBackgroundRemove,
     onResetSchedule,
@@ -1228,7 +1231,8 @@ const SchedulePreview = forwardRef<HTMLDivElement, SchedulePreviewProps>(functio
               reserveClinicHoursSpace={false}
               designEdits={designEdits}
               selectedLayer={designEditingEnabled && canvasElementSelected ? selectedLayer : undefined}
-              customBackgroundUrl={customBackgroundUrl}
+              customBackgroundUrl={customBackgroundUrl
+                ?? (useTransparentTemplateBackground ? TRANSPARENT_BACKGROUND_URL : undefined)}
             />
           </div>
           {clinicHoursGapHandle && clinicHoursColumnGapConfig && (
