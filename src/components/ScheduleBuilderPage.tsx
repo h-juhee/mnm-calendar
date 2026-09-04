@@ -22,7 +22,7 @@ import { getOutputFormatMeta, type OutputFormat } from '../types/outputFormat';
 import { renderNodeAsPng } from '../utils/exportUtils';
 import ClinicHoursEditor from './ClinicHoursEditor';
 import { deleteCustomBackground, loadCustomBackground, migrateCustomBackground, saveCustomBackground } from '../utils/backgroundStorage';
-import { listHospitalInfos, removeHospitalData, removeHospitalInfo, saveHospitalInfo, saveScheduleDraft } from '../utils/storageUtils';
+import { listHospitalInfos, removeHospitalData, removeHospitalInfo, saveHospitalInfo, saveLastActiveMonth, saveScheduleDraft } from '../utils/storageUtils';
 import { listSubmissionStatesFromDrive, loadSubmissionStateFromDrive, type SharedSubmissionSummary } from '../utils/googleDriveUtils';
 import { getClinicHoursWithExample, parseNotionClinicHours } from '../utils/clinicHoursUtils';
 import { flushPendingUsageLogs } from '../utils/usageLogUtils';
@@ -87,6 +87,7 @@ export default function ScheduleBuilderPage({ appMode }: ScheduleBuilderPageProp
         if (cancelled) return;
         saveHospitalInfo(hydratedHospital);
         saveScheduleDraft(shared.hospital.id, shared.formData.year, shared.formData.month, shared.formData);
+        saveLastActiveMonth(shared.hospital.id, shared.formData.year, shared.formData.month);
         setHospital(hydratedHospital);
         setSharedSubmissionStatus('idle');
       })
@@ -235,7 +236,10 @@ function ScheduleBuilderContent({
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [isCustomModalOpen, setCustomModalOpen] = useState(false);
   const [isTemplateModalOpen, setTemplateModalOpen] = useState(
-    () => appMode === 'internal' || formData.templateId === null,
+    () => (
+      formData.templateId === null
+      || (appMode === 'internal' && !new URLSearchParams(window.location.search).has('submission'))
+    ),
   );
   const availableTemplates = useMemo(
     () => TEMPLATES.filter((template) => template.month === formData.month),
@@ -1050,7 +1054,7 @@ function ScheduleBuilderContent({
           <MonthSelector
             year={formData.year}
             month={formData.month}
-            availableMonths={appMode === 'internal' ? [8, 9, 10, 11, 12] : [8, 9]}
+            availableMonths={appMode === 'internal' ? [8, 9, 10, 11, 12] : [8, 9, 10]}
             onChange={(year, month) => {
               actions.setYearMonth(year, month);
               const hasTemplatesForMonth = TEMPLATES.some((template) => template.month === month);

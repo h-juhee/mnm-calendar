@@ -12,6 +12,7 @@ import {
 } from '../utils/scheduleUtils';
 import {
   loadScheduleDraft,
+  loadLastActiveMonth,
   saveLastActiveMonth,
   saveScheduleDraft,
 } from '../utils/storageUtils';
@@ -45,6 +46,7 @@ function normalizeTemplateId(value: unknown): TemplateId | null {
   return value === 'scheduleA' || value === 'scheduleB' || value === 'scheduleC' || value === 'scheduleD'
     || value === 'septemberA' || value === 'septemberB' || value === 'septemberC'
     || value === 'septemberD' || value === 'septemberE'
+    || value === 'octoberA' || value === 'octoberB' || value === 'octoberC'
     ? value
     : value === 'custom'
       ? 'scheduleA'
@@ -128,8 +130,9 @@ export function useScheduleBuilder(hospitalId: string) {
   const [saveStatus, setSaveStatus] = useState<'saving' | 'saved' | 'error'>('saving');
   const saveStatusTimerRef = useRef<number | undefined>(undefined);
   const [formData, setFormData] = useState<ScheduleFormData>(() => {
-    const year = FIXED_YEAR;
-    const month = DEFAULT_MONTH;
+    const activeMonth = loadLastActiveMonth(hospitalId);
+    const year = activeMonth?.year === FIXED_YEAR ? activeMonth.year : FIXED_YEAR;
+    const month = activeMonth?.year === FIXED_YEAR ? activeMonth.month : DEFAULT_MONTH;
     const loaded = loadScheduleDraft(hospitalId, year, month);
     return loaded
       ? {

@@ -182,7 +182,8 @@ export const OUTPUT_SIZES: OutputSizeMeta[] = [
 
 export type TemplateId =
   | 'scheduleA' | 'scheduleB' | 'scheduleC' | 'scheduleD'
-  | 'septemberA' | 'septemberB' | 'septemberC' | 'septemberD' | 'septemberE';
+  | 'septemberA' | 'septemberB' | 'septemberC' | 'septemberD' | 'septemberE'
+  | 'octoberA' | 'octoberB' | 'octoberC';
 
 export interface TemplateMeta {
   id: TemplateId;
@@ -226,7 +227,26 @@ const SEPTEMBER_TEMPLATE_SET: Omit<TemplateMeta, 'month'>[] = [
   },
 ];
 
-const AVAILABLE_TEMPLATE_MONTHS = [9];
+const OCTOBER_TEMPLATE_SET: Omit<TemplateMeta, 'month'>[] = [
+  {
+    id: 'octoberA',
+    name: '시안 A',
+    description: '10월 진료일정 시안 A',
+    previewImageUrl: '/templates/october_A_preview.jpg',
+  },
+  {
+    id: 'octoberB',
+    name: '시안 B',
+    description: '10월 진료일정 시안 B',
+    previewImageUrl: '/templates/october_B_preview.jpg',
+  },
+  {
+    id: 'octoberC',
+    name: '시안 C',
+    description: '10월 진료일정 시안 C',
+    previewImageUrl: '/templates/october_C_preview.jpg',
+  },
+];
 
 export const TEMPLATES: TemplateMeta[] = [
   {
@@ -257,9 +277,8 @@ export const TEMPLATES: TemplateMeta[] = [
     description: '시원한 여름 바다 포인트의 진료일정 시안',
     previewImageUrl: '/templates/schedule_D.png',
   },
-  ...AVAILABLE_TEMPLATE_MONTHS.flatMap((month) =>
-    SEPTEMBER_TEMPLATE_SET.map((template) => ({ ...template, month })),
-  ),
+  ...SEPTEMBER_TEMPLATE_SET.map((template) => ({ ...template, month: 9 })),
+  ...OCTOBER_TEMPLATE_SET.map((template) => ({ ...template, month: 10 })),
 ];
 
 export const SCHEDULE_TYPE_META: Record<

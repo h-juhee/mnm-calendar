@@ -126,7 +126,10 @@ function propertyValue(property, value) {
 
 function fieldValue(request, field) {
   if (field === 'editItems') return request[field]?.join(', ');
-  if (field === 'templateId') return request.templateId?.replace('schedule', '') ?? null;
+  if (field === 'templateId') {
+    const match = String(request.templateId ?? '').match(/[A-E]$/i);
+    return match ? match[0].toUpperCase() : null;
+  }
   if (field === 'outputSize') {
     const labels = {
       square: '\uC778\uC2A4\uD0C0 \uD31D\uC5C5', instagram: '\uC778\uC2A4\uD0C0 \uC138\uB85C',

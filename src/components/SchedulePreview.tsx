@@ -37,6 +37,11 @@ import {
   SeptemberDTemplate,
   SeptemberETemplate,
 } from './templates/SeptemberTemplates';
+import {
+  OctoberATemplate,
+  OctoberBTemplate,
+  OctoberCTemplate,
+} from './templates/OctoberTemplates';
 import Modal from './Modal';
 import FontSelector from './FontSelector';
 import styles from './SchedulePreview.module.css';
@@ -99,6 +104,9 @@ const TEMPLATE_COMPONENTS: Record<TemplateId, typeof ScheduleATemplate> = {
   septemberC: SeptemberCTemplate,
   septemberD: SeptemberDTemplate,
   septemberE: SeptemberETemplate,
+  octoberA: OctoberATemplate,
+  octoberB: OctoberBTemplate,
+  octoberC: OctoberCTemplate,
 };
 
 const DEFAULT_FONT_SIZES: Record<OutputFormat, Record<VisibleLayerId, number>> = {
